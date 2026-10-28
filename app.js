@@ -1700,7 +1700,10 @@ function render() {
   if (heroInput && document.activeElement !== heroInput && heroInput.value !== state.query) heroInput.value = state.query;
 
   const view = $('#view');
-  if (isExplore) view.innerHTML = state.collection ? renderCollection() : searching ? renderSearch() : renderExplore();
+  const booting = !state.api.checked && state.tab === 'explore' && !state.collection && !state.query.trim();
+  if (booting) {
+    view.innerHTML = `<section class="section"><div class="skeleton-grid">${Array.from({ length: 6 }).map(() => '<div class="skel"></div>').join('')}</div></section>`;
+  } else if (isExplore) view.innerHTML = state.collection ? renderCollection() : searching ? renderSearch() : renderExplore();
   else if (state.tab === 'shelf') view.innerHTML = renderShelf();
   else view.innerHTML = renderTaste();
 
@@ -1992,6 +1995,7 @@ async function initApi() {
     state.api.on = false;
   }
   state.api.checked = true;
+  render();
 }
 // PWA: 홈 화면 추가 지원 (HTTPS/localhost 에서만)
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
