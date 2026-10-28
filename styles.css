@@ -1500,3 +1500,23 @@ svg { display: block; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+/* ==========================================================================
+   검색 중 히어로 컴팩트 모드 (결과에 집중)
+   ========================================================================== */
+.hero.is-compact {
+  grid-template-columns: 1fr;
+  padding-top: 36px;
+  padding-bottom: 0;
+}
+.hero.is-compact .hero-card,
+.hero.is-compact .quick,
+.hero.is-compact .lede,
+.hero.is-compact .live-badge { display: none; }
+.hero.is-compact .eyebrow { margin-bottom: 12px; }
+.hero.is-compact h1 { font-size: clamp(24px, 3vw, 34px); margin-bottom: 16px; }
+.hero.is-compact .search-big { height: 54px; max-width: 560px; }
+.hero.is-compact .search-go { height: 40px; }
+.hero.is-compact + .view { padding-top: 26px; }
+
+/* 검색 단계별 시간은 개발 정보 — 사용자 화면에서는 숨김 */
+.timing-sub { display: none; }
