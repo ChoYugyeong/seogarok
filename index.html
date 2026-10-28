@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>서가 — 이 책, 지금 어느 서가에 있나</title>
+<meta name="description" content="밀리·리디·교보·윌라 구독을 한 번에 확인하고, 곧 사라지는 책을 미리 알려주는 독서 가용성 레이어." />
+<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<link rel="stylesheet" href="styles.css" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230b0b0d'/><rect x='26' y='24' width='9' height='52' rx='3' fill='%23ffc24b'/><rect x='40' y='24' width='9' height='52' rx='3' fill='%23ffc24b' opacity='.7'/><rect x='54' y='24' width='9' height='52' rx='3' fill='%23ffc24b' opacity='.45'/><rect x='68' y='32' width='9' height='44' rx='3' fill='%23ffc24b' opacity='.28'/></svg>" />
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="nav" id="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#" data-act="home" aria-label="서가 홈">
+      <span class="brand-mark" aria-hidden="true">
+        <i></i><i></i><i></i><i></i>
+      </span>
+      <span class="brand-text">
+        <b>서가</b>
+        <small>seoga</small>
+      </span>
+    </a>
+
+    <nav class="tabs" aria-label="주요 메뉴">
+      <button class="tab is-on" data-tab="explore">탐색</button>
+      <button class="tab" data-tab="shelf">내 서재<span class="count" id="shelfCount" hidden>0</span></button>
+      <button class="tab" data-tab="taste">취향 찾기</button>
+    </nav>
+
+    <div class="nav-right">
+      <label class="search-mini" for="searchInput">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="searchInput" type="search" placeholder="책, 저자 검색" autocomplete="off" />
+        <kbd>/</kbd>
+      </label>
+      <button class="subs-btn" id="subsBtn" aria-expanded="false">
+        내 구독
+        <span class="count" id="subsCount">0</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="popover" id="subsPopover" hidden>
+    <div class="popover-head">
+      <b>어떤 구독을 쓰고 있나요?</b>
+      <p>켜두면 '내가 바로 읽을 수 있는 책'만 골라드려요.</p>
+    </div>
+    <div class="popover-body" id="subsOptions"></div>
+    <div class="popover-foot">
+      <span>구독 없이도 구매·도서관 대출은 확인할 수 있어요.</span>
+    </div>
+  </div>
+</header>
+
+<main id="app">
+  <section class="hero" id="hero">
+    <p class="eyebrow"><span class="dot"></span>이 책, 지금 어느 서가에 있나</p>
+    <h1>읽고 싶은 책이<br /><em>어디 있는지</em> 모를 때</h1>
+    <p class="lede">밀리 · 리디셀렉트 · 교보 sam · 윌라를 한 번에 확인하고,<br class="pc" /> 곧 사라지는 책은 미리 알려드려요.</p>
+
+    <div class="search-big">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="heroSearch" type="search" placeholder="『채식주의자』, 김초엽, SF …" autocomplete="off" aria-label="책 검색" />
+      <button class="search-go" data-act="search">검색</button>
+    </div>
+
+    <div class="quick" id="quickChips"></div>
+    <div class="live-badge" id="liveIndex" hidden></div>
+  </section>
+
+  <div id="view" class="view" aria-live="polite"></div>
+</main>
+
+<footer class="foot">
+  <div class="foot-inner">
+    <div class="foot-brand">
+      <span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <div>
+        <b>서가</b>
+        <p>책의 가용성 레이어 — 읽을 수 있는 모든 경로를 한 화면에.</p>
+      </div>
+    </div>
+    <div class="foot-right">
+      <p class="disclaimer">
+        <b>도서 정보는 예스24 Open API</b>에서 제공받아 서비스 제공 범위 내에서 캐싱하며,
+        모든 도서의 상세 정보는 예스24 상품 페이지로 연결됩니다.
+        <b>구독 제공 종료 예정 정보는 밀리의서재 공개 목록</b>에서 확인된 항목만 표시합니다.
+        <b>확인되지 않은 구독 가용성은 “가용성 미확인”으로 표시</b>하며 추정값을 사실처럼 보여주지 않습니다.
+      </p>
+      <div class="foot-meta">
+        <span id="dataStamp">데이터 기준일 확인 중…</span>
+        <span class="sep">·</span>
+        <a href="legal.html#terms">이용약관</a>
+        <a href="legal.html#privacy">개인정보처리방침</a>
+        <a href="legal.html#sources">데이터 출처</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div id="drawerRoot" class="drawer-root" hidden>
+  <div class="drawer-scrim" data-act="close-drawer"></div>
+  <aside class="drawer" role="dialog" aria-modal="true" aria-label="책 상세"></aside>
+</div>
+
+<div id="toastRoot" class="toast-root" aria-live="polite"></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

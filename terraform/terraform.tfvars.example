@@ -1,0 +1,14 @@
+# terraform.tfvars.example 을 terraform.tfvars 로 복사해서 값을 채운다.
+project_id  = "your-gcp-project-id"
+region      = "asia-northeast3"
+github_repo = "your-github-user/seoga"
+
+# 비용/무료 티어 관련 (기본값 권장)
+min_instances = 1  # 0 으로 낮추면 더 저렴(콜드스타트 ~8초)
+max_instances = 2  # 비용 폭주 방지 상한
+cpu           = "1"
+memory        = "4Gi"  # 2Gi 는 OOM
+concurrency   = 8
+
+# 데모용 공개 접근. 운영에서는 false 로 두고 LB/IAP 인증 사용
+allow_unauthenticated = true

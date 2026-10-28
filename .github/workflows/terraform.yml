@@ -1,0 +1,95 @@
+name: terraform
+
+# PR: fmt + init(~backend) + validate (자격증명 불필요, 게이트로 동작)
+# main/dispatch: OIDC 인증 → GCS state 로 init → plan → apply (production-infra 승인 게이트)
+on:
+  pull_request:
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: "1"
+  TF_INPUT: "0"
+
+jobs:
+  validate:
+    name: fmt / validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.1"
+      - name: terraform fmt
+        run: terraform fmt -check -recursive
+      - name: terraform init (no backend)
+        run: terraform init -backend=false -input=false
+      - name: terraform validate
+        run: terraform validate
+
+  apply:
+    name: plan & apply
+    needs: validate
+    # GCP state 버킷이 설정되지 않은 저장소(포크/클론)에서는 skip → 빨간 X 방지
+    if: >-
+      vars.TF_STATE_BUCKET != '' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    environment: production-infra
+    defaults:
+      run:
+        working-directory: terraform
+    env:
+      TF_VAR_project_id: ${{ vars.GCP_PROJECT }}
+      TF_VAR_github_repo: ${{ github.repository }}
+      TF_VAR_env: prod
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.1"
+
+      - name: init (GCS backend)
+        env:
+          BUCKET: ${{ vars.TF_STATE_BUCKET }}
+        run: |
+          if [ -z "${BUCKET}" ]; then
+            echo "::error::저장소 Variables 에 TF_STATE_BUCKET 이 필요합니다. docs/runbooks/deploy-rollback.md §7 참고"
+            exit 1
+          fi
+          terraform init -input=false \
+            -backend-config="bucket=${BUCKET}" \
+            -backend-config="prefix=seoga/state"
+
+      - name: plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: apply
+        run: terraform apply -input=false -auto-approve tfplan
+
+      - name: outputs
+        run: terraform output -json > /tmp/tf_outputs.json && cat /tmp/tf_outputs.json

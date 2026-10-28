@@ -1,0 +1,176 @@
+name: ci
+
+# seoga CI: offline regression, image build + security scan, compose smoke test.
+#  - Runtime and index are frozen at image build time (immutable artifact, official API data).
+#  - The full 4,865-book catalog is not committed (size + DB rights). The test job
+#    therefore validates the pipeline offline against the 38-book seed catalog.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  # 1) test: offline pipeline regression (no network needed for model weights)
+  test:
+    name: offline tests (seed index)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.server.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.server.txt
+
+      - name: Syntax check
+        run: python -m compileall -q server
+
+      - name: Build seed index (38 books, hashing embedder - no weight download)
+        run: |
+          python -m server.sync \
+            --catalog data/seed_catalog.jsonl \
+            --db data/ci.db \
+            --embed hashing
+
+      - name: Offline search smoke (keyword + vector fusion)
+        run: |
+          python - <<'PY'
+          from server.db import VectorStore, connect, meta
+          from server.embed import get_embedder
+          from server.search import fetch_books, search
+
+          conn = connect("data/ci.db")
+          m = meta(conn)
+          assert int(m["book_count"]) == 38, ("book_count", m.get("book_count"))
+          assert m["vec_backend"] in ("sqlite-vec", "numpy"), m
+
+          emb = get_embedder("hashing")
+          store = VectorStore(conn, emb.dim)
+          ids, dbg = search(conn, store, emb, "\ucc44\uc2dd\uc8fc\uc758\uc790", mode="hybrid", limit=5)
+          rows = fetch_books(conn, ids)
+          assert ids and rows, "search returned no rows"
+
+          print(
+              f"[ci] PASS book_count={m['book_count']} "
+              f"vec_backend={m['vec_backend']} strategy={dbg.extra.get('strategy')} hits={len(ids)}"
+          )
+          PY
+
+  # 2) build: image build + Trivy scan (fail on HIGH/CRITICAL)
+  build:
+    name: docker build + trivy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t seoga-api:ci .
+
+      - name: Trivy scan (fail on HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@0.33.0
+        with:
+          image-ref: seoga-api:ci
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+
+  # 3) compose-smoke: boot the real compose stack and check operational endpoints
+  compose-smoke:
+    name: compose smoke (healthz/readyz/metrics)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate compose config
+        run: docker compose config -q
+
+      - name: Start api + prometheus (builds image)
+        run: docker compose up -d --build api prometheus
+
+      - name: Wait for /healthz and /readyz (up to 120s)
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8100/readyz > /tmp/readyz.json 2>/dev/null; then
+              echo "ready after $((i * 2))s"
+              cat /tmp/readyz.json
+              break
+            fi
+            if [ "$i" -eq 60 ]; then
+              echo "::error::/readyz did not become ready in 120s"
+              curl -sS http://127.0.0.1:8100/readyz || true
+              exit 1
+            fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8100/healthz
+          python - <<'PY'
+          import json
+          import urllib.request
+
+          with urllib.request.urlopen("http://127.0.0.1:8100/readyz") as r:
+              body = json.load(r)
+          assert body["ready"] is True, body
+          assert body["documents"] == body["vectors"], body
+          assert body["documents"] > 0, body
+          print(f"[ci] readyz documents={body['documents']} vectors={body['vectors']}")
+          PY
+
+      - name: Check /metrics instrumentation (doc count + request counter)
+        run: |
+          set -euo pipefail
+          curl -fsS http://127.0.0.1:8100/metrics > /tmp/metrics.txt
+          grep -q '^seoga_http_requests_total' /tmp/metrics.txt
+          grep -q '^seoga_ready 1' /tmp/metrics.txt
+          grep -q '^seoga_index_documents 500' /tmp/metrics.txt
+          grep -q '^seoga_build_info{' /tmp/metrics.txt
+          echo "[ci] metrics OK"
+
+      - name: /api/search smoke
+        run: |
+          set -euo pipefail
+          # q is percent-encoded Korean for "novel" (keeps this file pure ASCII for portable YAML parsing)
+          curl -fsS "http://127.0.0.1:8100/api/search?q=%EC%86%8C%EC%84%A4&mode=hybrid&limit=3" > /tmp/search.json
+          python - <<'PY'
+          import json
+
+          with open("/tmp/search.json", encoding="utf-8") as f:
+              body = json.load(f)
+          assert body["mode"] == "hybrid", body
+          assert "results" in body and "took_ms" in body, body
+          print(f"[ci] search OK count={body.get('count')} took_ms={body.get('took_ms')}")
+          PY
+
+      - name: Collect logs and clean up (always)
+        if: always()
+        run: |
+          docker compose ps || true
+          docker compose logs --tail=300 || true
+          docker compose down -v || true
+
+# Note: the alertbot tests live in a separate repository (seoga-alert), so no bot-test job here.
+# To wire them in, call that repository's reusable workflow or vendor the alertbot package.

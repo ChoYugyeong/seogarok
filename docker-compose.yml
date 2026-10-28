@@ -1,0 +1,84 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: seoga-api:local
+    container_name: seoga-api
+    environment:
+      SEOG_CHAOS: "1"          # 게임데이/알림 검증용 (운영에서는 0)
+      SEOG_AVAIL: "real"       # 운영 모드: 실수집 가용성만 표시, 나머지는 "미확인"
+      SEOG_HOST: "0.0.0.0"
+      HF_HUB_OFFLINE: "1"
+    ports:
+      - "8100:8100"
+    read_only: true            # immutable 아티팩트: 루트는 읽기 전용
+    tmpfs:
+      - /tmp:size=256m         # SQLite WAL/스크래치
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    networks: [seoga]
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    container_name: seoga-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=3d
+      - --web.enable-lifecycle
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./observability/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks: [seoga]
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: seoga-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"   # 호스트 3000은 다른 앱이 쓸 수 있어 3001로 매핑
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks: [seoga]
+
+  # 부하테스트: docker compose --profile load run --rm k6 run /scripts/search.js
+  k6:
+    image: grafana/k6:0.55.0
+    profiles: ["load"]
+    environment:
+      BASE_URL: http://api:8100
+    volumes:
+      - ./loadtest:/scripts:ro
+    depends_on:
+      - api
+    networks: [seoga]
+    command: ["run", "/scripts/search.js"]
+
+volumes:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  seoga:
+    driver: bridge

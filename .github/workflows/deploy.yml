@@ -1,0 +1,187 @@
+name: deploy-cloudrun
+
+# Cloud Run 카나리 배포 + 매일 데이터 자동 갱신:
+#   데이터 재수집(예스24 Open API + 밀리 공지) → build & push (OIDC, 키 없음)
+#   → 새 리비전을 트래픽 0%로 배포 → 카나리 스모크 → 100% 승격 → 운영 스모크
+#   → 실패 시 직전 리비전으로 자동 롤백
+on:
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "ingest/**"
+      - "Dockerfile"
+      - "requirements.server.txt"
+      - "scripts/docker-entrypoint.sh"
+      - "scripts/smoke.sh"
+      - "scripts/deploy_canary.sh"
+      - ".github/workflows/deploy.yml"
+  schedule:
+    # 매일 KST 04:00 (UTC 19:00) — 카탈로그/종료 공지 재수집 후 자동 배포
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+    inputs:
+      rollback_to:
+        description: "롤백 실행 (비우면 일반 배포 / 'previous' 또는 리비전 이름)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation (장기 키 없음)
+
+concurrency:
+  group: deploy-cloudrun
+  cancel-in-progress: false
+
+env:
+  SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
+  REGION: ${{ vars.GCP_REGION }}
+  IMAGE_REPO: ${{ vars.IMAGE_REPO }}
+  CLOUDSDK_CORE_DISABLE_PROMPTS: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  build:
+    name: fetch data → build & push
+    if: >-
+      vars.GCP_WIF_PROVIDER != '' &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.rollback_to == '')
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: fetch data (YES24 Open API + Millie 공개 공지)
+        env:
+          YES24_API_KEY: ${{ secrets.YES24_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${YES24_API_KEY}" ]; then
+            echo "::error::저장소 Secret YES24_API_KEY 가 없습니다 (Settings → Secrets → Actions)"
+            exit 1
+          fi
+          python -m pip install --quiet requests
+          python -m ingest.notices.run --out data/notices.jsonl
+          python -m ingest.books.yes24_api --out data/catalog.jsonl \
+            --per-category 100 --categories 22 --no-cache
+          CAT=$(wc -l < data/catalog.jsonl)
+          NOT=$(wc -l < data/notices.jsonl)
+          echo "catalog=$CAT notices=$NOT"
+          # 수집 실패 시 seed(38권)로 배포되어 라이브 인덱스가 줄어드는 사고를 막는다
+          [ "$CAT" -ge 1000 ] || { echo "::error::카탈로그 수집 부족 ($CAT rows) — 배포 중단"; exit 1; }
+
+      - name: image tag
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${GITHUB_SHA::12}"
+          else
+            TAG="data-$(date -u +%Y%m%d-%H%M)"
+          fi
+          echo "image=${IMAGE_REPO}:${TAG}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: docker auth (Artifact Registry)
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: canary deploy → smoke → promote
+    needs: build
+    if: >-
+      vars.GCP_WIF_PROVIDER != '' &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.rollback_to == '')
+    runs-on: ubuntu-latest
+    environment: production # 필요 시 GitHub Environment 승인 게이트
+    env:
+      IMAGE: ${{ needs.build.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: deploy new revision (traffic 0%, tag=canary)
+        run: bash scripts/deploy_canary.sh deploy
+
+      - name: smoke test canary
+        run: |
+          URL="$(cat /tmp/canary_url.txt)"
+          echo "canary=$URL"
+          SMOKE_TRIES=20 bash scripts/smoke.sh "$URL"
+
+      - name: promote canary to 100%
+        run: bash scripts/deploy_canary.sh promote
+
+      - name: smoke test production
+        run: |
+          URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')"
+          echo "prod=$URL"
+          SMOKE_TRIES=12 bash scripts/smoke.sh "$URL"
+
+      - name: dump diagnostics
+        if: failure()
+        run: bash scripts/deploy_canary.sh status || true
+
+      - name: auto rollback
+        if: failure()
+        run: bash scripts/deploy_canary.sh rollback
+
+  rollback:
+    name: manual rollback
+    if: >-
+      vars.GCP_WIF_PROVIDER != '' &&
+      github.event_name == 'workflow_dispatch' && github.event.inputs.rollback_to != ''
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: rollback
+        env:
+          TARGET: ${{ github.event.inputs.rollback_to }}
+        run: |
+          if [ "$TARGET" = "previous" ]; then
+            bash scripts/deploy_canary.sh rollback
+          else
+            echo "rollback -> $TARGET"
+            gcloud run services update-traffic "$SERVICE" --region "$REGION" \
+              --to-revisions "${TARGET}=100" --quiet
+          fi
+          URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')"
+          bash scripts/smoke.sh "$URL"

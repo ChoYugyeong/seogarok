@@ -1,0 +1,96 @@
+# SLO 기반 알림.
+#  - 가용성 SLO 99.9% (월 허용 불가 시간 43m 12s) → 에러 버짓 0.001
+#  - 멀티윈도우 멀티번레이트: 1h 14.4x(빠른 소진) / 6h 6x(느린 소진)
+groups:
+  - name: seoga-availability
+    rules:
+      - alert: SeogaApiDown
+        expr: up{job="seoga-api"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "서가 API가 다운되었습니다"
+          description: "Prometheus가 {{ $labels.instance }} 를 30초 이상 스크레이프하지 못했습니다. 런북: docs/runbooks/api-down.md"
+          runbook: "docs/runbooks/api-down.md"
+
+      - alert: SeogaNotReady
+        expr: seoga_ready == 0
+        for: 1m
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "서가 API가 준비 상태가 아닙니다 (ready=0)"
+          description: "DB 또는 벡터 인덱스가 준비되지 않았습니다. /readyz 확인. 런북: docs/runbooks/index-stale.md"
+          runbook: "docs/runbooks/index-stale.md"
+
+      - alert: SeogaErrorBudgetBurnFast
+        expr: |
+          (
+            sum(rate(seoga_http_requests_total{status=~"5.."}[1h]))
+            / clamp_min(sum(rate(seoga_http_requests_total[1h])), 0.001)
+          ) > (14.4 * 0.001)
+        for: 2m
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "에러 버짓이 빠르게 소진 중 (1h 번레이트 14.4x 초과)"
+          description: "최근 1시간 5xx 비율이 SLO 대비 14.4배 빠릅니다. 배포 롤백을 검토하세요."
+          runbook: "docs/runbooks/api-down.md"
+
+      - alert: SeogaErrorBudgetBurnSlow
+        expr: |
+          (
+            sum(rate(seoga_http_requests_total{status=~"5.."}[6h]))
+            / clamp_min(sum(rate(seoga_http_requests_total[6h])), 0.001)
+          ) > (6 * 0.001)
+        for: 15m
+        labels:
+          severity: warning
+          slo: availability
+        annotations:
+          summary: "에러 버짓이 느리게 소진 중 (6h 번레이트 6x 초과)"
+          runbook: "docs/runbooks/api-down.md"
+
+  - name: seoga-latency
+    rules:
+      - alert: SeogaSearchLatencyP95High
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(seoga_http_request_duration_seconds_bucket{route="/api/search"}[5m])) by (le)
+          ) > 0.3
+        for: 2m
+        labels:
+          severity: warning
+          slo: latency
+        annotations:
+          summary: "검색 API p95 지연이 300ms를 초과했습니다"
+          description: "현재 p95 = {{ $value | humanizeDuration }}. 런북: docs/runbooks/slow-search.md"
+          runbook: "docs/runbooks/slow-search.md"
+
+  - name: seoga-freshness
+    rules:
+      - alert: SeogaIndexStale
+        expr: seoga_index_age_seconds > 86400
+        for: 10m
+        labels:
+          severity: warning
+          slo: freshness
+        annotations:
+          summary: "검색 인덱스가 24시간 이상 갱신되지 않았습니다"
+          description: "마지막 sync 후 {{ $value | humanizeDuration }} 경과. 런북: docs/runbooks/index-stale.md"
+          runbook: "docs/runbooks/index-stale.md"
+
+      - alert: SeogaIndexEmpty
+        expr: seoga_index_documents == 0
+        for: 1m
+        labels:
+          severity: critical
+          slo: freshness
+        annotations:
+          summary: "검색 인덱스가 비어 있습니다"
+          runbook: "docs/runbooks/index-stale.md"

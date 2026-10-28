@@ -1,0 +1,36 @@
+# 런타임 산출물
+__pycache__/
+*.pyc
+_qa/
+screenshots/
+
+# 인덱스 DB (빌드 시 생성)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# 수집 원본 (전체 카탈로그/공지는 로컬에서 파이프라인으로 재생성)
+data/catalog.jsonl
+data/notices.jsonl
+data/catalog_api.jsonl
+data/bench_report.json
+ingest/**/_cache/
+ingest/**/_cache_api/
+ingest/**/_research/
+
+# 운영 산출물
+state/
+out/
+
+# terraform
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/terraform.tfvars
+terraform/crash.log
+
+# secrets
+.env
+!.env.example
+terraform/backend.tf
+terraform/backend.tf.bak

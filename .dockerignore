@@ -1,0 +1,25 @@
+.git
+.gitignore
+_qa/
+docs/
+screenshots/
+ingest/
+benchmarks/
+**/__pycache__/
+*.pyc
+data/bench_vectors.db
+data/bench_report.json
+data/seoga.db
+data/seoga.db-wal
+data/seoga.db-shm
+*.md
+!requirements.server.txt
+
+# infra & ci (not needed in image)
+terraform/
+.github/
+docs/
+Makefile
+.env
+.env.*
+!.env.example
