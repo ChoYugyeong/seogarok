@@ -21,6 +21,15 @@ on:
       - "app.js"
       - "data.js"
       - "legal.html"
+      - "sw.js"
+      - "manifest.webmanifest"
+      - "icons/**"
+      - "robots.txt"
+      - "sitemap.xml"
+      - "404.html"
+      - "data/collections.jsonl"
+      - "data/catalog_fallback.jsonl.gz"
+      - "data/notices_fallback.jsonl.gz"
       - ".github/workflows/deploy.yml"
   schedule:
     # 매일 KST 04:00 (UTC 19:00) — 카탈로그/종료 공지 재수집 후 자동 배포
