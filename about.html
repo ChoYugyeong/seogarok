@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>서가록 소개 · 이 책, 지금 어느 서가에 있나</title>
+<title>서가록 소개 — 이 책, 지금 어느 서가에 있나</title>
 <meta name="description" content="서가록은 도서 구독 플랫폼의 가용성과 종료 예정을 한 화면에 모으는 서비스입니다. 데이터 출처와 작동 방식을 안내합니다." />
 <link rel="stylesheet" href="styles.css" />
 <link rel="manifest" href="/manifest.webmanifest" />
@@ -18,18 +18,19 @@
   </a>
   <a class="nav-tab" href="/">← 서가록으로</a>
 </header>
-<main class="doc">
-    <h1>서가록은 무엇을 하는 서비스인가요?</h1>
-  <p class="lede">도서 구독 서비스는 늘어났지만, “이 책이 지금 어디서 읽히는지”는 한눈에 보이지 않습니다. 서가록은 그 정보를 모아 <b>어느 서가에 있는지</b>를 보여주고, <b>곧 사라지는 책</b>을 미리 알려줍니다.</p>
+<main class="view" style="max-width:820px; margin:0 auto; padding-top:48px;">
+  <p class="eyebrow"><span class="dot"></span>ABOUT</p>
+  <h1 class="hero-title" style="font-size:clamp(30px,4vw,44px);">서가록은 무엇을 하는 서비스인가요?</h1>
+  <p class="lede" style="margin:16px 0 34px;">도서 구독 서비스는 늘어났지만, “이 책이 지금 어디서 읽히는지”는 한눈에 보이지 않습니다. 서가록은 그 정보를 모아 <b>어느 서가에 있는지</b>를 보여주고, <b>곧 사라지는 책</b>을 미리 알려줍니다.</p>
 
   <section class="prose">
     <h2>작동 방식</h2>
     <ul>
-      <li><b>수록 도서</b> · 예스24 공식 Open API로 국내도서 주요 분야(소설·인문·과학·어린이 등)의 인기·신간·스테디셀러를 수집합니다.</li>
-      <li><b>검색</b> · SQLite FTS5(한글 바이그램) 키워드 검색과 벡터 검색(model2vec, 256차원)을 RRF로 융합합니다. 초성 검색(<code>ㅎㄱ</code> → 한강)도 지원합니다.</li>
-      <li><b>미수록 책</b> · 서가에 없는 책은 온디맨드로 예스24에서 실시간 조회해 보여줍니다.</li>
-      <li><b>가용성</b> · 구독 플랫폼의 공개 종료 공지를 매일 수집해 반영합니다. 확인되지 않은 정보는 “미확인”으로 표시하며, 추정하지 않습니다.</li>
-      <li><b>큐레이션</b> · 서울대 권장도서 100선, 하버드 클래식(1909, 퍼블릭 도메인), 세종도서(2025) 등 <b>공개된 공식 목록</b>을 서가의 실제 책과 매칭합니다. 제목·저자·ISBN 등 사실 정보만 사용하고, 해설 문구는 복제하지 않습니다.</li>
+      <li><b>수록 도서</b> — 예스24 공식 Open API로 국내도서 주요 분야(소설·인문·과학·어린이 등)의 인기·신간·스테디셀러를 수집합니다.</li>
+      <li><b>검색</b> — SQLite FTS5(한글 바이그램) 키워드 검색과 벡터 검색(model2vec, 256차원)을 RRF로 융합합니다. 초성 검색(<code>ㅎㄱ</code> → 한강)도 지원합니다.</li>
+      <li><b>미수록 책</b> — 서가에 없는 책은 온디맨드로 예스24에서 실시간 조회해 보여줍니다.</li>
+      <li><b>가용성</b> — 구독 플랫폼의 공개 종료 공지를 매일 수집해 반영합니다. 확인되지 않은 정보는 “미확인”으로 표시하며, 추정하지 않습니다.</li>
+      <li><b>큐레이션</b> — 서울대 권장도서 100선, 하버드 클래식(1909, 퍼블릭 도메인), 세종도서(2025) 등 <b>공개된 공식 목록</b>을 서가의 실제 책과 매칭합니다. 제목·저자·ISBN 등 사실 정보만 사용하고, 해설 문구는 복제하지 않습니다.</li>
     </ul>
 
     <h2>데이터 출처</h2>
@@ -58,7 +59,7 @@
     <p>버그·데이터 오류 제보는 상세 화면의 <b>가용성 제보</b> 또는 저장소 이슈로 남겨주세요.</p>
   </section>
 
-  <div style="margin:40px 0 20px; display:flex; gap:18px; align-items:center;">
+  <div style="margin:40px 0 60px; display:flex; gap:14px;">
     <a class="btn-primary" style="display:inline-flex; align-items:center; text-decoration:none;" href="/">서가록으로 →</a>
     <a class="link" href="legal.html">이용약관·데이터 출처</a>
   </div>
