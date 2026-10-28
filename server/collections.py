@@ -56,12 +56,28 @@ def _author_key(a) -> str:
 
 def match_items(conn, items: list[dict]) -> list[dict]:
     """컬렉션 항목 → 카탈로그 책 매칭 (제목 우선, 저자 보정)."""
-    books = conn.execute("SELECT id, title, author FROM books").fetchall()
+    books = conn.execute("SELECT id, title, author, isbn13 FROM books").fetchall()
     if not books:
         return []
+    isbn_map = {}
+    for b in books:
+        code = str(b["isbn13"] or "").strip().replace("-", "")
+        if code:
+            isbn_map[code] = b["id"]
     prepared = [(_norm_title(b["title"]), _author_key(b["author"] or ""), b["id"], b["title"]) for b in books]
     out: list[dict] = []
     for item in items:
+        # ISBN 우선 매칭 (세종도서 등 공식 목록은 ISBN 이 정확)
+        code = str(item.get("isbn") or "").strip().replace("-", "")
+        if code and code in isbn_map:
+            out.append({
+                "book_id": isbn_map[code],
+                "item_title": item.get("title"),
+                "item_author": item.get("author"),
+                "category": item.get("category"),
+                "score": 200.0,
+            })
+            continue
         t = _norm_title(item.get("title"))
         a = _author_key(item.get("author") or "")
         if not t:
