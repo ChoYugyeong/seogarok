@@ -1,5 +1,5 @@
 /* =========================================================
-   서가록 (seogarok) — app
+   서가록 (seogarok) · app
    ========================================================= */
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -141,8 +141,8 @@ const isOn = (v) => v && v.s === 'on';
 function coverStyle(book) {
   let h = 0;
   for (let i = 0; i < book.title.length; i++) h = (h * 31 + book.title.charCodeAt(i)) % 360;
-  const h2 = (h + 46) % 360;
-  return `--cg: linear-gradient(152deg, hsl(${h} 44% 27%), hsl(${h2} 50% 12%) 74%)`;
+  // 실표지가 없을 때의 단색 자리 · 색은 제목에서 결정론적으로 뽑는다
+  return `--cg: hsl(${h} 16% 40%)`;
 }
 
 function coverHTML(book, extraClass = '') {
@@ -218,7 +218,7 @@ function anyFree(book) {
 }
 
 /** 카드에 표시할 배지 */
-function pillsHTML(book, max = 3) {
+function pillsHTML(book, max = 2) {
   const out = [];
   const end = endings(book)[0];
   if (end) out.push(`<span class="pill end">${esc(PLATFORMS[end.k].short)} D-${end.d}</span>`);
@@ -281,7 +281,7 @@ function toast(msg) {
   const root = $('#toastRoot');
   const el = document.createElement('div');
   el.className = 'toast';
-  el.innerHTML = `<span class="tick">✓</span>${esc(msg)}`;
+  el.innerHTML = esc(msg);
   root.appendChild(el);
   setTimeout(() => {
     el.classList.add('is-out');
@@ -347,7 +347,7 @@ function alertPanelHTML(entries, inShelfMode) {
       </div>
       <div class="alert-right">
         <span class="alert-dday">D-${d}</span>
-        <button class="btn-alert ${on ? 'is-on' : ''}" data-alert="${b.id}:${k}" data-d="${d}">${on ? '알림 켜짐 ✓' : '종료 알림'}</button>
+        <button class="btn-alert ${on ? 'is-on' : ''}" data-alert="${b.id}:${k}" data-d="${d}">${on ? '알림 켜짐' : '종료 알림'}</button>
       </div>
     </div>`;
   }).join('');
@@ -381,7 +381,7 @@ function collectionGrid(filterId) {
         <h3 class="sec-title">${esc(c.title)}</h3>
         <p class="sec-desc">${esc(c.desc)} · ${list.length}권</p>
       </div>
-      <button class="sec-more" data-act="clear-collection">닫기 ✕</button>
+      <button class="sec-more" data-act="clear-collection">닫기</button>
     </div>
     ${gridHTML(list.slice(0, 12))}
   </div>`;
@@ -557,6 +557,7 @@ async function loadPick() {
     const r = await API.dailyPick();
     state.pick = mapApiBook(r.book);
     cacheBooks([state.pick]);
+    renderStageRecord(state.pick);
     render();
   } catch (e) { }
 }
@@ -594,9 +595,8 @@ function renderDailyPick() {
     <div class="pick-card">
       <button class="pick-cover" data-book="${esc(b.id)}" aria-label="${esc(b.title)} 상세 보기">${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="${esc(b.title)}" loading="eager" />` : `<span class="pick-cover-fallback">${esc(b.title)}</span>`}</button>
       <div class="pick-body">
-        <p class="pick-eyebrow">오늘의 책 · ${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}</p>
         <h3 class="pick-title"><button class="link-like" data-book="${esc(b.id)}">${esc(b.title)}</button></h3>
-        <p class="pick-author">${esc(b.author)}${b.publisher ? ` · ${esc(b.publisher)}` : ''}</p>
+        <p class="pick-author">${esc(b.author)}${b.publisher ? ` · ${esc(b.publisher)}` : ''} · ${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}의 책</p>
         ${b.blurb ? `<p class="pick-blurb">${esc(String(b.blurb).slice(0, 160))}${String(b.blurb).length > 160 ? '…' : ''}</p>` : ''}
         <div class="pick-chips">${chips || '<span class="pick-chip">확인 중</span>'}${hasNotice ? '<span class="pick-chip warn">종료 예정</span>' : ''}</div>
         <div class="pick-actions">
@@ -619,7 +619,7 @@ function renderOverview() {
     ['이번 주 종료', n(o.ending_7d), '권'],
     ['최근 90일 신간', n(o.new_releases_90d), '권'],
     ['큐레이션', n(o.collections), '개'],
-  ].map(([label, value, unit]) => `<div class="ov-stat"><span class="ov-label">${label}</span><b class="ov-value">${value}</b><span class="ov-unit">${unit}</span></div>`).join('');
+  ].map(([label, value, unit]) => `<div class="ov-stat"><b class="ov-value">${value}</b><span class="ov-unit">${unit}</span><span class="ov-label">${label}</span></div>`).join('');
   const maxG = Math.max(...(o.genres || []).map((g) => g.count), 1);
   const bars = (o.genres || []).map((g) => `<div class="ov-bar-row">
       <span class="ov-bar-label">${esc(g.name)}</span>
@@ -658,16 +658,29 @@ function renderRecentRail() {
 }
 
 function renderDiscoverRails() {
-  const rails = (state.discover || []).map((r) => `<section class="section">
-    <div class="sec-head">
+  const rails = (state.discover || []).map((r, idx) => {
+    const asList = idx % 2 === 1; // 두 번째 레일마다 텍스트 리스트로 리듬을 바꾼다
+    const head = `<div class="sec-head">
       <div>
         <h3 class="sec-title">${esc(r.label)}</h3>
         <p class="sec-desc">${esc(r.desc || `‘${r.q}’ 검색`)} · ${r.books.length}권</p>
       </div>
-      <button class="sec-more" data-genre="${esc(r.q)}">더 보기 →</button>
-    </div>
-    <div class="grid rail-grid">${r.books.map(bookCardHTML).join('')}</div>
-  </section>`).join('');
+      <button class="sec-more" data-genre="${esc(r.q)}">더 보기</button>
+    </div>`;
+    if (asList) {
+      const rows = r.books.map((b) => {
+        const av = avInfo(b);
+        const sub = av.subs.filter((x) => x.status !== 'none').map((x) => x.label).slice(0, 2);
+        return `<button class="rail-row" data-book="${esc(b.id)}">
+          <span class="rail-row-title">${esc(b.title)}</span>
+          <span class="rail-row-meta">${esc(b.author)}${b.price ? ` · ${Number(b.price).toLocaleString()}원` : ''}</span>
+          <span class="rail-row-av">${sub.length ? sub.join(' · ') : '가용성 미확인'}</span>
+        </button>`;
+      }).join('');
+      return `<section class="section">${head}<div class="rail-list">${rows}</div></section>`;
+    }
+    return `<section class="section">${head}<div class="grid rail-grid">${r.books.map(bookCardHTML).join('')}</div></section>`;
+  }).join('');
   return rails;
 }
 
@@ -685,6 +698,56 @@ function renderGenreChips() {
 }
 
 /* ---------------- 큐레이션 컬렉션 (공개 추천 목록) ---------------- */
+/* ---------------- split stage 동작 ---------------- */
+function renderStageRecord(book) {
+  const box = document.getElementById('stageRecord');
+  if (!box || !book) return;
+  const img = box.querySelector('img');
+  if (img && book.cover_url) {
+    img.src = book.cover_url;
+    img.alt = `${book.title} 표지`;
+  }
+  box.hidden = false;
+}
+
+let revealObserver = null;
+function armReveals() {
+  const view = document.getElementById('view');
+  if (!view) return;
+  if (!revealObserver) {
+    revealObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-in');
+            revealObserver.unobserve(e.target);
+          }
+        });
+      },
+      { rootMargin: '0px 0px -6% 0px', threshold: 0.06 },
+    );
+  }
+  const targets = view.querySelectorAll(
+    '.section, .pick-section, .ov-section, .sec-head, .grid, .rail-grid, .cur-grid, .tl-strip, .tl-groups, .collections, .cta-band, .cur-head',
+  );
+  targets.forEach((el) => {
+    if (el.dataset.revealed) return;
+    el.dataset.revealed = '1';
+    el.classList.add('reveal');
+    revealObserver.observe(el);
+  });
+}
+
+function wireStageMotion() {
+  const root = document.documentElement;
+  const onScroll = () => {
+    const y = Math.min(window.scrollY || 0, 720);
+    root.style.setProperty('--wm-scale', (1 - (y / 720) * 0.12).toFixed(3));
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+}
+
 async function loadCollections() {
   if (!state.api.on) return;
   try {
@@ -708,14 +771,24 @@ async function openCollection(slug) {
 function renderCollections() {
   const list = state.collections || [];
   if (!list.length) return '';
-  const cards = list.map((c) => {
-    const covers = (c.samples || []).slice(0, 4).map((x) => `<span class="cur-cover">${x.cover_url ? `<img src="${esc(x.cover_url)}" alt="" loading="lazy">` : ''}</span>`).join('');
+  const cards = list.map((c, idx) => {
+    const feature = idx === 0;
+    if (feature) {
+      const covers = (c.samples || []).slice(0, 4).map((x) => `<span class="cur-cover">${x.cover_url ? `<img src="${esc(x.cover_url)}" alt="" loading="lazy">` : ''}</span>`).join('');
+      return `<button class="cur-card is-feature" data-collection="${esc(c.slug)}">
+        <span class="cur-covers">${covers}</span>
+        <span class="cur-body">
+          <b>${esc(c.title)}</b>
+          <span class="cur-desc">${esc(c.subtitle || '')}</span>
+          <span class="cur-meta">${c.matched}/${c.total}권 수록 · ${esc(c.source || '')}</span>
+        </span>
+      </button>`;
+    }
     return `<button class="cur-card" data-collection="${esc(c.slug)}">
-      <span class="cur-covers">${covers}</span>
       <span class="cur-body">
+        <span class="cur-figure">${c.matched}<span>/${c.total}권</span></span>
         <b>${esc(c.title)}</b>
-        <span class="cur-desc">${esc(c.subtitle || '')}</span>
-        <span class="cur-meta">${c.matched}/${c.total}권 수록 · ${esc(c.source || '')}</span>
+        <span class="cur-meta">${esc(c.source || '')}</span>
       </span>
     </button>`;
   }).join('');
@@ -987,7 +1060,7 @@ function noticesSection() {
   return `<section class="section" id="timeline">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title"><span class="ico">↓</span>종료 예정 타임라인</h3>
+        <h3 class="sec-title">종료 예정 타임라인</h3>
         <p class="sec-desc">${esc(label)} 공지 <b style="color:var(--text-2)">${realCount}건</b> · 이번 주 예정 <b style="color:var(--accent)">${totalUpcoming}권</b> · 매일 갱신</p>
       </div>
       ${state.tlDate ? `<button class="sec-more" data-tl-clear>전체 보기 →</button>` : ''}
@@ -1069,7 +1142,7 @@ function renderApiSearch() {
     <h2>‘${esc(q)}’</h2>
     <span>${view.length}권${view.length !== api.hits.length ? ` <small style="color:var(--muted)">/ 전체 ${api.hits.length}권</small>` : ''}</span>
     <span class="spacer"></span>
-    <button class="sec-more" data-act="clear-query">검색 지우기 ✕</button>
+    <button class="sec-more" data-act="clear-query">검색 지우기</button>
   </div>
 
   <div class="filter-bar">
@@ -1139,7 +1212,7 @@ function renderLocalSearch() {
     <h2>‘${esc(state.query)}’</h2>
     <span>${list.length}권</span>
     <span class="spacer"></span>
-    <button class="sec-more" data-act="clear-query">검색 지우기 ✕</button>
+    <button class="sec-more" data-act="clear-query">검색 지우기</button>
   </div>
   <div class="filter-bar">
     <span class="fb-label">필터</span>
@@ -1324,7 +1397,7 @@ function whyText(rec, ctx) {
   else if (ctx.pagesMin && b.pages >= ctx.pagesMin) bits.push(`${b.pages}p, 주말에 몰입하는 분량`);
   else if (!bits.length) bits.push(`${b.pages}p라 부담 없는 분량`);
 
-  const lead = `${bits.join(' · ')} — 그래서 골랐어요.`;
+  const lead = `${bits.join(' · ')} · 그래서 골랐어요.`;
 
   const end = endings(b)[0];
   const acc = myAccess(b);
@@ -1430,7 +1503,7 @@ function avRowHTML(book) {
       rows.push(`<div class="av-row is-ending">
         <div class="p-main"><div class="p-name">${esc(name)}</div><div class="p-note warn">${endDateText(s.d)} 종료 · ${daysWord(s.d)}</div></div>
         <span class="state end">종료 임박</span>
-        <button class="p-cta ${on ? '' : 'primary'}" data-alert="${key}" data-d="${s.d}">${on ? '알림 켜짐 ✓' : '종료 알림'}</button>
+        <button class="p-cta ${on ? '' : 'primary'}" data-alert="${key}" data-d="${s.d}">${on ? '알림 켜짐' : '종료 알림'}</button>
       </div>`);
     } else if (mine) {
       rows.push(`<div class="av-row">
@@ -1513,7 +1586,7 @@ function drawerHTML(book) {
         <h2>${esc(book.title)}</h2>
         <p class="dw-author">${esc(book.author)}</p>
         <p class="dw-sub">${esc(metaParts.join(' · '))}</p>
-        ${book.real && (book.price || book.rating) ? `<p class="dw-price">${book.price ? `${Number(book.price).toLocaleString()}원` : ''}${book.price && book.rating ? ' · ' : ''}${book.rating ? `★ ${book.rating}` : ''}${book.link ? ` · <a href="${esc(book.link)}" target="_blank" rel="noopener">원본 보기</a>` : ''}</p>` : ''}
+        ${book.real && (book.price || book.rating) ? `<p class="dw-price">${book.price ? `${Number(book.price).toLocaleString()}원` : ''}${book.price && book.rating ? ' · ' : ''}${book.rating ? `평점 ${book.rating}` : ''}${book.link ? ` · <a href="${esc(book.link)}" target="_blank" rel="noopener">원본 보기</a>` : ''}</p>` : ''}
         <div class="dw-tags">${tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
       </div>
     </div>
@@ -1548,9 +1621,9 @@ function drawerHTML(book) {
     </div>
 
     <div class="dw-actions">
-      <button class="act-btn ${cur === 'want' ? 'is-on' : ''}" data-shelf-set="want">관심 ${cur === 'want' ? '✓' : ''}</button>
-      <button class="act-btn ${cur === 'reading' ? 'is-on' : ''}" data-shelf-set="reading">읽는 중 ${cur === 'reading' ? '✓' : ''}</button>
-      <button class="act-btn ${cur === 'done' ? 'is-on' : ''}" data-shelf-set="done">완독 ${cur === 'done' ? '✓' : ''}</button>
+      <button class="act-btn ${cur === 'want' ? 'is-on' : ''}" data-shelf-set="want">관심</button>
+      <button class="act-btn ${cur === 'reading' ? 'is-on' : ''}" data-shelf-set="reading">읽는 중</button>
+      <button class="act-btn ${cur === 'done' ? 'is-on' : ''}" data-shelf-set="done">완독</button>
     </div>
 
     <div class="dw-note">
@@ -1704,7 +1777,12 @@ function render() {
   else if (state.tab === 'shelf') view.innerHTML = renderShelf();
   else view.innerHTML = renderTaste();
 
-  // 백엔드 연결 배지 (기술 정보는 최소화 — 제품 문구 우선)
+  // 상세/검색/다른 탭에서는 스테이지를 접고 기록을 넓게 본다
+  const wide = Boolean(state.query.trim()) || Boolean(state.collection) || state.tab !== 'explore';
+  document.body.classList.toggle('is-wide', wide);
+  armReveals();
+
+  // 백엔드 연결 배지 (기술 정보는 최소화 · 제품 문구 우선)
   const badge = $('#liveIndex');
   if (badge) {
     if (state.api.on) {
@@ -1999,6 +2077,8 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('/sw.js').catch(() => { });
   });
 }
+
+wireStageMotion();
 
 setupSuggest('#heroSearch', '#heroSuggest');
 setupSuggest('#searchInput', '#navSuggest');

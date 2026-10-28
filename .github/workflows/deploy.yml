@@ -25,6 +25,7 @@ on:
       - "sw.js"
       - "manifest.webmanifest"
       - "icons/**"
+      - "assets/**"
       - "robots.txt"
       - "sitemap.xml"
       - "404.html"

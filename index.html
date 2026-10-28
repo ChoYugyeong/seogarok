@@ -3,29 +3,27 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>서가록 — 이 책, 지금 어느 서가에 있나</title>
+<title>서가록 · 읽고 싶은 책이 지금 어디에 있는지</title>
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="서가록" />
-<meta property="og:title" content="서가록 — 이 책, 지금 어느 서가에 있나" />
-<meta property="og:description" content="밀리·리디셀렉트·교보 sam·윌라 가용성과 종료 예정을 한 화면에. 예스24 공식 API 기반 도서 검색." />
-<meta property="og:image" content="https://seogarok.com/icons/icon-512.png" />
+<meta property="og:title" content="서가록 · 읽고 싶은 책이 지금 어디에 있는지" />
+<meta property="og:description" content="구독 플랫폼 가용성과 종료 예정을 한 화면에. 예스24 공식 API 기반 도서 검색과 공개 추천 목록." />
+<meta property="og:image" content="https://seogarok.com/assets/img/shelf-stage.jpg" />
 <meta property="og:url" content="https://seogarok.com/" />
 <meta property="og:locale" content="ko_KR" />
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="canonical" href="https://seogarok.com/" />
-<meta name="description" content="밀리·리디·교보·윌라 구독을 한 번에 확인하고, 곧 사라지는 책을 미리 알려주는 독서 가용성 레이어." />
-<link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<meta name="description" content="구독으로 읽을 수 있는지, 곧 사라지는 책인지. 도서 가용성과 종료 예정을 한 화면에 모은 색인." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&family=Noto+Serif+KR:wght@400;500;600;700&display=swap" />
 <link rel="stylesheet" href="styles.css" />
 <link rel="manifest" href="/manifest.webmanifest" />
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-<meta name="theme-color" content="#f7f2e8" />
+<meta name="theme-color" content="#ebe5e3" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-title" content="서가록" />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23f7f2e8'/><rect x='24' y='24' width='10' height='52' rx='2' fill='%2317120e'/><rect x='40' y='32' width='10' height='44' rx='2' fill='%23b8371f'/><rect x='56' y='26' width='10' height='50' rx='2' fill='%2317120e' opacity='.75'/><rect x='72' y='38' width='10' height='38' rx='2' fill='%238a6a24'/></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%232b2622'/><rect x='26' y='24' width='9' height='52' fill='%23ebe5e3'/><rect x='41' y='32' width='9' height='44' fill='%230f7d45'/><rect x='56' y='26' width='9' height='50' fill='%23ebe5e3' opacity='.7'/><rect x='71' y='38' width='9' height='38' fill='%23ebe5e3' opacity='.45'/></svg>" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -33,31 +31,25 @@
 <header class="nav" id="nav">
   <div class="nav-inner">
     <a class="brand" href="#" data-act="home" aria-label="서가록 홈">
-      <span class="brand-mark" aria-hidden="true">
-        <i></i><i></i><i></i><i></i>
-      </span>
-      <span class="brand-text">
-        <b>서가록</b>
-        <small>seogarok</small>
-      </span>
+      <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <span class="brand-text">서가록</span>
     </a>
 
     <nav class="tabs" aria-label="주요 메뉴">
       <button class="tab is-on" data-tab="explore">탐색</button>
       <button class="tab" data-tab="shelf">내 서재<span class="count" id="shelfCount" hidden>0</span></button>
       <button class="tab" data-tab="taste">취향 찾기</button>
+      <a class="tab" href="about.html">소개</a>
     </nav>
 
     <div class="nav-right">
       <div class="search-mini">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <input id="searchInput" type="search" placeholder="책, 저자 검색" autocomplete="off" aria-label="책, 저자 검색" aria-autocomplete="list" aria-controls="navSuggest" />
-        <kbd>/</kbd>
         <div class="suggest-pop suggest-pop--nav" id="navSuggest" hidden role="listbox" aria-label="검색 제안"></div>
       </div>
       <button class="subs-btn" id="subsBtn" aria-expanded="false">
-        내 구독
-        <span class="count" id="subsCount">0</span>
+        내 구독 <span class="count" id="subsCount">0</span>
       </button>
     </div>
   </div>
@@ -65,25 +57,29 @@
   <div class="popover" id="subsPopover" hidden>
     <div class="popover-head">
       <b>어떤 구독을 쓰고 있나요?</b>
-      <p>켜두면 '내가 바로 읽을 수 있는 책'만 골라드려요.</p>
+      <p>켜두면 ‘내가 바로 읽을 수 있는 책’만 골라드려요.</p>
     </div>
     <div class="popover-body" id="subsOptions"></div>
-    <div class="popover-foot">
-      <span>구독 없이도 구매·도서관 대출은 확인할 수 있어요.</span>
-    </div>
+    <div class="popover-foot"><span>구독 없이도 구매·도서관 대출은 확인할 수 있어요.</span></div>
   </div>
 </header>
 
 <main id="app">
   <section class="hero" id="hero">
-    <div class="hero-main">
-      <p class="eyebrow"><span class="dot"></span>BOOK AVAILABILITY · 도서 가용성 색인</p>
-      <h1>읽고 싶은 책이<br /><em>어디 있는지</em> 모를 때</h1>
-      <p class="lede">밀리 · 리디셀렉트 · 교보 sam · 윌라를 한 번에 확인하고,<br class="pc" /> 곧 사라지는 책은 미리 알려드려요.</p>
+    <div class="hero-stage">
+      <img class="stage-img" src="assets/img/shelf-stage.jpg" width="1200" height="1600" alt="서가에 꽂힌 책들의 책등 클로즈업 (웁살라 대학 도서관, 2014)" fetchpriority="high" />
+      <div class="stage-record" id="stageRecord" hidden>
+        <img alt="" width="72" height="102" />
+      </div>
+      <p class="stage-credit">사진: Uppsala University Library · Aleksi Tappura · CC0</p>
+    </div>
+
+    <div class="hero-copy">
+      <p class="hero-sentence">읽고 싶은 책이 <b>지금 어디에 있는지</b>, 곧 사라지는 책이 <b>언제인지</b>.<br />구독 네 곳과 종료 예정을 한 화면에 모읍니다.</p>
 
       <div class="search-big">
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input id="heroSearch" type="search" placeholder="『채식주의자』, 김초엽, SF …" autocomplete="off" aria-label="책 검색" aria-autocomplete="list" aria-controls="heroSuggest" />
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <input id="heroSearch" type="search" placeholder="책 제목, 작가, 또는 초성 (ㅎㄱ)" autocomplete="off" aria-label="책 검색" aria-autocomplete="list" aria-controls="heroSuggest" />
         <button class="search-go" data-act="search">검색</button>
         <div class="suggest-pop" id="heroSuggest" hidden role="listbox" aria-label="검색 제안"></div>
       </div>
@@ -91,48 +87,41 @@
       <div class="quick" id="quickChips"></div>
       <div class="recent-row" id="recentRow" hidden></div>
       <div class="live-badge" id="liveIndex" hidden></div>
+
+      <dl class="hero-card" id="heroCard" aria-label="서가록 색인 요약">
+        <div class="hero-row"><dt>수록 도서</dt><dd><span id="hcBooks">·</span> 권</dd></div>
+        <div class="hero-row"><dt>수집된 종료 공지</dt><dd><span id="hcNotices">·</span> 건</dd></div>
+        <div class="hero-row"><dt>확인하는 구독</dt><dd>4곳 + 서점 1</dd></div>
+        <div class="hero-row"><dt>데이터 기준일</dt><dd><span id="hcDate">·</span></dd></div>
+      </dl>
+      <p class="hero-note">확인되지 않은 가용성은 “미확인”으로 표시합니다. 추정값을 사실처럼 보여주지 않아요.</p>
     </div>
 
-    <aside class="hero-card" id="heroCard" aria-label="서가록 색인 요약">
-      <div class="hero-card-top"><b>서가록 색인</b><span>index</span></div>
-      <dl class="hero-rows">
-        <div class="hero-row"><dt>지금 서가의 책</dt><dd><span id="hcBooks">—</span><small>권</small></dd></div>
-        <div class="hero-row"><dt>수집된 종료 공지</dt><dd class="is-accent"><span id="hcNotices">—</span><small>건</small></dd></div>
-        <div class="hero-row"><dt>확인하는 구독 플랫폼</dt><dd>4<small>곳 + 서점 1</small></dd></div>
-        <div class="hero-row"><dt>데이터 기준일</dt><dd class="is-date"><span id="hcDate">—</span></dd></div>
-      </dl>
-      <div class="hero-note">확인되지 않은 가용성은 <b>“미확인”</b>으로 표시합니다. 추정값을 사실처럼 보여주지 않아요.</div>
-    </aside>
+    <div class="wordmark-band">
+      <h1 class="wordmark">서가록</h1>
+      <p class="wordmark-sub">seogarok · 도서 가용성 색인</p>
+    </div>
   </section>
 
   <div id="view" class="view" aria-live="polite"></div>
 </main>
 
 <footer class="foot">
-  <div class="foot-inner">
-    <div class="foot-brand">
-      <span class="brand-mark small" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      <div>
-        <b>서가록</b>
-        <p>책의 가용성 레이어 — 읽을 수 있는 모든 경로를 한 화면에.</p>
-      </div>
-    </div>
-    <div class="foot-right">
-      <p class="disclaimer">
-        <b>도서 정보는 예스24 Open API</b>에서 제공받아 서비스 제공 범위 내에서 캐싱하며,
-        모든 도서의 상세 정보는 예스24 상품 페이지로 연결됩니다.
-        <b>구독 제공 종료 예정 정보는 밀리의서재 공개 목록</b>에서 확인된 항목만 표시합니다.
-        <b>확인되지 않은 구독 가용성은 “가용성 미확인”으로 표시</b>하며 추정값을 사실처럼 보여주지 않습니다.
-      </p>
-      <div class="foot-meta">
-        <span id="dataStamp">데이터 기준일 확인 중…</span>
-        <span class="sep">·</span>
-        <a href="about.html">소개</a>
-        <a href="legal.html#terms">이용약관</a>
-        <a href="legal.html#privacy">개인정보처리방침</a>
-        <a href="legal.html#sources">데이터 출처</a>
-      </div>
-    </div>
+  <div class="foot-photo">
+    <img src="assets/img/footer-library.jpg" width="1200" height="800" alt="1850년대 도서관에서 책을 읽는 사람을 그린 수채화" loading="lazy" />
+  </div>
+  <div class="foot-menu">
+    <p class="foot-name">서가록</p>
+    <p class="foot-desc">책의 가용성 레이어 · 읽을 수 있는 모든 경로를 한 화면에.</p>
+    <nav class="foot-links" aria-label="바닥글">
+      <a href="about.html">소개</a>
+      <a href="legal.html#terms">이용약관</a>
+      <a href="legal.html#privacy">개인정보처리방침</a>
+      <a href="legal.html#sources">데이터 출처</a>
+    </nav>
+    <p class="foot-credit">사진: Uppsala University Library, Aleksi Tappura, CC0 · 수채화: Library, possibly 1850s, public domain, via Wikimedia Commons</p>
+    <p class="foot-disclaimer">도서 정보는 예스24 Open API에서 제공받으며, 모든 상세 정보는 예스24 상품 페이지로 연결됩니다. 구독 종료 예정은 공개 목록에서 확인된 항목만 표시하고, 확인되지 않은 가용성은 “미확인”으로 둡니다.</p>
+    <p class="foot-stamp" id="dataStamp">데이터 기준일 확인 중…</p>
   </div>
 </footer>
 
