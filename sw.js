@@ -1,5 +1,10 @@
-/* 서가록 service worker — 앱 셸 캐시 + API 는 항상 네트워크 */
-const CACHE = 'seogarok-v1';
+/* 서가록 service worker — 앱 셸 캐시 + API 는 항상 네트워크
+ *
+ * 주의: HTML/JS/CSS 는 network-first 로 받아야 배포 후 새 기능이 즉시 보인다.
+ * (cache-first 로 두면 배포 후에도 옛 app.js 가 계속 서빙됨)
+ * 오프라인일 때만 캐시로 폴백한다.
+ */
+const CACHE = 'seogarok-v2';
 const SHELL = [
   '/', '/styles.css', '/app.js', '/data.js', '/legal.html',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png',
@@ -26,11 +31,28 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/') || url.pathname === '/metrics' ||
       url.pathname === '/livez' || url.pathname === '/readyz') return;
 
+  const isAppShell = url.pathname === '/' || url.pathname === '/manifest.webmanifest' ||
+    /\.(js|css|html)$/.test(url.pathname);
+
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    const hit = await cache.match(req, { ignoreSearch: url.pathname === '/' });
+    if (isAppShell) {
+      // network-first: 배포 즉시 반영, 오프라인은 캐시 폴백
+      try {
+        const res = await fetch(req);
+        if (res && res.ok) cache.put(req, res.clone());
+        return res;
+      } catch (err) {
+        const cached = await cache.match(req, { ignoreSearch: true });
+        if (cached) return cached;
+        const fallback = await cache.match('/');
+        if (fallback) return fallback;
+        throw err;
+      }
+    }
+    // 이미지 등 정적 자산: cache-first + 백그라운드 갱신
+    const hit = await cache.match(req);
     if (hit) {
-      // 백그라운드 갱신
       fetch(req).then((res) => { if (res.ok) cache.put(req, res.clone()); }).catch(() => {});
       return hit;
     }
