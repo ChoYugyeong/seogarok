@@ -108,6 +108,9 @@ function armReveals() {
   view.querySelectorAll('.section, .pick-section, .grid, .rail-grid').forEach((el) => {
     if (el.dataset.rev) return;
     el.dataset.rev = '1';
+    // 이미 화면 안에 있는 콘텐츠는 숨기지 않는다 (깜빡임/빈 화면 방지)
+    const rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight * 1.2) return;
     el.classList.add('reveal');
     revealObs.observe(el);
   });
