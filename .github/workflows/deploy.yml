@@ -102,7 +102,11 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: docker auth (Artifact Registry)
-        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+        # 이미지 저장소 리전(서울)과 Cloud Run 리전(도쿄)이 다를 수 있으므로 IMAGE_REPO 호스트 기준으로 인증
+        run: |
+          HOST="$(printf %s "${IMAGE_REPO}" | cut -d/ -f1)"
+          echo "docker auth for ${HOST}"
+          gcloud auth configure-docker "${HOST}" --quiet
 
       - uses: docker/setup-buildx-action@v3
 
