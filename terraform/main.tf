@@ -77,9 +77,14 @@ resource "google_cloud_run_v2_service" "api" {
         value = "1"
       }
       env {
-        # ③ 온디맨드 조회 (카탈로그 미수록 책) — 비어 있으면 기능 비활성
-        name  = "YES24_API_KEY"
-        value = var.yes24_api_key
+        # ③ 온디맨드 조회 (카탈로그 미수록 책) — Secret Manager 참조 (평문 저장 금지)
+        name = "YES24_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = google_secret_manager_secret.yes24.secret_id
+            version = "latest"
+          }
+        }
       }
       env {
         # ① 제보 원본 영속화 버킷
@@ -268,4 +273,22 @@ resource "google_storage_bucket_iam_member" "runtime_reports" {
   bucket = google_storage_bucket.reports.name
   role   = "roles/storage.objectAdmin"
   member = "serviceAccount:${google_service_account.runtime.email}"
+}
+
+# -----------------------------------------------
+# YES24 Open API 키 (Secret Manager) — 평문 env/state 노출 방지
+#   * 버전 생성은 gcloud 로 수행 (키가 Terraform state 에 남지 않게)
+# -----------------------------------------------
+resource "google_secret_manager_secret" "yes24" {
+  secret_id = "yes24-api-key"
+
+  replication {
+    auto {}
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "runtime_yes24" {
+  secret_id = google_secret_manager_secret.yes24.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.runtime.email}"
 }

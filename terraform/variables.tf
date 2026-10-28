@@ -92,12 +92,9 @@ variable "custom_domain" {
   default     = ""
 }
 
-variable "yes24_api_key" {
-  description = "YES24 Open API 키 (온디맨드 조회용, 민감)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
+# YES24 API 키는 Secret Manager(secret_id = yes24-api-key)로 관리한다.
+# 버전 추가: gcloud secrets versions add yes24-api-key --data-file=...
+
 
 variable "reports_bucket" {
   description = "가용성 제보 원본을 저장할 GCS 버킷 이름"
