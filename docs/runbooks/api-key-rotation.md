@@ -40,6 +40,11 @@ gcloud run deploy seogarok-api \
 # 또는 GitHub Actions deploy-cloudrun 수동 실행
 ```
 
+
+> ⚠️ **개행 주의**: 키를 파일로 만들 때 끝에 개행(CR/LF)이 붙으면 Cloud Run 이 환경변수로 주입할 때
+> HTTP 헤더 오류(`Invalid header value`)로 온디맨드 조회가 실패한다. 반드시 개행 없이 저장:
+> `[IO.File]::WriteAllText(path, key)` (PowerShell) / `printf %s "$KEY" > .tmp_key` (bash)
+
 ## 3. 검증
 
 ```bash
