@@ -471,6 +471,10 @@ class Handler(BaseHTTPRequestHandler):
             ending_today = conn.execute(
                 "SELECT count(*) FROM notices WHERE substr(ends_at,1,10) = ?", (today_s,)
             ).fetchone()[0]
+            ending_3d = conn.execute(
+                "SELECT count(*) FROM notices WHERE substr(ends_at,1,10) BETWEEN ? AND ?",
+                (today_s, (today + _td(days=3)).isoformat()),
+            ).fetchone()[0]
             ending_7d = conn.execute(
                 "SELECT count(*) FROM notices WHERE substr(ends_at,1,10) BETWEEN ? AND ?", (today_s, wl_s)
             ).fetchone()[0]
@@ -489,6 +493,7 @@ class Handler(BaseHTTPRequestHandler):
                 "vectors": store.count(),
                 "synced_at": app.meta.get("synced_at"),
                 "ending_today": int(ending_today),
+                "ending_3d": int(ending_3d),
                 "ending_7d": int(ending_7d),
                 "new_releases_90d": int(recent_books),
                 "collections": int(collections),

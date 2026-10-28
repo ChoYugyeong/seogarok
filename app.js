@@ -615,7 +615,7 @@ function renderOverview() {
   const n = (v) => Number(v || 0).toLocaleString();
   const stats = [
     ['수록 도서', n(o.books), '권'],
-    ['오늘 종료', n(o.ending_today), '권'],
+    ['3일 내 종료', n(o.ending_3d), '권'],
     ['이번 주 종료', n(o.ending_7d), '권'],
     ['최근 90일 신간', n(o.new_releases_90d), '권'],
     ['큐레이션', n(o.collections), '개'],
