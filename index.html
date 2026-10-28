@@ -6,9 +6,12 @@
 <title>서가 — 이 책, 지금 어느 서가에 있나</title>
 <meta name="description" content="밀리·리디·교보·윌라 구독을 한 번에 확인하고, 곧 사라지는 책을 미리 알려주는 독서 가용성 레이어." />
 <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&display=swap" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
 <link rel="stylesheet" href="styles.css" />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230b0b0d'/><rect x='26' y='24' width='9' height='52' rx='3' fill='%23ffc24b'/><rect x='40' y='24' width='9' height='52' rx='3' fill='%23ffc24b' opacity='.7'/><rect x='54' y='24' width='9' height='52' rx='3' fill='%23ffc24b' opacity='.45'/><rect x='68' y='32' width='9' height='44' rx='3' fill='%23ffc24b' opacity='.28'/></svg>" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23f7f2e8'/><rect x='24' y='24' width='10' height='52' rx='2' fill='%2317120e'/><rect x='40' y='32' width='10' height='44' rx='2' fill='%23b8371f'/><rect x='56' y='26' width='10' height='50' rx='2' fill='%2317120e' opacity='.75'/><rect x='72' y='38' width='10' height='38' rx='2' fill='%238a6a24'/></svg>" />
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -58,18 +61,31 @@
 
 <main id="app">
   <section class="hero" id="hero">
-    <p class="eyebrow"><span class="dot"></span>이 책, 지금 어느 서가에 있나</p>
-    <h1>읽고 싶은 책이<br /><em>어디 있는지</em> 모를 때</h1>
-    <p class="lede">밀리 · 리디셀렉트 · 교보 sam · 윌라를 한 번에 확인하고,<br class="pc" /> 곧 사라지는 책은 미리 알려드려요.</p>
+    <div class="hero-main">
+      <p class="eyebrow"><span class="dot"></span>BOOK AVAILABILITY · 도서 가용성 색인</p>
+      <h1>읽고 싶은 책이<br /><em>어디 있는지</em> 모를 때</h1>
+      <p class="lede">밀리 · 리디셀렉트 · 교보 sam · 윌라를 한 번에 확인하고,<br class="pc" /> 곧 사라지는 책은 미리 알려드려요.</p>
 
-    <div class="search-big">
-      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input id="heroSearch" type="search" placeholder="『채식주의자』, 김초엽, SF …" autocomplete="off" aria-label="책 검색" />
-      <button class="search-go" data-act="search">검색</button>
+      <div class="search-big">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input id="heroSearch" type="search" placeholder="『채식주의자』, 김초엽, SF …" autocomplete="off" aria-label="책 검색" />
+        <button class="search-go" data-act="search">검색</button>
+      </div>
+
+      <div class="quick" id="quickChips"></div>
+      <div class="live-badge" id="liveIndex" hidden></div>
     </div>
 
-    <div class="quick" id="quickChips"></div>
-    <div class="live-badge" id="liveIndex" hidden></div>
+    <aside class="hero-card" id="heroCard" aria-label="서가 색인 요약">
+      <div class="hero-card-top"><b>서가 색인</b><span>index</span></div>
+      <dl class="hero-rows">
+        <div class="hero-row"><dt>지금 서가의 책</dt><dd><span id="hcBooks">—</span><small>권</small></dd></div>
+        <div class="hero-row"><dt>수집된 종료 공지</dt><dd class="is-accent"><span id="hcNotices">—</span><small>건</small></dd></div>
+        <div class="hero-row"><dt>확인하는 구독 플랫폼</dt><dd>4<small>곳 + 서점 1</small></dd></div>
+        <div class="hero-row"><dt>데이터 기준일</dt><dd class="is-date"><span id="hcDate">—</span></dd></div>
+      </dl>
+      <div class="hero-note">확인되지 않은 가용성은 <b>“미확인”</b>으로 표시합니다. 추정값을 사실처럼 보여주지 않아요.</div>
+    </aside>
   </section>
 
   <div id="view" class="view" aria-live="polite"></div>

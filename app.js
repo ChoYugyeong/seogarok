@@ -354,7 +354,44 @@ function collectionGrid(filterId) {
   </div>`;
 }
 
+const COLLECTION_QUERY = {
+  night: '에세이', commute: '에세이', weekend: '소설',
+  think: '문학', science: '과학', korean: '한국소설',
+};
+
+/* API(운영) 모드 홈: 실수집 공지 + 검색으로 이어지는 컬렉션만 보여준다.
+   데모 전용 데이터(시뮬레이션 종료/가용성)를 라이브 화면에 노출하지 않기 위함. */
+function renderExploreApi() {
+  const collections = COLLECTIONS.map((c) => `
+    <button class="col-card" data-col="${c.id}">
+      <b>${esc(c.title)}</b>
+      <p>${esc(c.desc)}</p>
+      <span class="col-n">검색 · ${esc(COLLECTION_QUERY[c.id] || '')}</span>
+    </button>`).join('');
+  return `
+  ${noticesSection()}
+
+  <section class="section">
+    <div class="sec-head">
+      <div>
+        <h3 class="sec-title">상황으로 찾기</h3>
+        <p class="sec-desc">장르보다 '지금 내 상황'이 먼저일 때. 실제 서가에서 바로 찾아드려요.</p>
+      </div>
+    </div>
+    <div class="collections">${collections}</div>
+  </section>
+
+  <section class="cta-band">
+    <div>
+      <h3>뭘 읽을지 모르겠다면</h3>
+      <p>네 문항이면 끝나요. 고른 취향으로 <b>서가를 검색</b>해 실제 책을 보여드려요.</p>
+    </div>
+    <button class="cta-btn" data-tab="taste">취향 찾기 시작 →</button>
+  </section>`;
+}
+
 function renderExplore() {
+  if (state.api.on) return renderExploreApi();
   const on = subsOn();
   const readable = sortByUsefulness(BOOKS.filter((b) => myAccess(b).length)).slice(0, 12);
 
@@ -485,7 +522,6 @@ function noticesSection() {
       </div>
       <div class="notice-right">
         <span class="notice-dday ${d !== null && d <= 3 ? 'hot' : ''}">${dd}</span>
-        <span class="notice-badge ${isReal ? 'real' : 'sim'}">${isReal ? '실수집' : '예시'}</span>
         ${n.source_url && isReal ? `<a class="notice-src" href="${esc(n.source_url)}" target="_blank" rel="noopener" title="출처 열기">↗</a>` : ''}
       </div>
     </div>`;
@@ -495,8 +531,8 @@ function noticesSection() {
   return `<section class="section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title"><span class="ico" style="background:rgba(86,217,139,.12);color:var(--green)">✓</span>실제로 수집된 종료 예정</h3>
-        <p class="sec-desc">${esc(label)} 공개 엔드포인트에서 수집한 실데이터 <b style="color:var(--text-2)">${realCount}건</b> · 매일 갱신 · 내 서재와 무관한 전체 목록입니다.</p>
+        <h3 class="sec-title"><span class="ico">↓</span>이번 주, 서가에서 내려간 책</h3>
+        <p class="sec-desc">${esc(label)} 공개 목록에서 확인된 종료 공지 <b style="color:var(--text-2)">${realCount}건</b> · 매일 갱신</p>
       </div>
     </div>
     <div class="notice-panel">${rows}</div>
@@ -797,6 +833,23 @@ function whyText(rec, ctx) {
   return `${lead} ${avail}`;
 }
 
+const GENRE_KEYS = ['한국소설','일본소설','중국소설','SF','미스터리','스릴러','에세이','인문','철학','과학','역사','사회','심리','자기계발','경제','여행','로맨스','문학'];
+function tasteQuery(answers) {
+  const w = {};
+  answers.forEach((idx, qi) => {
+    const q = TASTE_FLOW[qi];
+    if (!q) return;
+    const opt = q.opts[idx];
+    if (!opt || !opt.w) return;
+    Object.entries(opt.w).forEach(([k, v]) => { w[k] = (w[k] || 0) + v; });
+  });
+  const genres = Object.entries(w)
+    .filter(([k]) => GENRE_KEYS.includes(k))
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => k);
+  return genres.slice(0, 2).join(' ') || '문학';
+}
+
 function renderTasteResult() {
   const ctx = recommend(state.taste.answers);
   const sigs = [];
@@ -1069,16 +1122,30 @@ function render() {
   else if (state.tab === 'shelf') view.innerHTML = renderShelf();
   else view.innerHTML = renderTaste();
 
-  // 백엔드 연결 배지
+  // 백엔드 연결 배지 (기술 정보는 최소화 — 제품 문구 우선)
   const badge = $('#liveIndex');
   if (badge) {
     if (state.api.on) {
       const h = state.api.health || {};
       badge.hidden = false;
-      badge.innerHTML = `<span class="pulse"></span>실시간 인덱스 <b>${Number(h.books || 0).toLocaleString()}</b>권 · 임베딩 ${h.embed_dim}d · ${esc(String(h.vector_backend || ''))} · BM25+벡터 하이브리드`;
+      badge.innerHTML = `실시간 색인 연결됨 · <b>${Number(h.books || 0).toLocaleString()}</b>권`;
     } else {
       badge.hidden = true;
     }
+  }
+
+  // 히어로 색인 카드 (실데이터 요약)
+  const card = $('#heroCard');
+  if (card) {
+    const h = state.api.health || {};
+    const books = Number(h.books || 0) || BOOKS.length;
+    const notices = Number(state.noticeReal || 0) || (state.notices || []).length;
+    const raw = String(h.synced_at || '');
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+    setTxt('hcBooks', books.toLocaleString());
+    setTxt('hcNotices', notices.toLocaleString());
+    setTxt('hcDate', m ? `${m[1]}.${m[2]}.${m[3]}` : '데모');
   }
 }
 
@@ -1145,6 +1212,14 @@ document.addEventListener('click', (e) => {
 
   const col = t.closest('[data-col]');
   if (col) {
+    if (state.api.on) {
+      state.tab = 'explore';
+      state.query = COLLECTION_QUERY[col.dataset.col] || col.dataset.col;
+      state.api.loading = true;
+      render();
+      runApiSearch();
+      return;
+    }
     state.collection = col.dataset.col;
     render();
     const el = document.getElementById('collectionResult');
@@ -1177,6 +1252,15 @@ document.addEventListener('click', (e) => {
   const qopt = t.closest('[data-qopt]');
   if (qopt) {
     state.taste.answers.push(Number(qopt.dataset.qopt));
+    // API 모드: 데모 추천 대신, 고른 취향으로 실제 서가를 검색한다
+    if (state.api.on && state.taste.answers.length >= TASTE_FLOW.length) {
+      state.tab = 'explore';
+      state.query = tasteQuery(state.taste.answers);
+      state.api.loading = true;
+      render();
+      runApiSearch();
+      return;
+    }
     render();
     return;
   }

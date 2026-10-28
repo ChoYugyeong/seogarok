@@ -16,6 +16,11 @@ on:
       - "scripts/docker-entrypoint.sh"
       - "scripts/smoke.sh"
       - "scripts/deploy_canary.sh"
+      - "index.html"
+      - "styles.css"
+      - "app.js"
+      - "data.js"
+      - "legal.html"
       - ".github/workflows/deploy.yml"
   schedule:
     # 매일 KST 04:00 (UTC 19:00) — 카탈로그/종료 공지 재수집 후 자동 배포
