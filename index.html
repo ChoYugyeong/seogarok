@@ -138,10 +138,26 @@
 </footer>
 
 <nav class="bottom-nav" aria-label="빠른 메뉴">
-  <button class="bottom-tab is-on" data-tab="explore" aria-current="page">탐색</button>
-  <button class="bottom-tab" data-tab="shelf">내 서재<span class="count" id="shelfCountB" hidden>0</span></button>
-  <button class="bottom-tab" data-tab="taste">취향 찾기</button>
-  <a class="bottom-tab" href="about.html">소개</a>
+  <button class="bottom-tab is-on" data-tab="explore" aria-current="page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1v-9.5Z" stroke-linejoin="round"/></svg>
+    <span>홈</span>
+  </button>
+  <button class="bottom-tab" data-act="focus-search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16.5 16.5 4 4" stroke-linecap="round"/></svg>
+    <span>검색</span>
+  </button>
+  <button class="bottom-tab" data-tab="shelf">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 4h4v16H5zM11 4h4v16h-4zM18 6l3 14-3 .6L15 6.6 18 6Z" stroke-linejoin="round"/></svg>
+    <span>내 서재<span class="count" id="shelfCountB" hidden>0</span></span>
+  </button>
+  <button class="bottom-tab" data-tab="taste">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20s-7-4.3-7-9a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 4.7-7 9-7 9Z" stroke-linejoin="round"/></svg>
+    <span>취향</span>
+  </button>
+  <a class="bottom-tab" href="about.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8.2v.2" stroke-linecap="round"/></svg>
+    <span>소개</span>
+  </a>
 </nav>
 
 <div id="drawerRoot" class="drawer-root" hidden>

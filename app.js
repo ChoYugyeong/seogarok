@@ -1896,6 +1896,13 @@ document.addEventListener('click', (e) => {
     const a = act.dataset.act;
     if (a === 'home') { e.preventDefault(); goTab('explore'); return; }
     if (a === 'search') { const el = $('#heroSearch'); setQuery(el.value.trim()); return; }
+    if (a === 'focus-search') {
+      goTab('explore', { push: false });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const h = $('#heroSearch');
+      if (h) { h.focus(); h.select(); }
+      return;
+    }
     if (a === 'clear-query') { setQuery(''); const h = $('#heroSearch'); if (h) h.value = ''; return; }
     if (a === 'clear-collection') { state.collection = null; render(); return; }
     if (a === 'close-drawer') { closeDrawer(); return; }
