@@ -1,4 +1,4 @@
-# 서가(seoga) SRE 운영 문서
+# 서가록(seoga) SRE 운영 문서
 
 > **이 문서가 답하는 질문:** ① 서가의 SLI/SLO는 무엇이고 어떻게 측정하는가? ② 장애 시 어떤 순서로 진단·복구하고 누가 무엇을 보는가? ③ 이 구조는 어디까지 확장되고 무엇이 한계인가?
 
@@ -51,7 +51,7 @@
 
    prometheus :9090 ── scrape api:8100/metrics (5s) ──▶ rules: alerts.yml
           │
-          ├──▶ grafana :3001  (admin/admin, 익명 Viewer, dashboard uid=seoga-sre)
+          ├──▶ grafana :3001  (admin/admin, 익명 Viewer, dashboard uid=seogarok-sre)
           └──▶ /alerts  (게임데이·런북에서 확인)
 ```
 
@@ -80,22 +80,22 @@
 
 | 메트릭 | 타입 | 라벨 | 의미 / 사용처 |
 |---|---|---|---|
-| `seoga_http_requests_total` | counter | `method, route, status` | Rate·Errors. 가용성 SLI, 에러율, burn-rate 알림 |
-| `seoga_http_request_duration_seconds` | histogram | `route` | Duration. p95/p99, `SeogaSearchLatencyP95High` |
-| `seoga_http_in_flight` | gauge | – | 동시 처리 요청 수, 포화 판단 |
-| `seoga_search_queries_total` | counter | `mode, strategy` | 트래픽 구성(hybrid/keyword/vector × exact-first/rrf/vector-only) |
-| `seoga_search_stage_seconds_sum` / `_count` | summary | `stage=keyword\|vector\|fuse` | 어느 단계가 느린지 분해 |
-| `seoga_index_documents` | gauge | – | 실 DB 문서 수. 인덱스 신선도/비어있음 알림 |
-| `seoga_index_vectors` | gauge | – | 실 벡터 수. `documents == vectors` 무결성 확인 |
-| `seoga_notices_total` | gauge | – | 적재된 종료 예정 공지 수 |
-| `seoga_index_age_seconds` | gauge | – | 마지막 sync 이후 경과. 24h 초과 시 `SeogaIndexStale` |
-| `seoga_db_size_bytes` | gauge | – | SQLite 파일 크기, 인덱스 비대 감지 |
-| `seoga_ready` | gauge | – | readiness 결과(1/0). `/readyz`와 동일 판정 |
-| `seoga_build_info` | gauge | `version, embed, vector` | 빌드/임베딩/벡터 백엔드 식별자. 항상 `1` |
+| `seogarok_http_requests_total` | counter | `method, route, status` | Rate·Errors. 가용성 SLI, 에러율, burn-rate 알림 |
+| `seogarok_http_request_duration_seconds` | histogram | `route` | Duration. p95/p99, `SeogaSearchLatencyP95High` |
+| `seogarok_http_in_flight` | gauge | – | 동시 처리 요청 수, 포화 판단 |
+| `seogarok_search_queries_total` | counter | `mode, strategy` | 트래픽 구성(hybrid/keyword/vector × exact-first/rrf/vector-only) |
+| `seogarok_search_stage_seconds_sum` / `_count` | summary | `stage=keyword\|vector\|fuse` | 어느 단계가 느린지 분해 |
+| `seogarok_index_documents` | gauge | – | 실 DB 문서 수. 인덱스 신선도/비어있음 알림 |
+| `seogarok_index_vectors` | gauge | – | 실 벡터 수. `documents == vectors` 무결성 확인 |
+| `seogarok_notices_total` | gauge | – | 적재된 종료 예정 공지 수 |
+| `seogarok_index_age_seconds` | gauge | – | 마지막 sync 이후 경과. 24h 초과 시 `SeogaIndexStale` |
+| `seogarok_db_size_bytes` | gauge | – | SQLite 파일 크기, 인덱스 비대 감지 |
+| `seogarok_ready` | gauge | – | readiness 결과(1/0). `/readyz`와 동일 판정 |
+| `seogarok_build_info` | gauge | `version, embed, vector` | 빌드/임베딩/벡터 백엔드 식별자. 항상 `1` |
 
 게이지는 `/metrics` 스크레이프 시점에 DB에서 실제 값을 다시 읽어 갱신한다(스크레이프가 실패해도 응답은 유지되고, 갱신 실패는 `metrics_gauge_refresh_failed` warn 로그로 남는다).
 
-> 위 표의 **12계열**은 노출되는 시리즈 이름으로는 **15종**이다(히스토그램 `_bucket/_sum/_count`, summary `_sum/_count` 포함). 이 밖에 `/metrics` 렌더 자체의 소요를 재는 `seoga_scrape_duration_seconds`가 추가로 노출된다.
+> 위 표의 **12계열**은 노출되는 시리즈 이름으로는 **15종**이다(히스토그램 `_bucket/_sum/_count`, summary `_sum/_count` 포함). 이 밖에 `/metrics` 렌더 자체의 소요를 재는 `seogarok_scrape_duration_seconds`가 추가로 노출된다.
 
 ### 3.2 운영 엔드포인트
 
@@ -126,7 +126,7 @@
 - route는 `_ROUTES`로 정규화한 10개(`/api/search`, `/api/book`, `/api/notices`, `/api/stats`, `/api/suggest`, `/api/health`, `/api/_chaos`, `/healthz`, `/readyz`, `/metrics`)와 fallback(`/api/other`, `/static`, `/`)만 사용한다.
 - **경로 원문·질의어(`q`)·책 ID·req_id는 라벨로 쓰지 않는다.** 카디널리티 폭발은 Prometheus TSDB를 죽이는 가장 흔한 실수다. req_id는 로그/헤더로만 상관관계를 만든다.
 - status는 숫자 코드, mode 3종, strategy 3종, stage 3종으로 유한하다.
-- `seoga_http_requests_total`은 route × method × status 조합으로 증가하지만 상한이 구조적으로 제한된다.
+- `seogarok_http_requests_total`은 route × method × status 조합으로 증가하지만 상한이 구조적으로 제한된다.
 
 ### 3.5 로그·메트릭 비용
 
@@ -141,10 +141,10 @@
 
 | SLI | 정의 | 측정(PromQL) | SLO | 에러 버짓(30일) |
 |---|---|---|---|---|
-| **가용성** | 1 − (5xx 요청 / 전체 요청) | `1 - (sum(rate(seoga_http_requests_total{status=~"5.."}[5m])) / sum(rate(seoga_http_requests_total[5m])))` | **99.9%** | **0.1% = 43분 12초** |
-| **검색 지연** | `/api/search` p95 | `histogram_quantile(0.95, sum(rate(seoga_http_request_duration_seconds_bucket{route="/api/search"}[5m])) by (le))` | **p95 < 300ms** | 5분 윈도우의 1% (≈ 7시간 12분 상당) |
-| **에러율** | 5xx 비율 | `sum(rate(seoga_http_requests_total{status=~"5.."}[5m])) / sum(rate(seoga_http_requests_total[5m]))` | **< 1%** | 1% = 7시간 12분 |
-| **인덱스 신선도** | 마지막 sync 이후 경과 | `seoga_index_age_seconds` (임계 86,400s) | **< 24시간** | 예산 대신 "위반 0회" 목표, 10분 지속 시 경보 |
+| **가용성** | 1 − (5xx 요청 / 전체 요청) | `1 - (sum(rate(seogarok_http_requests_total{status=~"5.."}[5m])) / sum(rate(seogarok_http_requests_total[5m])))` | **99.9%** | **0.1% = 43분 12초** |
+| **검색 지연** | `/api/search` p95 | `histogram_quantile(0.95, sum(rate(seogarok_http_request_duration_seconds_bucket{route="/api/search"}[5m])) by (le))` | **p95 < 300ms** | 5분 윈도우의 1% (≈ 7시간 12분 상당) |
+| **에러율** | 5xx 비율 | `sum(rate(seogarok_http_requests_total{status=~"5.."}[5m])) / sum(rate(seogarok_http_requests_total[5m]))` | **< 1%** | 1% = 7시간 12분 |
+| **인덱스 신선도** | 마지막 sync 이후 경과 | `seogarok_index_age_seconds` (임계 86,400s) | **< 24시간** | 예산 대신 "위반 0회" 목표, 10분 지속 시 경보 |
 
 - 30일 = 43,200분. 99.9% SLO의 허용 불가 시간은 `43,200 × 0.001 = 43.2분 = **43분 12초**`.
 - 가용성/지연/에러율은 5xx·지연 사용자 영향, 신선도는 "정상 응답이지만 오래된 데이터"를 잡는 SLI다. **신선도는 가용성 SLO로 잡히지 않는다** — 2026-10-27 사고가 이 사각지대에서 발생했다.
@@ -160,7 +160,7 @@
 | **동결** | `SeogaErrorBudgetBurnFast` 발화(1h burn > 14.4x, 2분 지속) 또는 버짓 75% 소진 | **즉시 배포 중단**, 롤백 여부 판단, 인시던트 채널 공유 |
 | **소진** | 버짓 100% 소진 | 배포 동결 + 포스트모템 의무, 신뢰성 작업만 허용 |
 
-배포 전후 규칙: (1) `make test` → `make smoke` 통과 필수, (2) 배포 후 최소 30분은 Grafana `seoga · SRE Overview`(uid `seoga-sre`)의 Error ratio / p95를 관찰, (3) fast burn이 발화하면 롤백을 기본 선택으로 한다(§8 롤백, [runbooks/api-down.md](runbooks/api-down.md)).
+배포 전후 규칙: (1) `make test` → `make smoke` 통과 필수, (2) 배포 후 최소 30분은 Grafana `seoga · SRE Overview`(uid `seogarok-sre`)의 Error ratio / p95를 관찰, (3) fast burn이 발화하면 롤백을 기본 선택으로 한다(§8 롤백, [runbooks/api-down.md](runbooks/api-down.md)).
 
 ### 4.3 멀티윈도우 멀티번레이트 알림
 
@@ -186,7 +186,7 @@
 | `SeogaErrorBudgetBurnFast/Slow` | 5xx의 원인이 배포인가 외부인가? | [api-down.md](runbooks/api-down.md) | 5xx 비율 정상화(알림 resolve), 롤백 여부 결정 |
 | `SeogaSearchLatencyP95High` | 어느 단계(keyword/vector/fuse)가 느린가? | [slow-search.md](runbooks/slow-search.md) | p95 < 300ms로 10분 유지 |
 | `SeogaNotReady` | docs/vectors 중 무엇이 0이거나 불일치인가? | [index-stale.md](runbooks/index-stale.md) | `/readyz` `ready:true`, `docs==vectors` |
-| `SeogaIndexStale` / `SeogaIndexEmpty` | 인덱스가 마지막으로 언제 갱신됐나? | [index-stale.md](runbooks/index-stale.md) | `seoga_index_age_seconds` < 86400, documents > 0 |
+| `SeogaIndexStale` / `SeogaIndexEmpty` | 인덱스가 마지막으로 언제 갱신됐나? | [index-stale.md](runbooks/index-stale.md) | `seogarok_index_age_seconds` < 86400, documents > 0 |
 | (게임데이) | 주입한 파라미터와 기대 알림이 맞나? | [chaos-drill.md](runbooks/chaos-drill.md) | 리셋 후 전 알림 resolve, SLO 지표 기준선 복귀 |
 
 원칙: **알림 이름 → 런북 파일이 1:1로 연결**되어 있다. 모든 alert rule의 annotation에 `runbook:` 경로가 들어 있어, 알림을 받은 사람이 저장소에서 바로 문서를 찾는다.
@@ -211,7 +211,7 @@
 | `make smoke` | 기동 대기 후 4개 경로 검증 | `/healthz`, `/readyz`, `/metrics`, `/api/search` |
 | `make load` | `docker compose --profile load run --rm k6 run /scripts/search.js` | k6 → `api:8100` |
 | `make chaos` / `make reset-chaos` | `POST /api/_chaos` | latency 400ms / error 0.3 주입, 0으로 리셋 |
-| `make dash` | Grafana 대시보드 열기 | `http://localhost:3001/d/seoga-sre` |
+| `make dash` | Grafana 대시보드 열기 | `http://localhost:3001/d/seogarok-sre` |
 | `make test` | seed 인덱스 + 오프라인 검색 단언 (Docker 불필요) | `python -m server.sync --embed hashing` |
 
 배포 순서(컨테이너): `docker compose build api`(→ 빌드 시 500권 샘플 인덱스 생성) → `docker compose up -d api` → `make smoke` → Grafana 30분 관찰. 롤백은 이전 이미지 태그로 교체. 인덱스까지 함께 구워지므로 **데이터와 코드의 버전이 항상 일치**한다.
@@ -224,7 +224,7 @@
 |---|---|---|---|
 | `test` | 오프라인 회귀 | Python 3.12 + `requirements.server.txt` 설치(패키지 설치에는 PyPI 네트워크 필요, **모델 가중치 다운로드는 없음**) → `server.sync --embed hashing`(seed 38권) → 검색 단언 | 검색 파이프라인/스키마 깨짐 |
 | `build` | 이미지·보안 | `docker build -t seoga-api:ci .` → **Trivy** `HIGH,CRITICAL` 발견 시 fail(`ignore-unfixed: true`) | 취약 베이스/의존성, 빌드 실패 |
-| `compose-smoke` | 실제 기동 검증 | `docker compose up -d --build api prometheus` → `/healthz` 200, `/metrics`에 `seoga_index_documents 500`, `/api/search` 200 → `down -v` | compose/엔트리포인트/read-only+tmpfs 구성 회귀 |
+| `compose-smoke` | 실제 기동 검증 | `docker compose up -d --build api prometheus` → `/healthz` 200, `/metrics`에 `seogarok_index_documents 500`, `/api/search` 200 → `down -v` | compose/엔트리포인트/read-only+tmpfs 구성 회귀 |
 
 - `permissions: contents: read` 최소 권한, `concurrency`로 같은 ref의 중복 실행 취소, job별 timeout 지정.
 - 알림봇(별도 저장소의 `alertbot`) 테스트는 이 저장소 CI 범위가 아니어서 job을 만들지 않았다. (원래 계획의 `bot-test`는 저장소 경계 때문에 제외.)
@@ -296,12 +296,12 @@
 | 2 | exact KNN의 선형 증가 | 50k 벡터 48.6ms(측정) | 100만 규모는 IVF/HNSW(pgvector, Qdrant)로 전환. 인터페이스는 `VectorStore.search()` 한 곳 |
 | 3 | 임베딩 인코딩 직렬화 | `_lock_encode`로 프로세스 내 단일 임베더 보호 | 다중 워커/복제로 확장. 인코딩은 CPU 바운드라 WSGI면 워커 프로세스, 현 구조면 복제 수평 확장 |
 | 4 | 단일 프로세스 `ThreadingHTTPServer` | stdlib 서버, TLS/keepalive 최적화 부재 | 리버스 프록시 뒤로 숨기거나 gunicorn/uvicorn으로 교체 |
-| 5 | **인덱스가 이미지에 고정(immutable)** | 런타임 재색인 불가, 콘텐츠 갱신 = 재빌드 | 수평 확장 시 인덱스 스냅샷(DB 파일)을 오브젝트 스토리지에 두고 배포 시 마운트/복사. 스냅샷 버전을 `seoga_build_info{version}`과 함께 기록 |
+| 5 | **인덱스가 이미지에 고정(immutable)** | 런타임 재색인 불가, 콘텐츠 갱신 = 재빌드 | 수평 확장 시 인덱스 스냅샷(DB 파일)을 오브젝트 스토리지에 두고 배포 시 마운트/복사. 스냅샷 버전을 `seogarok_build_info{version}`과 함께 기록 |
 | 6 | 인덱스 신선도 게이지가 빌드 시각 기준 | `synced_at`은 이미지 빌드 시 찍힘 | 장기 실행 컨테이너에서는 24h 경보가 "배포 후 경과"를 의미할 수 있다. 운영 기준을 배포 주기와 함께 정의하거나 정기 재배포로 신선도 유지([index-stale.md](runbooks/index-stale.md) §6 참조) |
 | 7 | `/api/health`가 부팅 시 메타 캐시 | 재색인 후 재기동 전 stale | **재색인 절차에 재기동을 포함**([index-stale.md](runbooks/index-stale.md)). 장기적으로 `/api/health`도 live count로 통일하는 것이 개선안 |
 | 8 | 카오스 엔드포인트가 기본 활성(데모) | compose/Dockerfile `SEOG_CHAOS=1` | 운영 프로필에서는 `SEOG_CHAOS=0`으로 내리고 `/api/_chaos`가 404가 되는 것을 배포 후 확인 |
 
-**수평 확장 시나리오(요약):** writer 1개(sync job) → read-only 복제 N개(각자 로컬 DB 파일, 주기적 스냅샷 교체) → API 무상태화 → LB 뒤로. 지연 SLI는 복제본별로 동일하게 측정하고, 신선도 SLI는 스냅샷 버전으로 추적한다. 지금의 `seoga_ready`(docs==vectors) 판정은 복제본 교체 시에도 그대로 유효하다.
+**수평 확장 시나리오(요약):** writer 1개(sync job) → read-only 복제 N개(각자 로컬 DB 파일, 주기적 스냅샷 교체) → API 무상태화 → LB 뒤로. 지연 SLI는 복제본별로 동일하게 측정하고, 신선도 SLI는 스냅샷 버전으로 추적한다. 지금의 `seogarok_ready`(docs==vectors) 판정은 복제본 교체 시에도 그대로 유효하다.
 
 ---
 
@@ -354,4 +354,4 @@ Grafana에서 에러버짓 연소 **192x**, 5xx 비율 **~45%**, 검색 p95 **~5
 | [../PORTFOLIO.md](../PORTFOLIO.md) | 이 프로젝트가 증명하는 역량과 5분 데모 |
 | [../README.md](../README.md) | 제품/데이터/검색 스택의 원래 설명 |
 
-**단일 소스 원칙:** SLO 임계값과 알림 정의는 [alerts.yml](../observability/prometheus/alerts.yml), 대시보드 패널은 [seoga.json](../observability/grafana/dashboards/seoga.json), 실행 명령은 [Makefile](../Makefile)이 소스다. 이 문서는 그것을 설명하고, 값이 바뀌면 같은 커밋에서 함께 갱신한다.
+**단일 소스 원칙:** SLO 임계값과 알림 정의는 [alerts.yml](../observability/prometheus/alerts.yml), 대시보드 패널은 [seoga.json](../observability/grafana/dashboards/seogarok.json), 실행 명령은 [Makefile](../Makefile)이 소스다. 이 문서는 그것을 설명하고, 값이 바뀌면 같은 커밋에서 함께 갱신한다.

@@ -1,4 +1,4 @@
-"""서가 서버 실행:  python -m server.app [--port 8100]"""
+"""서가록 서버 실행:  python -m server.app [--port 8100]"""
 from __future__ import annotations
 
 import argparse
@@ -8,7 +8,7 @@ from .api import serve
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="서가 API + 정적 서버")
+    ap = argparse.ArgumentParser(description="서가록 API + 정적 서버")
     ap.add_argument("--host", default=None)
     ap.add_argument("--port", type=int, default=None)
     args = ap.parse_args(argv)

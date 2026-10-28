@@ -24,15 +24,15 @@ curl.exe -s http://127.0.0.1:8100/api/_chaos
 
 # 2) 단계별 평균 소요 (어디가 느린지)
 #    PromQL:
-#    sum(rate(seoga_search_stage_seconds_sum[5m])) by (stage)
-#      / sum(rate(seoga_search_stage_seconds_count[5m])) by (stage)
+#    sum(rate(seogarok_search_stage_seconds_sum[5m])) by (stage)
+#      / sum(rate(seogarok_search_stage_seconds_count[5m])) by (stage)
 
 # 3) 전략/모드 분포 (exact-first가 늘면 벡터 경로를 덜 타므로 빨라야 정상)
-#    sum by (mode, strategy) (rate(seoga_search_queries_total[5m]))
+#    sum by (mode, strategy) (rate(seogarok_search_queries_total[5m]))
 
 # 4) 인덱스 규모/백엔드
-#    seoga_index_documents, seoga_index_vectors, seoga_db_size_bytes
-#    seoga_build_info{vector="sqlite-vec"}   (numpy 폴백이면 느릴 수 있음)
+#    seogarok_index_documents, seogarok_index_vectors, seogarok_db_size_bytes
+#    seogarok_build_info{vector="sqlite-vec"}   (numpy 폴백이면 느릴 수 있음)
 
 # 5) 컨테이너 리소스
 docker stats --no-stream seoga-api
@@ -47,19 +47,19 @@ docker stats --no-stream seoga-api
 | `keyword` stage 상승 | FTS5 MATCH 폭증 / DB 락 | §4-B |
 | `fuse` stage 상승 | 후보 수 폭증(limit × 4 확대) | §4-C |
 | 모든 stage 상승 + CPU 100% | 호스트/컨테이너 리소스 포화 | §5 |
-| `seoga_build_info{vector}`가 `numpy` | sqlite-vec 미로드 → brute-force | §4-A |
-| `seoga_index_vectors` 급증 | 인덱스 확장에 따른 exact KNN 선형 증가 | §5 |
+| `seogarok_build_info{vector}`가 `numpy` | sqlite-vec 미로드 → brute-force | §4-A |
+| `seogarok_index_vectors` 급증 | 인덱스 확장에 따른 exact KNN 선형 증가 | §5 |
 | 지연 + 5xx 동시 | API 자체 문제일 수 있음 | [api-down.md](api-down.md) |
 
 ## 4. 원인별 확인
 
 ### A. 벡터 경로 (가장 흔함)
-- `seoga_build_info{vector="numpy"}`면 sqlite-vec 로드 실패로 numpy brute-force 중이다. 이 경우 벡터 수에 비례해 급격히 느려진다.
-- KNN은 exact라 벡터 수가 늘면 선형 증가한다(측정: 1k 0.94ms / 10k 10.1ms / 50k 48.6ms). `seoga_index_vectors`와 DB 크기(`seoga_db_size_bytes`)를 기준선과 비교한다.
+- `seogarok_build_info{vector="numpy"}`면 sqlite-vec 로드 실패로 numpy brute-force 중이다. 이 경우 벡터 수에 비례해 급격히 느려진다.
+- KNN은 exact라 벡터 수가 늘면 선형 증가한다(측정: 1k 0.94ms / 10k 10.1ms / 50k 48.6ms). `seogarok_index_vectors`와 DB 크기(`seogarok_db_size_bytes`)를 기준선과 비교한다.
 - 조치: 정상 백엔드(`sqlite-vec`)인지 확인, 아니면 이미지 재빌드. 인덱스가 의도보다 크면 재색인 범위 확인([index-stale.md](index-stale.md)).
 
 ### B. 키워드 경로
-- `keyword` stage가 튀면 FTS5 MATCH 비용이다. `seoga_search_queries_total`에서 `mode="keyword"` 증가 여부 확인.
+- `keyword` stage가 튀면 FTS5 MATCH 비용이다. `seogarok_search_queries_total`에서 `mode="keyword"` 증가 여부 확인.
 - DB 락: 서빙 중 쓰기 작업(수동 sync 등)이 겹쳤는지 확인. 서빙 인스턴스와 별도 프로세스에서 `python -m server.sync`를 동시에 돌리지 않는다.
 - 조치: 진행 중인 sync/배치를 중단하고 재측정.
 

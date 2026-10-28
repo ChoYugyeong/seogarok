@@ -1,4 +1,4 @@
-# 서가(seoga) — SRE/DevOps 포트폴리오
+# 서가록(SEOGAROK) — SRE/DevOps 포트폴리오
 
 > **이 문서가 답하는 질문:** ① 이 프로젝트가 SRE/DevOps 역량을 어떻게 증명하는가(근거 파일은 어디인가)? ② 이력서/면접에서 어떤 문장으로 쓸 수 있는가? ③ 5분 데모에서 무엇을 어떤 순서로 보여주면 되는가?
 
@@ -10,7 +10,7 @@
 
 | # | 역량 | 핵심 산출물(저장소에 존재) | 증명 포인트 |
 |---|---|---|---|
-| 1 | **관측성** | [`server/metrics.py`](server/metrics.py), [`server/api.py`](server/api.py), [`observability/prometheus/prometheus.yml`](observability/prometheus/prometheus.yml), [`observability/grafana/dashboards/seoga.json`](observability/grafana/dashboards/seoga.json) | RED+도메인 메트릭 12계열(노출 시리즈 15종)을 외부 의존성 없이 구현, 5초 스크레이프, 대시보드 13패널 provisioning |
+| 1 | **관측성** | [`server/metrics.py`](server/metrics.py), [`server/api.py`](server/api.py), [`observability/prometheus/prometheus.yml`](observability/prometheus/prometheus.yml), [`observability/grafana/dashboards/seogarok.json`](observability/grafana/dashboards/seogarok.json) | RED+도메인 메트릭 12계열(노출 시리즈 15종)을 외부 의존성 없이 구현, 5초 스크레이프, 대시보드 13패널 provisioning |
 | 2 | **SLI/SLO·에러 버짓** | [`docs/SRE.md`](docs/SRE.md), [`observability/prometheus/alerts.yml`](observability/prometheus/alerts.yml) | 99.9% 가용성 SLO → 월 **43분 12초** 버짓, 1h 14.4x / 6h 6x 번레이트 알림, 배포 동결 규칙 |
 | 3 | **CI/CD·보안** | [`.github/workflows/ci.yml`](.github/workflows/ci.yml), [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), [`scripts/deploy_canary.sh`](scripts/deploy_canary.sh) | PR: 오프라인 테스트 / 이미지 빌드 + **Trivy HIGH·CRITICAL fail** / compose 스모크. CD: **카나리 0% → 스모크 → 승격 → 실패 시 자동 롤백**, **OIDC 키 없는 배포** |
 | 4 | **컨테이너·배포 설계** | [`Dockerfile`](Dockerfile), [`docker-compose.yml`](docker-compose.yml), [`scripts/docker-entrypoint.sh`](scripts/docker-entrypoint.sh) | **immutable artifact**(빌드 시 인덱스/모델 고정), read-only rootfs + tmpfs WAL, 비root(uid 10001), cap_drop, `$PORT` 대응으로 Cloud Run 호환 |
@@ -32,7 +32,7 @@
 - **운영 엔드포인트 분리:** `/healthz`(liveness), `/readyz`(DB live count로 `documents == vectors` 판정), `/metrics`, `POST /api/_chaos`(게임데이). `readyz`가 메타 캐시가 아니라 **DB 실제 count**를 읽는 것이 핵심.
 - **로그:** stdout JSON 1줄/요청(`req_id, method, path, route, status, dur_ms, ua`). 응답 헤더 `X-Request-Id`와 상관관계를 만들 수 있다.
 - **카디널리티 통제:** route 10종으로 정규화하고 질의어/책 ID를 라벨에서 제외(TSDB 보호).
-- **근거:** [`server/api.py`](server/api.py)(엔드포인트/계측), [`observability/grafana/dashboards/seoga.json`](observability/grafana/dashboards/seoga.json)(13패널), [`docs/SRE.md` §3](docs/SRE.md).
+- **근거:** [`server/api.py`](server/api.py)(엔드포인트/계측), [`observability/grafana/dashboards/seogarok.json`](observability/grafana/dashboards/seogarok.json)(13패널), [`docs/SRE.md` §3](docs/SRE.md).
 
 ### ② SLO — "장애를 '몇 분'으로 계량하고 배포를 통제하는가"
 
@@ -47,7 +47,7 @@
 |---|---|
 | `test` | Python 3.12 + `requirements.server.txt` 설치 → seed 38권 인덱스를 **hashing 임베딩**으로 생성(모델 가중치 다운로드 없음) → 검색 파이프라인 단언 |
 | `build` | `docker build` → **Trivy** `HIGH,CRITICAL` 발견 시 실패(`ignore-unfixed: true`) |
-| `compose-smoke` | `docker compose up -d --build api prometheus` → `/healthz`, `/readyz`, `/metrics`(`seoga_index_documents 500`), `/api/search` 검증 → 로그 수집 후 `down -v` |
+| `compose-smoke` | `docker compose up -d --build api prometheus` → `/healthz`, `/readyz`, `/metrics`(`seogarok_index_documents 500`), `/api/search` 검증 → 로그 수집 후 `down -v` |
 
 - `permissions: contents: read`, `concurrency`(같은 ref 중복 실행 취소), job별 timeout.
 - 알림봇(별도 저장소) 테스트는 저장소 경계상 제외 — 이 판단도 CI에 주석으로 남겼다.
@@ -91,7 +91,7 @@
 - **키 없는 배포:** 장기 서비스 계정 키 파일이 없다. GitHub Actions 가 OIDC 토큰을 배포 SA 로 교환하고, WIF provider 의 `attribute_condition` 으로 **이 저장소만** 허용.
 - **카나리 배포 ([`scripts/deploy_canary.sh`](scripts/deploy_canary.sh)):** 새 리비전을 `--no-traffic --tag=canary` 로 배포 → 카나리 URL 스모크 → `--to-latest` 승격 → 운영 스모크. 실패 시 `if: failure()` 가 직전 리비전으로 **자동 롤백**.
 - **Terraform ↔ CD 충돌 방지:** `ignore_changes = [image, traffic]`. 이걸 안 하면 `terraform apply` 가 CD/롤백이 바꾼 이미지·트래픽을 되돌려 장애를 만든다. 역할 분담을 문서화했다.
-- **스모크 게이트 ([`scripts/smoke.sh`](scripts/smoke.sh)):** `/healthz`·`/readyz`(docs==vectors)·`/api/search`·`/metrics(seoga_ready=1)` 를 URL 하나로 검사 — 로컬 compose 검증에도 같은 스크립트를 쓴다.
+- **스모크 게이트 ([`scripts/smoke.sh`](scripts/smoke.sh)):** `/healthz`·`/readyz`(docs==vectors)·`/api/search`·`/metrics(seogarok_ready=1)` 를 URL 하나로 검사 — 로컬 compose 검증에도 같은 스크립트를 쓴다.
 - **근거:** [`terraform/`](terraform/), [`deploy.yml`](.github/workflows/deploy.yml), [`docs/runbooks/deploy-rollback.md`](docs/runbooks/deploy-rollback.md), 무료 티어 비용 메모(월 $0, 콜드스타트 8~10초).
 
 ---
@@ -116,7 +116,7 @@
 | 시간 | 무엇을 | 어떻게 | 말할 것 |
 |---|---|---|---|
 | 0:00–0:30 | 오프닝 | `make ps` | "상시 3개 서비스(api/prometheus/grafana)와 k6(profile load)를 compose로 코드화했고, 인덱스는 이미지에 구워집니다." |
-| 0:30–1:30 | 관측성 | Grafana `http://localhost:3001/d/seoga-sre` + `curl /readyz` | "상단 stat 5개가 ready·문서 수·신선도·burn·공지. readyz는 DB live count라 재색인 후 stale을 정상으로 보고하지 않습니다." |
+| 0:30–1:30 | 관측성 | Grafana `http://localhost:3001/d/seogarok-sre` + `curl /readyz` | "상단 stat 5개가 ready·문서 수·신선도·burn·공지. readyz는 DB live count라 재색인 후 stale을 정상으로 보고하지 않습니다." |
 | 1:30–2:30 | SLO·알림 | `observability/prometheus/alerts.yml` + Prometheus `/alerts` | "99.9% SLO = 월 43분 12초. fast 14.4x/1h, slow 6x/6h. 알림 annotation에 런북 경로가 들어 있습니다." |
 | 2:30–3:20 | 부하테스트 | `make load` | "k6가 p95<300ms, 실패율<1%를 threshold로 강제합니다. 컨테이너 500권 기준 p95 4.1ms·실패율 0%로 통과했습니다." |
 | 3:20–4:20 | 게임데이 | `make chaos` → `/alerts` 확인 → `make reset-chaos` (스크립트 대안: `powershell -ExecutionPolicy Bypass -File .\scripts\game_day.ps1 -Scenario all`) | "지연 400ms/오류 30%를 주입하면 2–3분 내 latency·burn 알림이 뜹니다. 관측 4경로는 주입에서 제외돼 대시보드는 살아있습니다." |

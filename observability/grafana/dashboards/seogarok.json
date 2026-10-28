@@ -1,8 +1,8 @@
 {
- "uid": "seoga-sre",
- "title": "seoga · SRE Overview",
+ "uid": "seogarok-sre",
+ "title": "서가록 · SRE Overview",
  "tags": [
-  "seoga",
+  "seogarok",
   "sre",
   "slo"
  ],
@@ -43,7 +43,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "seoga_ready",
+     "expr": "seogarok_ready",
      "legendFormat": "ready"
     }
    ],
@@ -99,7 +99,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "seoga_index_documents",
+     "expr": "seogarok_index_documents",
      "legendFormat": "docs"
     }
    ],
@@ -139,7 +139,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "seoga_index_age_seconds",
+     "expr": "seogarok_index_age_seconds",
      "legendFormat": "age"
     }
    ],
@@ -196,7 +196,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "(sum(rate(seoga_http_requests_total{status=~\"5..\"}[1h])) / clamp_min(sum(rate(seoga_http_requests_total[1h])), 0.001)) / 0.001",
+     "expr": "(sum(rate(seogarok_http_requests_total{status=~\"5..\"}[1h])) / clamp_min(sum(rate(seogarok_http_requests_total[1h])), 0.001)) / 0.001",
      "legendFormat": "burn"
     }
    ],
@@ -253,7 +253,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "seoga_notices_total",
+     "expr": "seogarok_notices_total",
      "legendFormat": "notices"
     }
    ],
@@ -293,7 +293,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum by (route) (rate(seoga_http_requests_total[1m]))",
+     "expr": "sum by (route) (rate(seogarok_http_requests_total[1m]))",
      "legendFormat": "{{route}}"
     }
    ],
@@ -336,7 +336,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum(rate(seoga_http_requests_total{status=~\"5..\"}[1m])) / clamp_min(sum(rate(seoga_http_requests_total[1m])), 0.001)",
+     "expr": "sum(rate(seogarok_http_requests_total{status=~\"5..\"}[1m])) / clamp_min(sum(rate(seogarok_http_requests_total[1m])), 0.001)",
      "legendFormat": "5xx ratio"
     }
    ],
@@ -379,7 +379,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "histogram_quantile(0.50, sum(rate(seoga_http_request_duration_seconds_bucket{route=\"/api/search\"}[5m])) by (le))",
+     "expr": "histogram_quantile(0.50, sum(rate(seogarok_http_request_duration_seconds_bucket{route=\"/api/search\"}[5m])) by (le))",
      "legendFormat": "p50"
     },
     {
@@ -388,7 +388,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "histogram_quantile(0.95, sum(rate(seoga_http_request_duration_seconds_bucket{route=\"/api/search\"}[5m])) by (le))",
+     "expr": "histogram_quantile(0.95, sum(rate(seogarok_http_request_duration_seconds_bucket{route=\"/api/search\"}[5m])) by (le))",
      "legendFormat": "p95"
     },
     {
@@ -397,7 +397,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "histogram_quantile(0.99, sum(rate(seoga_http_request_duration_seconds_bucket{route=\"/api/search\"}[5m])) by (le))",
+     "expr": "histogram_quantile(0.99, sum(rate(seogarok_http_request_duration_seconds_bucket{route=\"/api/search\"}[5m])) by (le))",
      "legendFormat": "p99"
     }
    ],
@@ -440,7 +440,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "seoga_http_in_flight",
+     "expr": "seogarok_http_in_flight",
      "legendFormat": "in flight"
     }
    ],
@@ -483,7 +483,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum by (strategy) (increase(seoga_search_queries_total[10m]))",
+     "expr": "sum by (strategy) (increase(seogarok_search_queries_total[10m]))",
      "legendFormat": "{{strategy}}"
     }
    ],
@@ -519,7 +519,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "1000 * rate(seoga_search_stage_seconds_sum{stage=\"keyword\"}[5m]) / clamp_min(rate(seoga_search_stage_seconds_count{stage=\"keyword\"}[5m]), 0.001)",
+     "expr": "1000 * rate(seogarok_search_stage_seconds_sum{stage=\"keyword\"}[5m]) / clamp_min(rate(seogarok_search_stage_seconds_count{stage=\"keyword\"}[5m]), 0.001)",
      "legendFormat": "keyword"
     },
     {
@@ -528,7 +528,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "1000 * rate(seoga_search_stage_seconds_sum{stage=\"vector\"}[5m]) / clamp_min(rate(seoga_search_stage_seconds_count{stage=\"vector\"}[5m]), 0.001)",
+     "expr": "1000 * rate(seogarok_search_stage_seconds_sum{stage=\"vector\"}[5m]) / clamp_min(rate(seogarok_search_stage_seconds_count{stage=\"vector\"}[5m]), 0.001)",
      "legendFormat": "vector"
     },
     {
@@ -537,7 +537,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "1000 * rate(seoga_search_stage_seconds_sum{stage=\"fuse\"}[5m]) / clamp_min(rate(seoga_search_stage_seconds_count{stage=\"fuse\"}[5m]), 0.001)",
+     "expr": "1000 * rate(seogarok_search_stage_seconds_sum{stage=\"fuse\"}[5m]) / clamp_min(rate(seogarok_search_stage_seconds_count{stage=\"fuse\"}[5m]), 0.001)",
      "legendFormat": "fuse"
     }
    ],
@@ -580,7 +580,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum by (mode) (rate(seoga_search_queries_total[1m]))",
+     "expr": "sum by (mode) (rate(seogarok_search_queries_total[1m]))",
      "legendFormat": "{{mode}}"
     }
    ],
@@ -623,7 +623,7 @@
       "type": "prometheus",
       "uid": "prometheus"
      },
-     "expr": "sum by (status) (rate(seoga_http_requests_total[1m]))",
+     "expr": "sum by (status) (rate(seogarok_http_requests_total[1m]))",
      "legendFormat": "{{status}}"
     }
    ],

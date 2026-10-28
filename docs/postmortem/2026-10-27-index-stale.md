@@ -49,7 +49,7 @@
   - `/readyz` 없음 → "인덱스가 실제로 준비됐는가"를 물을 수 있는 엔드포인트가 없었다.
   - 문서 수/신선도 메트릭 없음 → Grafana/Prometheus에서 stale을 볼 수 없었다.
   - `/api/health`는 캐시된 메타를 `ok: true`로 반환 → **stale 상태를 정상으로 보고**했다.
-- **지금:** `/readyz`가 DB live count로 `documents == vectors`를 검증하고, `seoga_index_documents`/`seoga_index_vectors`/`seoga_index_age_seconds` 게이지와 `SeogaNotReady`/`SeogaIndexStale`/`SeogaIndexEmpty` 알림이 탐지한다.
+- **지금:** `/readyz`가 DB live count로 `documents == vectors`를 검증하고, `seogarok_index_documents`/`seogarok_index_vectors`/`seogarok_index_age_seconds` 게이지와 `SeogaNotReady`/`SeogaIndexStale`/`SeogaIndexEmpty` 알림이 탐지한다.
 
 ## 5. 근본 원인
 
@@ -94,14 +94,14 @@
 | ID | 액션 | 유형 | 담당 | 상태 |
 |---|---|---|---|---|
 | A1 | `/readyz` 신설 — 메타 캐시가 아니라 **DB live count**로 `documents > 0 && documents == vectors` 판정 | 코드 | 리드 | 완료(2026-10-27) |
-| A2 | `seoga_index_documents`, `seoga_index_vectors`, `seoga_index_age_seconds`, `seoga_db_size_bytes` 게이지 노출 | 관측 | 리드 | 완료(2026-10-27) |
+| A2 | `seogarok_index_documents`, `seogarok_index_vectors`, `seogarok_index_age_seconds`, `seogarok_db_size_bytes` 게이지 노출 | 관측 | 리드 | 완료(2026-10-27) |
 | A3 | 알림 추가: `SeogaNotReady`, `SeogaIndexStale`, `SeogaIndexEmpty` | 관측 | 리드 | 완료(2026-10-27) |
 | A4 | 재색인 절차에 **재기동 + 검증**을 고정한 런북 작성 | 문서 | sre-writer | 완료 — [runbooks/index-stale.md](../runbooks/index-stale.md) |
 | A5 | 이미지 빌드 시 인덱스 생성(immutable artifact) → 런타임 재색인 제거 | 배포 | 리드 | 완료 — [Dockerfile](../../Dockerfile), [scripts/docker-entrypoint.sh](../../scripts/docker-entrypoint.sh) |
 | A6 | CI compose 스모크에서 `/healthz`·`/readyz`·`/metrics`(문서 수) 검증 | CI | sre-writer | 완료 — [.github/workflows/ci.yml](../../.github/workflows/ci.yml) |
 | A7 | 배포·재기동·탐지 시각을 표준 로그/티켓으로 기록 | 절차 | 리드 | 대기 |
 | A8 | `/api/health`도 live count 기반으로 통일(또는 캐시 폐기) — 현재는 재기동 필요 | 코드 | 리드 | 대기 |
-| A9 | 컨테이너 장기 실행 시 `seoga_index_age_seconds`가 "빌드 후 경과"를 의미하는 문제 정리(경보 기준 재정의 또는 정기 재배포) | 관측 | 리드 | 대기 — [runbooks/index-stale.md §6](../runbooks/index-stale.md) |
+| A9 | 컨테이너 장기 실행 시 `seogarok_index_age_seconds`가 "빌드 후 경과"를 의미하는 문제 정리(경보 기준 재정의 또는 정기 재배포) | 관측 | 리드 | 대기 — [runbooks/index-stale.md §6](../runbooks/index-stale.md) |
 
 ## 9. 교훈
 

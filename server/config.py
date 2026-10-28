@@ -1,4 +1,4 @@
-"""서가(seoga) 백엔드 — 설정."""
+"""서가록(seogarok) 백엔드 — 설정."""
 from __future__ import annotations
 
 import os

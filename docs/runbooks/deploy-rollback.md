@@ -65,8 +65,8 @@ gcloud run services describe seoga-api --region asia-northeast3 \
 | 신호 | 확인 | 판단 |
 |---|---|---|
 | `/readyz` 503 | `docs == vectors` 인지 | 인덱스 문제면 롤백보다 재배포(이미지 재빌드) |
-| 5xx 급증 + 최근 10분 내 배포 있음 | Grafana 에러율 / `seoga_http_requests_total{status=~"5.."}` | **즉시 롤백** |
-| p95 급증 | `seoga_search_stage_seconds` 로 단계 확인 | 배포 직후면 롤백, 아니면 리소스/카오스 확인 |
+| 5xx 급증 + 최근 10분 내 배포 있음 | Grafana 에러율 / `seogarok_http_requests_total{status=~"5.."}` | **즉시 롤백** |
+| p95 급증 | `seogarok_search_stage_seconds` 로 단계 확인 | 배포 직후면 롤백, 아니면 리소스/카오스 확인 |
 | 카나리 스모크 실패 | Actions 로그 | 자동 롤백됨(사용자 영향 없음) |
 
 **롤백 후 해야 할 일**
@@ -197,7 +197,7 @@ gcloud storage rm -r "gs://${TF_STATE_BUCKET}"
 ## 8. 관련 문서
 
 - SLO/알림: [../SRE.md](../SRE.md)
-- 배포 후 관측: [Grafana](http://localhost:3001/d/seoga-sre) (로컬), Prometheus `/alerts`
+- 배포 후 관측: [Grafana](http://localhost:3001/d/seogarok-sre) (로컬), Prometheus `/alerts`
 - 사고 회고: [../postmortem/TEMPLATE.md](../postmortem/TEMPLATE.md)
 - 인덱스 갱신(재배포): [index-stale.md](index-stale.md)
 - 커스텀 도메인: [domain-cloudflare.md](domain-cloudflare.md)

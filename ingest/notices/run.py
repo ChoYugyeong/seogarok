@@ -190,7 +190,7 @@ def build_report(
 
 def print_report(report: dict[str, Any]) -> None:
     print("=" * 100)
-    print(f"서가(seoga) 종료 예정 공지 수집 보고서  v{report['version']}  {report['generated_at']}")
+    print(f"서가록(seogarok) 종료 예정 공지 수집 보고서  v{report['version']}  {report['generated_at']}")
     print("=" * 100)
     header = f"{'platform':<12}{'status':<12}{'real':>6}{'fixture':>9}  {'source_kind':<20}note"
     print(header)
@@ -424,7 +424,7 @@ def run_self_tests(out_path: Path) -> int:
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="python -m ingest.notices.run",
-        description="서가(seoga) 구독 플랫폼 종료 예정 공지 수집·정규화",
+        description="서가록(seogarok) 구독 플랫폼 종료 예정 공지 수집·정규화",
     )
     parser.add_argument("--out", default="data/notices.jsonl", help="출력 JSONL 경로")
     parser.add_argument("--report", action="store_true", help="수집 보고서 출력")

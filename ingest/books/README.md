@@ -1,4 +1,4 @@
-# `ingest/books` — 서가(seoga) 실도서 카탈로그 수집 (리서치 모드)
+# `ingest/books` — 서가록(seogarok) 실도서 카탈로그 수집 (리서치 모드)
 
 알라딘 공식 OpenAPI(TTBKey 만료) 대신 **공개 목록 HTML**에서 실제 도서 메타데이터를 수집해
 `data/catalog.jsonl` (1줄 1권, UTF-8)을 만든다. 모든 요청은 `robots.txt` 판정 → 1.2초 간격 →

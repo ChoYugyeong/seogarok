@@ -19,7 +19,7 @@ SEED = Path(config.DATA_DIR) / "seed_catalog.jsonl"
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="서가 인덱스 동기화")
+    ap = argparse.ArgumentParser(description="서가록 인덱스 동기화")
     ap.add_argument("--catalog", default=str(config.CATALOG_PATH), help="도서 카탈로그 JSONL")
     ap.add_argument("--notices", default=str(config.NOTICES_PATH), help="종료 공지 JSONL")
     ap.add_argument("--db", default=str(config.DB_PATH), help="SQLite 파일 경로")

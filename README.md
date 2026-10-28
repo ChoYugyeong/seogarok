@@ -1,4 +1,4 @@
-# 서가 (seoga)
+# 서가록 (SEOGAROK)
 
 > **이 책, 지금 어느 서가에 있나** — 책의 가용성 레이어
 
@@ -6,6 +6,8 @@
 · 4,865권 실시간 인덱스 · 하이브리드 검색 p50 ~3ms · [약관/개인정보/출처](legal.html)
 
 왓챠피디아의 책 버전. 단, 포지셔닝은 "추천 서비스"가 아니라 **"가용성(어디서 읽을 수 있나) + 종료 추적"**.
+
+![서가록 홈](docs/assets/seogarok-home.png)
 
 이 저장소는 두 층으로 구성됩니다.
 
@@ -46,7 +48,7 @@ python -m server.app --port 8100                       # API + 정적 서버
 | 계층 | 구현 | 확인 |
 |---|---|---|
 | **관측성** | `/metrics` (RED + 도메인 메트릭 15종), stdout JSON 로그(`req_id`), `/healthz`(liveness)·`/readyz`(readiness) 분리 | `curl localhost:8100/metrics` |
-| **스택** | Docker Compose: `api` + Prometheus + Grafana(대시보드 **as code** 13패널) | Grafana http://localhost:3001/d/seoga-sre |
+| **스택** | Docker Compose: `api` + Prometheus + Grafana(대시보드 **as code** 13패널) | Grafana http://localhost:3001/d/seogarok-sre |
 | **SLO** | 가용성 99.9%(월 43m 12s), 검색 p95 < 300ms, 5xx < 1%, 인덱스 신선도 24h | [docs/SRE.md](docs/SRE.md) |
 | **알림** | 멀티윈도우 멀티번레이트 7종 + 런북 링크 (`SeogaApiDown`, `SeogaErrorBudgetBurnFast` …) | http://localhost:9090/alerts |
 | **장애 대응** | **카오스 주입 엔드포인트** → 알림 발화 → 복구. 런북 4종 + 포스트모템 | [docs/runbooks](docs/runbooks), [docs/postmortem](docs/postmortem) |

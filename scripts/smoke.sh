@@ -56,15 +56,15 @@ fi
 body=$(fetch /metrics)
 code=$(printf '%s' "$body" | tail -n1)
 payload=$(printf '%s' "$body" | sed '$d')
-if [ "$code" = "200" ] && printf '%s' "$payload" | grep -q '^seoga_ready 1$'; then
-  ok "/metrics seoga_ready=1"
+if [ "$code" = "200" ] && printf '%s' "$payload" | grep -q '^seogarok_ready 1$'; then
+  ok "/metrics seogarok_ready=1"
 else
-  bad "/metrics seoga_ready=1 (code=$code)"
+  bad "/metrics seogarok_ready=1 (code=$code)"
 fi
-if printf '%s' "$payload" | grep -qE '^seoga_index_documents ([1-9][0-9]*)$'; then
-  ok "/metrics seoga_index_documents>0"
+if printf '%s' "$payload" | grep -qE '^seogarok_index_documents ([1-9][0-9]*)$'; then
+  ok "/metrics seogarok_index_documents>0"
 else
-  bad "/metrics seoga_index_documents>0"
+  bad "/metrics seogarok_index_documents>0"
 fi
 
 echo "[smoke] pass=$pass fail=$fail"

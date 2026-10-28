@@ -96,9 +96,9 @@ make smoke        # /healthz, /readyz, /metrics, /api/search
 ```
 
 - [ ] `/healthz` 200, `readyz` 200이며 `documents == vectors` (컨테이너 기준 500, 로컬 전체 인덱스는 4,021)
-- [ ] `/metrics`에 `seoga_ready 1`, `seoga_http_requests_total` 증가
+- [ ] `/metrics`에 `seogarok_ready 1`, `seogarok_http_requests_total` 증가
 - [ ] Prometheus에서 `SeogaApiDown` resolve
-- [ ] 에러율/지연이 기준선으로 복귀 (Grafana `seoga · SRE Overview`, uid `seoga-sre`)
+- [ ] 에러율/지연이 기준선으로 복귀 (Grafana `seoga · SRE Overview`, uid `seogarok-sre`)
 - [ ] 필요 시 k6로 `make load` 재확인
 
 ## 7. 기록과 후속

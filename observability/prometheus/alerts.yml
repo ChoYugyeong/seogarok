@@ -16,7 +16,7 @@ groups:
           runbook: "docs/runbooks/api-down.md"
 
       - alert: SeogaNotReady
-        expr: seoga_ready == 0
+        expr: seogarok_ready == 0
         for: 1m
         labels:
           severity: critical
@@ -29,8 +29,8 @@ groups:
       - alert: SeogaErrorBudgetBurnFast
         expr: |
           (
-            sum(rate(seoga_http_requests_total{status=~"5.."}[1h]))
-            / clamp_min(sum(rate(seoga_http_requests_total[1h])), 0.001)
+            sum(rate(seogarok_http_requests_total{status=~"5.."}[1h]))
+            / clamp_min(sum(rate(seogarok_http_requests_total[1h])), 0.001)
           ) > (14.4 * 0.001)
         for: 2m
         labels:
@@ -44,8 +44,8 @@ groups:
       - alert: SeogaErrorBudgetBurnSlow
         expr: |
           (
-            sum(rate(seoga_http_requests_total{status=~"5.."}[6h]))
-            / clamp_min(sum(rate(seoga_http_requests_total[6h])), 0.001)
+            sum(rate(seogarok_http_requests_total{status=~"5.."}[6h]))
+            / clamp_min(sum(rate(seogarok_http_requests_total[6h])), 0.001)
           ) > (6 * 0.001)
         for: 15m
         labels:
@@ -61,7 +61,7 @@ groups:
         expr: |
           histogram_quantile(
             0.95,
-            sum(rate(seoga_http_request_duration_seconds_bucket{route="/api/search"}[5m])) by (le)
+            sum(rate(seogarok_http_request_duration_seconds_bucket{route="/api/search"}[5m])) by (le)
           ) > 0.3
         for: 2m
         labels:
@@ -75,7 +75,7 @@ groups:
   - name: seoga-freshness
     rules:
       - alert: SeogaIndexStale
-        expr: seoga_index_age_seconds > 86400
+        expr: seogarok_index_age_seconds > 86400
         for: 10m
         labels:
           severity: warning
@@ -86,7 +86,7 @@ groups:
           runbook: "docs/runbooks/index-stale.md"
 
       - alert: SeogaIndexEmpty
-        expr: seoga_index_documents == 0
+        expr: seogarok_index_documents == 0
         for: 1m
         labels:
           severity: critical

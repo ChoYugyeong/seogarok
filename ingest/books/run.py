@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""run.py — 서가(seoga) 실도서 카탈로그 수집 CLI.
+"""run.py — 서가록(seogarok) 실도서 카탈로그 수집 CLI.
 
 기본 사용:
     python -m ingest.books.run --out data/catalog.jsonl --target 2000
@@ -258,7 +258,7 @@ def build_stats(catalog: dict) -> dict:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="서가(seoga) 실도서 카탈로그 수집")
+    ap = argparse.ArgumentParser(description="서가록(seogarok) 실도서 카탈로그 수집")
     ap.add_argument("--out", default=os.path.join(PROJECT_ROOT, "data", "catalog.jsonl"))
     ap.add_argument("--target", type=int, default=2000)
     ap.add_argument("--source", choices=["yes24", "aladin"], default="yes24")

@@ -2,7 +2,7 @@
 
 > **이 문서가 답하는 질문:** ① `/readyz`가 503인 이유를 "문서 0 / 벡터 0 / 문서≠벡터"로 어떻게 구분하나? ② 재색인은 컨테이너와 로컬에서 각각 무엇을 실행해야 하나? ③ 재색인 후 "언제, 무엇으로" 최신 인덱스가 반영됐다고 검증하나?
 
-관련 알림: `SeogaNotReady`(`seoga_ready == 0`, 1m), `SeogaIndexStale`(`seoga_index_age_seconds > 86400`, 10m), `SeogaIndexEmpty`(`seoga_index_documents == 0`, 1m). 관련 문서: [SRE.md](../SRE.md) §10–§11, [postmortem/2026-10-27-index-stale.md](../postmortem/2026-10-27-index-stale.md).
+관련 알림: `SeogaNotReady`(`seogarok_ready == 0`, 1m), `SeogaIndexStale`(`seogarok_index_age_seconds > 86400`, 10m), `SeogaIndexEmpty`(`seogarok_index_documents == 0`, 1m). 관련 문서: [SRE.md](../SRE.md) §10–§11, [postmortem/2026-10-27-index-stale.md](../postmortem/2026-10-27-index-stale.md).
 
 ---
 
@@ -23,7 +23,7 @@ curl.exe -s http://127.0.0.1:8100/readyz
 # 503: {"ready":false,"documents":0,"vectors":0,...}   ← 문서/벡터 없음
 # 503: {"ready":false,"documents":412,"vectors":4865,...} ← 적재 중단/불일치
 
-curl.exe -s http://127.0.0.1:8100/metrics | Select-String "seoga_(index|ready|db_size)"
+curl.exe -s http://127.0.0.1:8100/metrics | Select-String "seogarok_(index|ready|db_size)"
 ```
 
 | 관찰 | 해석 | 조치 |
@@ -32,7 +32,7 @@ curl.exe -s http://127.0.0.1:8100/metrics | Select-String "seoga_(index|ready|db
 | `documents>0`, `vectors=0` | 벡터 적재 단계 실패(모델/임베딩) | §4 |
 | `documents≠vectors` | sync 중단(배치 일부 실패) | §4 |
 | `ready:true`인데 `/api/health.books`가 옛 값 | 프로세스 메타 캐시 stale | §5 재기동 |
-| `seoga_index_age_seconds > 86400` | 컨테이너면 "이미지 빌드 후 24h 경과"일 수 있음 | §6 신선도 해석 |
+| `seogarok_index_age_seconds > 86400` | 컨테이너면 "이미지 빌드 후 24h 경과"일 수 있음 | §6 신선도 해석 |
 
 ## 3. 재색인 절차
 
@@ -88,16 +88,16 @@ make smoke   # 컨테이너 기준. /healthz, /readyz, /metrics, /api/search
 ```
 
 - [ ] `/readyz` 200 + `ready:true` + `documents == vectors` (컨테이너 500 / 로컬 전체 4,865)
-- [ ] `/metrics`: `seoga_ready 1`, `seoga_index_documents`가 기대값과 일치, `seoga_index_vectors` 동일
+- [ ] `/metrics`: `seogarok_ready 1`, `seogarok_index_documents`가 기대값과 일치, `seogarok_index_vectors` 동일
 - [ ] `/api/health.books`/`synced_at`이 새 값(재기동 후) — 이전 값이면 재기동이 안 된 것
 - [ ] 검색 스모크: `curl.exe -G --data-urlencode "q=한강" --data-urlencode "mode=hybrid" http://127.0.0.1:8100/api/search` → `count>0`, `strategy` 채워짐
 - [ ] Prometheus에서 `SeogaNotReady`/`SeogaIndexEmpty`/`SeogaIndexStale` resolve
 
 ## 6. `SeogaIndexStale`의 특수 해석 (immutable 이미지)
 
-`seoga_index_age_seconds`는 DB meta의 `synced_at`(= **이미지 빌드 시점**) 기준이다. 컨테이너를 오래 띄워두면 24h가 지나 `SeogaIndexStale`이 발화할 수 있는데, 이는 인덱스가 깨진 것이 아니라 "배포된 아티팩트가 오래됐다"는 뜻이다.
+`seogarok_index_age_seconds`는 DB meta의 `synced_at`(= **이미지 빌드 시점**) 기준이다. 컨테이너를 오래 띄워두면 24h가 지나 `SeogaIndexStale`이 발화할 수 있는데, 이는 인덱스가 깨진 것이 아니라 "배포된 아티팩트가 오래됐다"는 뜻이다.
 
-- 확인: `seoga_build_info`의 `version`과 이미지 빌드 시각(`docker inspect --format '{{.Created}}' seoga-api:local`).
+- 확인: `seogarok_build_info`의 `version`과 이미지 빌드 시각(`docker inspect --format '{{.Created}}' seoga-api:local`).
 - 조치: 재빌드/재배포로 인덱스를 갱신하거나, 운영 기준상 문제없으면 알림을 acknowledge하고 정기 재배포 주기를 조정한다.
 - 로컬 전체 인덱스는 실제 sync 시각이므로 24h 초과는 진짜 stale이다 → §3-B.
 

@@ -78,48 +78,48 @@ class Metrics:
         lines: list[str] = []
 
         # counter: 요청 수
-        lines.append("# HELP seoga_http_requests_total HTTP 요청 수")
-        lines.append("# TYPE seoga_http_requests_total counter")
+        lines.append("# HELP seogarok_http_requests_total HTTP 요청 수")
+        lines.append("# TYPE seogarok_http_requests_total counter")
         with self._lock:
             for (method, route, status), n in sorted(self.requests.items()):
-                lines.append(f"seoga_http_requests_total{_labels(method=method, route=route, status=status)} {n}")
+                lines.append(f"seogarok_http_requests_total{_labels(method=method, route=route, status=status)} {n}")
 
         # histogram: 요청 지연
-        lines.append("# HELP seoga_http_request_duration_seconds HTTP 요청 처리 시간")
-        lines.append("# TYPE seoga_http_request_duration_seconds histogram")
+        lines.append("# HELP seogarok_http_request_duration_seconds HTTP 요청 처리 시간")
+        lines.append("# TYPE seogarok_http_request_duration_seconds histogram")
         with self._lock:
             for route, buckets in sorted(self.hist.items()):
                 cum = 0
                 for i, b in enumerate(BUCKETS):
                     cum += buckets[i]
                     lines.append(
-                        f"seoga_http_request_duration_seconds_bucket{_labels(route=route, le=f'{b:g}')} {cum}"
+                        f"seogarok_http_request_duration_seconds_bucket{_labels(route=route, le=f'{b:g}')} {cum}"
                     )
                 lines.append(
-                    f"seoga_http_request_duration_seconds_bucket{_labels(route=route, le='+Inf')} {cum}"
+                    f"seogarok_http_request_duration_seconds_bucket{_labels(route=route, le='+Inf')} {cum}"
                 )
-                lines.append(f"seoga_http_request_duration_seconds_sum{_labels(route=route)} {self.hist_sum.get(route, 0):.6f}")
-                lines.append(f"seoga_http_request_duration_seconds_count{_labels(route=route)} {self.hist_count.get(route, 0)}")
+                lines.append(f"seogarok_http_request_duration_seconds_sum{_labels(route=route)} {self.hist_sum.get(route, 0):.6f}")
+                lines.append(f"seogarok_http_request_duration_seconds_count{_labels(route=route)} {self.hist_count.get(route, 0)}")
 
             # gauges
-            lines.append("# HELP seoga_http_in_flight 처리 중인 요청 수")
-            lines.append("# TYPE seoga_http_in_flight gauge")
-            lines.append(f"seoga_http_in_flight {self.in_flight}")
+            lines.append("# HELP seogarok_http_in_flight 처리 중인 요청 수")
+            lines.append("# TYPE seogarok_http_in_flight gauge")
+            lines.append(f"seogarok_http_in_flight {self.in_flight}")
 
-        lines.append("# HELP seoga_search_queries_total 검색 질의 수 (모드/전략)")
-        lines.append("# TYPE seoga_search_queries_total counter")
+        lines.append("# HELP seogarok_search_queries_total 검색 질의 수 (모드/전략)")
+        lines.append("# TYPE seogarok_search_queries_total counter")
         with self._lock:
             stats = dict(self.stage_sum)
             counts = dict(self.stage_count)
             sq = dict(self.search_queries)
         for (mode, strategy), n in sorted(sq.items()):
-            lines.append(f"seoga_search_queries_total{_labels(mode=mode, strategy=strategy)} {n}")
+            lines.append(f"seogarok_search_queries_total{_labels(mode=mode, strategy=strategy)} {n}")
 
         for stage in ("keyword", "vector", "fuse"):
-            lines.append(f"# HELP seoga_search_stage_seconds 검색 단계 소요시간 ({stage})")
-            lines.append("# TYPE seoga_search_stage_seconds summary")
-            lines.append(f"seoga_search_stage_seconds_sum{_labels(stage=stage)} {stats.get(stage, 0):.6f}")
-            lines.append(f"seoga_search_stage_seconds_count{_labels(stage=stage)} {counts.get(stage, 0)}")
+            lines.append(f"# HELP seogarok_search_stage_seconds 검색 단계 소요시간 ({stage})")
+            lines.append("# TYPE seogarok_search_stage_seconds summary")
+            lines.append(f"seogarok_search_stage_seconds_sum{_labels(stage=stage)} {stats.get(stage, 0):.6f}")
+            lines.append(f"seogarok_search_stage_seconds_count{_labels(stage=stage)} {counts.get(stage, 0)}")
 
         with self._lock:
             gauges = dict(self.gauges)
@@ -128,13 +128,13 @@ class Metrics:
             lines.append(f"# TYPE {name} gauge")
             lines.append(f"{name} {gauges[name]:g}")
 
-        lines.append("# HELP seoga_build_info 빌드/인덱스 정보")
-        lines.append("# TYPE seoga_build_info gauge")
-        lines.append(f"seoga_build_info{_labels(**build)} 1")
+        lines.append("# HELP seogarok_build_info 빌드/인덱스 정보")
+        lines.append("# TYPE seogarok_build_info gauge")
+        lines.append(f"seogarok_build_info{_labels(**build)} 1")
 
-        lines.append("# HELP seoga_scrape_duration_seconds 메트릭 렌더 시간")
-        lines.append("# TYPE seoga_scrape_duration_seconds gauge")
-        lines.append(f"seoga_scrape_duration_seconds {time.time() - t0:.6f}")
+        lines.append("# HELP seogarok_scrape_duration_seconds 메트릭 렌더 시간")
+        lines.append("# TYPE seogarok_scrape_duration_seconds gauge")
+        lines.append(f"seogarok_scrape_duration_seconds {time.time() - t0:.6f}")
         return "\n".join(lines) + "\n"
 
 

@@ -1,5 +1,5 @@
 /* =========================================================
-   서가 (seoga) — app
+   서가록 (seogarok) — app
    ========================================================= */
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -7,7 +7,8 @@ const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-const LS_KEY = 'seoga.v1';
+const LS_KEY = 'seogarok.v1';
+const LS_LEGACY = 'seoga.v1'; // 이전 버전 데이터 마이그레이션
 const DEFAULT_STATE = {
   subs: { millie: true, ridiselect: false, sam: true, willa: false },
   shelf: { want: ['hailmary', 'samche', 'mulgogi'], reading: ['chae'], done: ['pyeonuijeom'] },
@@ -90,7 +91,12 @@ function save() {
 }
 function load() {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(LS_KEY) || localStorage.getItem(LS_LEGACY);
+    if (raw && !localStorage.getItem(LS_KEY)) {
+      // 이전 버전(seoga.v1) 데이터를 새 키로 승계
+      localStorage.setItem(LS_KEY, raw);
+      localStorage.removeItem(LS_LEGACY);
+    }
     if (!raw) return;
     const d = JSON.parse(raw);
     if (d.subs) state.subs = { ...DEFAULT_STATE.subs, ...d.subs };
@@ -600,12 +606,12 @@ function renderApiSearch() {
   ${body}
 
   <div class="search-note">
-    <b>${MODE_LABEL[state.searchMode]}</b> 모드 ·
+    <b>${MODE_LABEL[state.searchMode]}</b> ·
     ${state.searchMode === 'keyword'
-      ? 'SQLite FTS5(BM25)로 한글 n-gram 색인을 조회합니다. 정확한 단어에 강하고, 의미 유사어에는 약합니다.'
+      ? '정확한 단어로 찾았어요. 의미가 비슷한 책은 ‘벡터’ 모드에서 더 잘 나와요.'
       : state.searchMode === 'vector'
-        ? 'multilingual 임베딩 256차원 + sqlite-vec ANN. “우주 과학 소설”처럼 단어가 겹치지 않는 질의에 강합니다.'
-        : 'BM25 결과와 벡터 결과를 RRF로 융합한 뒤 제목/저자 정확 일치를 부스트합니다. 실제 서비스 기본값.'}
+        ? '뜻이 비슷한 책을 찾았어요. 단어가 정확히 겹치지 않아도 찾아드려요.'
+        : '제목·저자 정확 일치를 우선하고, 의미가 비슷한 책도 함께 찾았어요.'}
   </div>`;
 }
 
@@ -971,7 +977,7 @@ function avRowHTML(book) {
 
   if (mineEnd.length) {
     rows.push(`<div class="dw-hint" style="margin-top:14px;font-size:11.5px;color:var(--text-3);line-height:1.6">
-      ⓘ 종료일은 플랫폼 공지 기준이며, 실제로는 예고 없이 내려갈 수 있어요. 서가가 매일 확인해 바뀌는 순간 알려드려요.
+      ⓘ 종료일은 플랫폼 공지 기준이며, 실제로는 예고 없이 내려갈 수 있어요. 서가록이 매일 확인해 바뀌는 순간 알려드려요.
     </div>`);
   }
 
@@ -1027,7 +1033,7 @@ function drawerHTML(book) {
     </div>
 
     <div class="dw-note">
-      <b>서가가 이 책을 추적하는 방식</b><br />
+      <b>서가록이 이 책을 추적하는 방식</b><br />
       4개 구독사 제공 여부 · 종료 예정 공지 · 도서관 대출 가능 여부를 매일 확인해 바뀌는 순간 알려드려요.
     </div>`;
 }
@@ -1128,7 +1134,7 @@ function render() {
     if (state.api.on) {
       const h = state.api.health || {};
       badge.hidden = false;
-      badge.innerHTML = `실시간 색인 연결됨 · <b>${Number(h.books || 0).toLocaleString()}</b>권`;
+      badge.innerHTML = `실시간 색인 연결됨 · 매일 갱신`;
     } else {
       badge.hidden = true;
     }

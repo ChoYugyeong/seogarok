@@ -22,7 +22,7 @@ curl.exe -s http://127.0.0.1:8100/api/_chaos     # {"enabled":true,"latency_ms":
 
 > **Windows 실행 팁:** `scripts/game_day.ps1`은 PowerShell 스크립트다(UTF-8 BOM 저장, Windows PowerShell 5.1/7 모두 동작). 실행 정책이 Restricted면 `-ExecutionPolicy Bypass -File`로 실행하거나, 아래 §3의 `curl.exe` 명령을 그대로 사용한다. (동작은 동일: `POST /api/_chaos`)
 
-Grafana `http://localhost:3001/d/seoga-sre`를 열어 baseline을 기록한다:
+Grafana `http://localhost:3001/d/seogarok-sre`를 열어 baseline을 기록한다:
 - API Ready = 1, Index documents = 500(컨테이너 샘플), Index age, Error budget burn (1h), p50/p95 latency.
 - Prometheus `http://localhost:9090/alerts`에서 현재 firing 알림이 **0건**인지 확인.
 

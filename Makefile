@@ -1,4 +1,4 @@
-# 서가(seoga) 운영 진입점
+# 서가록(seogarok) 운영 진입점
 #
 # 이 파일은 compose 스택을 "한 줄 명령"으로 다루기 위한 얇은 래퍼다.
 # make가 없는 Windows에서도 읽을 수 있도록, 각 타깃의 PowerShell 등가 명령을 주석으로 병기한다.
@@ -14,7 +14,7 @@
 #   make chaos      POST /api/_chaos (latency 400ms, error 0.3)           api:8100
 #   make reset-chaos POST /api/_chaos (latency 0, error 0)                api:8100
 #   make test       seed 인덱스 + 오프라인 검색 단언 (Docker 불필요)        -
-#   make dash       Grafana 대시보드 열기                                  localhost:3001/d/seoga-sre
+#   make dash       Grafana 대시보드 열기                                  localhost:3001/d/seogarok-sre
 #
 #   ※ 컨테이너 인덱스는 data/catalog.jsonl(예스24 Open API 수집분) 기준이며, 없으면 seed(38권)로 폴백한다
 #     (전체 4,865권은 로컬에서 python -m server.sync 로 생성). smoke는 컨테이너 기준이다.
@@ -30,7 +30,7 @@
 #                           (또는: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\game_day.ps1 -Scenario all)
 #       make reset-chaos -> curl.exe -s -X POST http://127.0.0.1:8100/api/_chaos -H "Content-Type: application/json" -d '{"latency_ms":0,"error_rate":0}'
 #       make test        -> python -m server.sync --catalog data/seed_catalog.jsonl --notices data/notices.jsonl --db data/ci.db --embed hashing
-#       make dash        -> Start-Process 'http://localhost:3001/d/seoga-sre'
+#       make dash        -> Start-Process 'http://localhost:3001/d/seogarok-sre'
 
 .DEFAULT_GOAL := help
 
@@ -53,7 +53,7 @@ SEED_CATALOG   ?= data/seed_catalog.jsonl
 
 ## help: 사용 가능한 타깃 목록 (기본 타깃 — 실수로 배포되지 않게 함)
 help:
-	@echo "서가(seoga) 운영 타깃:"
+	@echo "서가록(seogarok) 운영 타깃:"
 	@echo "  make up           # docker compose up -d --build  (api:8100, prometheus:9090, grafana:3001)"
 	@echo "  make ps           # docker compose ps"
 	@echo "  make logs         # docker compose logs -f --tail=100"
@@ -61,7 +61,7 @@ help:
 	@echo "  make load         # k6 부하테스트 (profile load)"
 	@echo "  make chaos        # POST /api/_chaos  latency=$(CHAOS_LATENCY_MS)ms error_rate=$(CHAOS_ERROR_RATE)"
 	@echo "  make reset-chaos  # POST /api/_chaos  latency=0 error_rate=0"
-	@echo "  make dash         # Grafana 대시보드 열기 http://localhost:$(GRAFANA_PORT)/d/seoga-sre"
+	@echo "  make dash         # Grafana 대시보드 열기 http://localhost:$(GRAFANA_PORT)/d/seogarok-sre"
 	@echo "  make test         # seed 38권 + hashing 임베딩으로 오프라인 검색 테스트 (Docker 불필요)"
 	@echo "  make down         # docker compose down (볼륨 유지)"
 	@echo ""
@@ -102,9 +102,9 @@ smoke:
 	echo "[smoke] OK  /readyz 200"
 	@curl -fsS "$(API_URL)/healthz" | $(PYTHON) -c "import json,sys; d=json.load(sys.stdin); assert d.get('ok') is True, d; print('[smoke] OK  /healthz version=%s uptime=%ss' % (d.get('version'), d.get('uptime_s')))"
 	@curl -fsS "$(API_URL)/readyz" | $(PYTHON) -c "import json,sys; d=json.load(sys.stdin); assert d.get('ready') is True, d; assert d.get('documents') == d.get('vectors'), d; print('[smoke] OK  /readyz documents=%s vectors=%s' % (d['documents'], d['vectors']))"
-	@curl -fsS "$(API_URL)/metrics" | grep -q "^seoga_http_requests_total" && echo "[smoke] OK  /metrics seoga_http_requests_total"
-	@curl -fsS "$(API_URL)/metrics" | grep -q "^seoga_ready 1" && echo "[smoke] OK  /metrics seoga_ready 1"
-	@curl -fsS "$(API_URL)/metrics" | grep -Eq "^seoga_index_documents [1-9][0-9]*$" && echo "[smoke] OK  /metrics seoga_index_documents > 0"
+	@curl -fsS "$(API_URL)/metrics" | grep -q "^seogarok_http_requests_total" && echo "[smoke] OK  /metrics seogarok_http_requests_total"
+	@curl -fsS "$(API_URL)/metrics" | grep -q "^seogarok_ready 1" && echo "[smoke] OK  /metrics seogarok_ready 1"
+	@curl -fsS "$(API_URL)/metrics" | grep -Eq "^seogarok_index_documents [1-9][0-9]*$" && echo "[smoke] OK  /metrics seogarok_index_documents > 0"
 	@curl -fsS -G --data-urlencode "q=소설" --data-urlencode "mode=hybrid" --data-urlencode "limit=3" "$(API_URL)/api/search" | $(PYTHON) -c "import json,sys; d=json.load(sys.stdin); assert d.get('mode') == 'hybrid', d; assert 'results' in d, d; print('[smoke] OK  /api/search count=%s took_ms=%s' % (d.get('count'), d.get('took_ms')))"
 	@echo "[smoke] PASS"
 
@@ -118,7 +118,7 @@ chaos:
 		-H "Content-Type: application/json" \
 		-d '{"latency_ms":$(CHAOS_LATENCY_MS),"error_rate":$(CHAOS_ERROR_RATE)}'
 	@echo ""
-	@echo "[chaos] 주입 완료 — Grafana http://localhost:$(GRAFANA_PORT)/d/seoga-sre, Prometheus http://localhost:$(PROM_PORT)/alerts 확인"
+	@echo "[chaos] 주입 완료 — Grafana http://localhost:$(GRAFANA_PORT)/d/seogarok-sre, Prometheus http://localhost:$(PROM_PORT)/alerts 확인"
 	@echo "[chaos] 복구: make reset-chaos  (또는 .\\scripts\\game_day.ps1 -Scenario reset)"
 
 ## reset-chaos: 주입 해제 (잊지 말고 반드시 실행)
@@ -131,10 +131,10 @@ reset-chaos:
 
 ## dash: Grafana 대시보드/Prometheus alerts 페이지 열기 (가능한 경우 브라우저 실행)
 dash:
-	@echo "[dash] Grafana    http://localhost:$(GRAFANA_PORT)/d/seoga-sre  (admin/admin, 익명 Viewer 허용)"
+	@echo "[dash] Grafana    http://localhost:$(GRAFANA_PORT)/d/seogarok-sre  (admin/admin, 익명 Viewer 허용)"
 	@echo "[dash] Prometheus http://localhost:$(PROM_PORT)/alerts"
-	@(command -v powershell >/dev/null 2>&1 && powershell -NoProfile -Command "Start-Process 'http://localhost:$(GRAFANA_PORT)/d/seoga-sre'" >/dev/null 2>&1) || \
-	 (command -v xdg-open >/dev/null 2>&1 && xdg-open "http://localhost:$(GRAFANA_PORT)/d/seoga-sre" >/dev/null 2>&1) || true
+	@(command -v powershell >/dev/null 2>&1 && powershell -NoProfile -Command "Start-Process 'http://localhost:$(GRAFANA_PORT)/d/seogarok-sre'" >/dev/null 2>&1) || \
+	 (command -v xdg-open >/dev/null 2>&1 && xdg-open "http://localhost:$(GRAFANA_PORT)/d/seogarok-sre" >/dev/null 2>&1) || true
 
 ## test: 오프라인 검색 테스트 (Docker/모델 가중치 다운로드 없음; hashing 임베딩)
 test:

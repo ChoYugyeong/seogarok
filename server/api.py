@@ -1,4 +1,4 @@
-"""서가 HTTP API + 정적 파일 서버 + 관측성 엔드포인트.
+"""서가록(SEOGAROK) HTTP API + 정적 파일 서버 + 관측성 엔드포인트.
 
 외부 의존성 없이 표준 라이브러리만 사용한다.
   GET  /healthz , /livez            liveness (프로세스 생존)  ※ Cloud Run 전면(GFE)은 /healthz 를 예약 → /livez 사용
@@ -35,7 +35,7 @@ from .search import fetch_availability, fetch_books, fetch_notices, search
 
 _lock_encode = threading.Lock()
 
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 CHAOS_ENABLED = os.getenv("SEOG_CHAOS", "0") == "1"
 
 # 런타임 장애 주입 상태 (게임데이/알림 검증용)
@@ -168,7 +168,7 @@ def serialize_book(row: dict, av: dict, origins: dict, notices: list[dict], scor
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "seoga/0.3"
+    server_version = "seogarok/0.4"
     protocol_version = "HTTP/1.1"
     _status = 200
 
@@ -283,11 +283,11 @@ class Handler(BaseHTTPRequestHandler):
         conn, store = app.ctx()
         docs = int(conn.execute("SELECT count(*) FROM books").fetchone()[0])
         notices = int(conn.execute("SELECT count(*) FROM notices").fetchone()[0])
-        METRICS.set_gauge("seoga_index_documents", docs)
-        METRICS.set_gauge("seoga_index_vectors", store.count())
-        METRICS.set_gauge("seoga_notices_total", notices)
+        METRICS.set_gauge("seogarok_index_documents", docs)
+        METRICS.set_gauge("seogarok_index_vectors", store.count())
+        METRICS.set_gauge("seogarok_notices_total", notices)
         ok, _ = app.readiness()
-        METRICS.set_gauge("seoga_ready", 1 if ok else 0)
+        METRICS.set_gauge("seogarok_ready", 1 if ok else 0)
         # 인덱스 신선도: 마지막 sync 이후 경과 시간
         raw = app.meta.get("synced_at")
         if raw:
@@ -295,11 +295,11 @@ class Handler(BaseHTTPRequestHandler):
                 import datetime as _dt
 
                 ts = _dt.datetime.strptime(raw, "%Y-%m-%dT%H:%M:%S%z")
-                METRICS.set_gauge("seoga_index_age_seconds", max(0.0, (time.time() - ts.timestamp())))
+                METRICS.set_gauge("seogarok_index_age_seconds", max(0.0, (time.time() - ts.timestamp())))
             except ValueError:
                 pass
         try:
-            METRICS.set_gauge("seoga_db_size_bytes", Path(config.DB_PATH).stat().st_size)
+            METRICS.set_gauge("seogarok_db_size_bytes", Path(config.DB_PATH).stat().st_size)
         except OSError:
             pass
 
