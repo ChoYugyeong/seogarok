@@ -1,0 +1,5 @@
+# 데이터 수집 파이프라인 의존성 (CI/배포 시에만 필요)
+#  - 요청/파싱: requests + bs4
+#  - 서버 런타임은 requirements.server.txt (표준 라이브러리 + 임베딩/sqlite-vec)
+requests>=2.31,<3
+beautifulsoup4>=4.12,<5

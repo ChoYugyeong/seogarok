@@ -12,6 +12,7 @@ on:
       - "ingest/**"
       - "Dockerfile"
       - "requirements.server.txt"
+      - "requirements.ingest.txt"
       - "scripts/docker-entrypoint.sh"
       - "scripts/smoke.sh"
       - "scripts/deploy_canary.sh"
@@ -67,7 +68,7 @@ jobs:
             echo "::error::저장소 Secret YES24_API_KEY 가 없습니다 (Settings → Secrets → Actions)"
             exit 1
           fi
-          python -m pip install --quiet requests
+          python -m pip install --quiet -r requirements.ingest.txt
           python -m ingest.notices.run --out data/notices.jsonl
           python -m ingest.books.yes24_api --out data/catalog.jsonl \
             --per-category 100 --categories 22 --no-cache
