@@ -44,7 +44,7 @@ CHAOS_ENABLED = os.getenv("SEOG_CHAOS", "0") == "1"
 CHAOS = {"latency_ms": 0, "error_rate": 0.0}
 
 # 라벨 카디널리티를 낮추기 위한 경로 정규화
-_ROUTES = ("/api/search", "/api/book", "/api/notices", "/api/stats", "/api/suggest", "/api/report", "/api/collections", "/api/collection",
+_ROUTES = ("/api/search", "/api/book", "/api/notices", "/api/stats", "/api/suggest", "/api/report", "/api/collections", "/api/collection", "/api/overview", "/api/pick",
            "/api/health", "/api/_chaos", "/healthz", "/livez", "/readyz", "/metrics")
 
 
@@ -436,6 +436,124 @@ class Handler(BaseHTTPRequestHandler):
                     "mode": config.MODE,
                 }
             )
+
+        if path == "/api/overview":
+            conn, store = app.ctx()
+            from datetime import date as _date
+            from datetime import timedelta as _td
+
+            today = _date.today()
+            week_ago = today - _td(days=7)
+            week_later = today + _td(days=7)
+            today_s = today.isoformat()
+            wa_s = week_ago.isoformat()
+            wl_s = week_later.isoformat()
+
+            # 장르: category(예: 국내도서>소설>한국소설)의 2차 세그먼트로 집계
+            cat_rows = conn.execute("SELECT category, count(*) AS c FROM books GROUP BY category").fetchall()
+            agg: dict[str, int] = {}
+            for r in cat_rows:
+                parts = [x.strip() for x in (r["category"] or "").split(">") if x.strip()]
+                g = parts[1] if len(parts) > 1 else (parts[0] if parts else "기타")
+                agg[g] = agg.get(g, 0) + int(r["c"])
+            genres = [{"name": k, "count": v} for k, v in sorted(agg.items(), key=lambda kv: -kv[1])[:8]]
+            platforms = conn.execute(
+                "SELECT platform, count(*) AS total, "
+                "sum(CASE WHEN ends_at IS NOT NULL AND substr(ends_at,1,10) BETWEEN ? AND ? THEN 1 ELSE 0 END) AS soon "
+                "FROM notices GROUP BY platform ORDER BY total DESC",
+                (today_s, wl_s),
+            ).fetchall()
+            authors = conn.execute(
+                "SELECT author, count(*) AS c FROM books WHERE author IS NOT NULL AND trim(author) != '' "
+                "AND author NOT LIKE '%편집부%' AND author NOT LIKE '%저자 미상%' AND length(author) <= 24 "
+                "GROUP BY author ORDER BY c DESC LIMIT 6"
+            ).fetchall()
+            ending_today = conn.execute(
+                "SELECT count(*) FROM notices WHERE substr(ends_at,1,10) = ?", (today_s,)
+            ).fetchone()[0]
+            ending_7d = conn.execute(
+                "SELECT count(*) FROM notices WHERE substr(ends_at,1,10) BETWEEN ? AND ?", (today_s, wl_s)
+            ).fetchone()[0]
+            ninety = (today - _td(days=90)).isoformat()
+            recent_books = conn.execute(
+                "SELECT count(*) FROM books WHERE substr(pubdate,1,10) >= ?", (ninety,)
+            ).fetchone()[0]
+            try:
+                collections = conn.execute("SELECT count(*) FROM collections").fetchone()[0]
+                matched = conn.execute("SELECT count(*) FROM collection_items").fetchone()[0]
+            except Exception:
+                collections, matched = 0, 0
+            return self._json({
+                "books": app.book_count,
+                "notices": app.notice_count,
+                "vectors": store.count(),
+                "synced_at": app.meta.get("synced_at"),
+                "ending_today": int(ending_today),
+                "ending_7d": int(ending_7d),
+                "new_releases_90d": int(recent_books),
+                "collections": int(collections),
+                "collection_books": int(matched),
+                "genres": genres,
+                "platforms": [
+                    {"name": r["platform"], "total": int(r["total"]), "ending_7d": int(r["soon"] or 0)}
+                    for r in platforms
+                ],
+                "authors": [{"name": r["author"], "count": int(r["c"])} for r in authors],
+            })
+
+        if path == "/api/pick":
+            conn, store = app.ctx()
+            # 가능하면 큐레이션(서울대/하버드/세종도서) 수록 책에서 고른다
+            try:
+                pool = conn.execute(
+                    "SELECT count(*) FROM collection_items ci JOIN books b ON b.id = ci.book_id "
+                    "WHERE b.cover_url IS NOT NULL AND ci.slug IN ('snu-100','harvard-classics','sejong-2025-culture')"
+                ).fetchone()[0]
+            except Exception:
+                pool = 0
+            curated = pool > 0
+            if not curated:
+                pool = conn.execute("SELECT count(*) FROM books WHERE cover_url IS NOT NULL").fetchone()[0]
+            total = pool
+            if not total:
+                return self._json({"error": "empty"}, 404)
+            from datetime import date as _date
+
+            day = _date.today()
+            seed = day.year * 372 + day.month * 31 + day.day
+            if curated:
+                row_raw = conn.execute(
+                    "SELECT b.* FROM collection_items ci JOIN books b ON b.id = ci.book_id "
+                    "WHERE b.cover_url IS NOT NULL AND ci.slug NOT LIKE 'sejong-2025-academic' ORDER BY b.id LIMIT 1 OFFSET ?",
+                    (seed * 137 % total,),
+                ).fetchone()
+            else:
+                row_raw = conn.execute(
+                    "SELECT * FROM books WHERE cover_url IS NOT NULL ORDER BY id LIMIT 1 OFFSET ?",
+                    (seed * 137 % total,),
+                ).fetchone()
+            if not row_raw:
+                return self._json({"error": "empty"}, 404)
+            row = dict(row_raw)
+            bid = row["id"]
+            avs = fetch_availability(conn, [bid])
+            nts = fetch_notices(conn, [bid])
+            av, origins = build_availability(row, avs.get(bid, []), nts.get(bid, []))
+            payload = serialize_book(row, av, origins, nts.get(bid, []))
+            try:
+                vec = store.get(bid)
+                if vec is not None:
+                    hits = store.search(vec, k=7)
+                    sim_ids = [h[0] for h in hits if h[0] != bid][:4]
+                    by_id = {r["id"]: r for r in fetch_books(conn, sim_ids)}
+                    payload["similar"] = [
+                        {"id": i, "title": by_id[i]["title"], "author": by_id[i]["author"],
+                         "cover_url": by_id[i]["cover_url"]}
+                        for i in sim_ids if i in by_id
+                    ]
+            except Exception:
+                payload["similar"] = []
+            return self._json({"date": day.isoformat(), "book": payload})
 
         if path == "/api/stats":
             conn, store = app.ctx()

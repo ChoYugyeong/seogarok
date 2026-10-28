@@ -21,6 +21,7 @@ on:
       - "app.js"
       - "data.js"
       - "legal.html"
+      - "about.html"
       - "sw.js"
       - "manifest.webmanifest"
       - "icons/**"

@@ -36,6 +36,9 @@ const state = {
   priceRange: 'all',
   collections: [],
   collection: null,
+  pick: null,
+  overview: null,
+  recentBooks: [],
   cache: {}, // id -> api book (검색 결과/상세 캐시)
   notices: [], // 수집된 종료 예정 공지 (실데이터 + fixture)
 };
@@ -69,6 +72,8 @@ const API = {
   },
   report(bookId, platform) { return this.post('/api/report', { book_id: bookId, platform }); },
   collections() { return this.call('/api/collections'); },
+  overview() { return this.call('/api/overview'); },
+  dailyPick() { return this.call('/api/pick'); },
   collection(slug) { return this.call('/api/collection', { slug }); },
 };
 
@@ -393,8 +398,13 @@ const COLLECTION_QUERY = {
 const RECENT_KEY = 'seogarok.recent';
 const GENRE_CHIPS = ['소설', '에세이', '인문', '과학', 'SF', '역사', '자기계발', '경제', '여행', '어린이'];
 const DISCOVER_QUERIES = [
-  { label: '지금 서가의 소설', q: '소설' },
-  { label: '이번 주 에세이', q: '에세이' },
+  { label: '지금 서가의 소설', q: '소설', desc: '한국·해외 소설 베스트' },
+  { label: '이번 주 에세이', q: '에세이', desc: '일상과 생각을 쓰는 사람들' },
+  { label: '인문의 눈', q: '인문', desc: '세상을 다르게 보는 책' },
+  { label: '과학의 문장', q: '과학', desc: '과학이 언어가 되는 순간' },
+  { label: 'SF·판타지', q: 'SF', desc: '상상이 현실을 앞서는 장르' },
+  { label: '여행하는 책', q: '여행', desc: '떠나지 못해도 떠나는' },
+  { label: '아이와 함께', q: '어린이', desc: '처음 만나는 이야기' },
 ];
 
 function hl(text, q) {
@@ -509,14 +519,142 @@ function setupSuggest(inputSel, popSel) {
 
 async function loadDiscover() {
   if (!state.api.on) return;
+  const CACHE_KEY = 'seogarok.discover.v2';
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Date.now() - parsed.at < 10 * 60 * 1000 && (parsed.rails || []).length) {
+        state.discover = parsed.rails;
+        cacheBooks(state.discover.flatMap((x) => x.books));
+        render();
+        return;
+      }
+    }
+  } catch (e) { }
   try {
     const res = await Promise.all(DISCOVER_QUERIES.map((d) => API.search(d.q, 'hybrid', 6)));
     state.discover = DISCOVER_QUERIES
-      .map((d, i) => ({ label: d.label, q: d.q, books: (res[i].results || []).map(mapApiBook) }))
+      .map((d, i) => ({ label: d.label, q: d.q, desc: d.desc, books: (res[i].results || []).map(mapApiBook) }))
       .filter((x) => x.books.length);
     cacheBooks(state.discover.flatMap((x) => x.books));
+    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), rails: state.discover })); } catch (e) { }
     render();
   } catch (e) { }
+}
+
+async function loadOverview() {
+  if (!state.api.on) return;
+  try {
+    state.overview = await API.overview();
+    render();
+  } catch (e) { }
+}
+
+async function loadPick() {
+  if (!state.api.on) return;
+  try {
+    const r = await API.dailyPick();
+    state.pick = mapApiBook(r.book);
+    cacheBooks([state.pick]);
+    render();
+  } catch (e) { }
+}
+
+function loadRecentBooks() {
+  try {
+    const list = JSON.parse(localStorage.getItem('seogarok.recentBooks') || '[]');
+    state.recentBooks = Array.isArray(list) ? list.slice(0, 8) : [];
+  } catch (e) {
+    state.recentBooks = [];
+  }
+}
+
+function saveRecentBook(b) {
+  try {
+    const item = { id: b.id, title: b.title, author: b.author, cover_url: b.cover_url };
+    const list = (state.recentBooks || []).filter((x) => x.id !== b.id);
+    list.unshift(item);
+    state.recentBooks = list.slice(0, 8);
+    localStorage.setItem('seogarok.recentBooks', JSON.stringify(state.recentBooks));
+  } catch (e) { }
+}
+
+function renderDailyPick() {
+  const b = state.pick;
+  if (!b || !b.id) return '';
+  const av = avInfo(b);
+  const subs = av.subs.filter((s) => s.status !== 'none');
+  const hasNotice = endings(b).length > 0;
+  const chips = subs.length
+    ? subs.map((s) => `<span class="pick-chip on">${esc(s.label)}</span>`).join('')
+    : '<span class="pick-chip">구독 가용성 미확인</span>';
+  const similar = (b.similar || []).slice(0, 4).map((x) => `<button class="pick-sim" data-book="${esc(x.id)}" title="${esc(x.title)}">${x.cover_url ? `<img src="${esc(x.cover_url)}" alt="" loading="lazy">` : ''}</button>`).join('');
+  return `<section class="section pick-section">
+    <div class="pick-card">
+      <button class="pick-cover" data-book="${esc(b.id)}" aria-label="${esc(b.title)} 상세 보기">${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="${esc(b.title)}" loading="eager" />` : `<span class="pick-cover-fallback">${esc(b.title)}</span>`}</button>
+      <div class="pick-body">
+        <p class="pick-eyebrow">오늘의 책 · ${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}</p>
+        <h3 class="pick-title"><button class="link-like" data-book="${esc(b.id)}">${esc(b.title)}</button></h3>
+        <p class="pick-author">${esc(b.author)}${b.publisher ? ` · ${esc(b.publisher)}` : ''}</p>
+        ${b.blurb ? `<p class="pick-blurb">${esc(String(b.blurb).slice(0, 160))}${String(b.blurb).length > 160 ? '…' : ''}</p>` : ''}
+        <div class="pick-chips">${chips || '<span class="pick-chip">확인 중</span>'}${hasNotice ? '<span class="pick-chip warn">종료 예정</span>' : ''}</div>
+        <div class="pick-actions">
+          <button class="btn-primary" data-book="${esc(b.id)}">자세히 보기 →</button>
+          <button class="link" data-genre="${esc(b.title)}">이 책 검색</button>
+        </div>
+      </div>
+      ${similar ? `<div class="pick-similar"><p class="pick-sim-label">이 책과 비슷한</p><div class="pick-sim-row">${similar}</div></div>` : ''}
+    </div>
+  </section>`;
+}
+
+function renderOverview() {
+  const o = state.overview;
+  if (!o) return '';
+  const n = (v) => Number(v || 0).toLocaleString();
+  const stats = [
+    ['수록 도서', n(o.books), '권'],
+    ['오늘 종료', n(o.ending_today), '권'],
+    ['이번 주 종료', n(o.ending_7d), '권'],
+    ['최근 90일 신간', n(o.new_releases_90d), '권'],
+    ['큐레이션', n(o.collections), '개'],
+  ].map(([label, value, unit]) => `<div class="ov-stat"><span class="ov-label">${label}</span><b class="ov-value">${value}</b><span class="ov-unit">${unit}</span></div>`).join('');
+  const maxG = Math.max(...(o.genres || []).map((g) => g.count), 1);
+  const bars = (o.genres || []).map((g) => `<div class="ov-bar-row">
+      <span class="ov-bar-label">${esc(g.name)}</span>
+      <span class="ov-bar-track"><span class="ov-bar-fill" style="width:${Math.round((g.count / maxG) * 100)}%"></span></span>
+      <span class="ov-bar-n">${n(g.count)}</span>
+    </div>`).join('');
+  const plats = (o.platforms || []).slice(0, 4).map((p) => `<span class="ov-plat">${esc((PLATFORM_NAME[p.name] || p.name))} <b>${n(p.total)}</b>건 · 이번 주 종료 <b>${n(p.ending_7d)}</b></span>`).join('');
+  return `<section class="section ov-section">
+    <div class="sec-head">
+      <div>
+        <h3 class="sec-title">서가 현황</h3>
+        <p class="sec-desc">매일 갱신되는 데이터 스냅샷${o.synced_at ? ` · ${esc(String(o.synced_at).slice(0, 10))}` : ''}</p>
+      </div>
+    </div>
+    <div class="ov-grid">${stats}</div>
+    <div class="ov-cols">
+      <div class="ov-bars"><p class="ov-sub-title">장르 분포</p>${bars}</div>
+      <div class="ov-platforms"><p class="ov-sub-title">구독사별 종료 공지</p><div class="ov-plat-list">${plats}</div></div>
+    </div>
+  </section>`;
+}
+
+function renderRecentRail() {
+  const list = (state.recentBooks || []).filter((x) => x.id);
+  if (!list.length) return '';
+  const books = list.map((x) => ({
+    ...mapApiBook({ id: x.id, title: x.title, author: x.author || '', cover_url: x.cover_url, av: {}, av_origin: {}, notices: [] }),
+  }));
+  cacheBooks(books);
+  return `<section class="section">
+    <div class="sec-head">
+      <div><h3 class="sec-title">최근 본 책</h3><p class="sec-desc">이 기기에만 저장돼요.</p></div>
+    </div>
+    <div class="grid">${books.map(bookCardHTML).join('')}</div>
+  </section>`;
 }
 
 function renderDiscoverRails() {
@@ -524,7 +662,7 @@ function renderDiscoverRails() {
     <div class="sec-head">
       <div>
         <h3 class="sec-title">${esc(r.label)}</h3>
-        <p class="sec-desc">실제 서가에서 찾은 ${r.books.length}권 · ‘${esc(r.q)}’ 검색</p>
+        <p class="sec-desc">${esc(r.desc || `‘${r.q}’ 검색`)} · ${r.books.length}권</p>
       </div>
       <button class="sec-more" data-genre="${esc(r.q)}">더 보기 →</button>
     </div>
@@ -643,10 +781,13 @@ function renderExploreApi() {
       <span class="col-n">검색 · ${esc(COLLECTION_QUERY[c.id] || '')}</span>
     </button>`).join('');
   return `
+  ${renderDailyPick()}
   ${noticesSection()}
   ${renderCollections()}
   ${renderGenreChips()}
   ${renderDiscoverRails()}
+  ${renderOverview()}
+  ${renderRecentRail()}
 
   <section class="section">
     <div class="sec-head">
@@ -1401,6 +1542,11 @@ function drawerHTML(book) {
       ${(book.reports || []).length ? `<p class="dw-hint">확인 중인 제보 · ${book.reports.map((r) => `${esc((PLATFORMS[r.platform] || {}).short || r.platform)} <b>${r.count}</b>건`).join(' · ')}</p>` : ''}
     </div>
 
+    <div class="dw-block dw-same" hidden>
+      <h3>같은 작가의 다른 책 <span class="n" data-same-count></span></h3>
+      <div class="similar-row" data-same-row></div>
+    </div>
+
     <div class="dw-actions">
       <button class="act-btn ${cur === 'want' ? 'is-on' : ''}" data-shelf-set="want">관심 ${cur === 'want' ? '✓' : ''}</button>
       <button class="act-btn ${cur === 'reading' ? 'is-on' : ''}" data-shelf-set="reading">읽는 중 ${cur === 'reading' ? '✓' : ''}</button>
@@ -1455,10 +1601,36 @@ async function openBook(id) {
   return showDrawer(b);
 }
 
+async function loadSameAuthor(book) {
+  if (!state.api.on || !book || !book.author) return;
+  const core = String(book.author).split(/[/,(]/)[0].trim();
+  if (!core || core.length < 2 || core === '저자 미상') return;
+  try {
+    const r = await API.search(core, 'keyword', 10);
+    const same = (r.results || [])
+      .filter((x) => x.id !== book.id && String(x.author || '').includes(core))
+      .slice(0, 6)
+      .map(mapApiBook);
+    const block = document.querySelector('.drawer .dw-same');
+    if (!block || !same.length) return;
+    cacheBooks(same);
+    block.hidden = false;
+    const count = block.querySelector('[data-same-count]');
+    if (count) count.textContent = `${same.length}권`;
+    const row = block.querySelector('[data-same-row]');
+    if (row) row.innerHTML = same.map((x) => `<button class="sim-card" data-book="${esc(x.id)}">
+        <span class="sim-cover">${x.cover_url ? `<img src="${esc(x.cover_url)}" alt="" loading="lazy">` : ''}</span>
+        <b>${esc(x.title)}</b><span>${esc(x.author || '')}</span>
+      </button>`).join('');
+  } catch (e) { }
+}
+
 function showDrawer(b) {
   state.openId = b.id;
+  saveRecentBook(b);
   const root = $('#drawerRoot');
   $('.drawer', root).innerHTML = drawerHTML(b);
+  loadSameAuthor(b);
   $('.drawer', root).scrollTop = 0;
   root.hidden = false;
   lastFocused = document.activeElement;
@@ -1807,6 +1979,9 @@ async function initApi() {
       render();
       loadDiscover();
       loadCollections();
+      loadOverview();
+      loadPick();
+      loadRecentBooks();
       renderRecent();
       if (state.query.trim()) {
         scheduleApiSearch();

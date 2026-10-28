@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>서가록 소개 — 이 책, 지금 어느 서가에 있나</title>
+<meta name="description" content="서가록은 도서 구독 플랫폼의 가용성과 종료 예정을 한 화면에 모으는 서비스입니다. 데이터 출처와 작동 방식을 안내합니다." />
+<link rel="stylesheet" href="styles.css" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#f7f2e8" />
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<header id="nav" class="nav">
+  <a class="brand" href="/" data-act="home">
+    <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    <span class="brand-text">서가록<small>SEOGAROK</small></span>
+  </a>
+  <a class="nav-tab" href="/">← 서가록으로</a>
+</header>
+<main class="view" style="max-width:820px; margin:0 auto; padding-top:48px;">
+  <p class="eyebrow"><span class="dot"></span>ABOUT</p>
+  <h1 class="hero-title" style="font-size:clamp(30px,4vw,44px);">서가록은 무엇을 하는 서비스인가요?</h1>
+  <p class="lede" style="margin:16px 0 34px;">도서 구독 서비스는 늘어났지만, “이 책이 지금 어디서 읽히는지”는 한눈에 보이지 않습니다. 서가록은 그 정보를 모아 <b>어느 서가에 있는지</b>를 보여주고, <b>곧 사라지는 책</b>을 미리 알려줍니다.</p>
+
+  <section class="prose">
+    <h2>작동 방식</h2>
+    <ul>
+      <li><b>수록 도서</b> — 예스24 공식 Open API로 국내도서 주요 분야(소설·인문·과학·어린이 등)의 인기·신간·스테디셀러를 수집합니다.</li>
+      <li><b>검색</b> — SQLite FTS5(한글 바이그램) 키워드 검색과 벡터 검색(model2vec, 256차원)을 RRF로 융합합니다. 초성 검색(<code>ㅎㄱ</code> → 한강)도 지원합니다.</li>
+      <li><b>미수록 책</b> — 서가에 없는 책은 온디맨드로 예스24에서 실시간 조회해 보여줍니다.</li>
+      <li><b>가용성</b> — 구독 플랫폼의 공개 종료 공지를 매일 수집해 반영합니다. 확인되지 않은 정보는 “미확인”으로 표시하며, 추정하지 않습니다.</li>
+      <li><b>큐레이션</b> — 서울대 권장도서 100선, 하버드 클래식(1909, 퍼블릭 도메인), 세종도서(2025) 등 <b>공개된 공식 목록</b>을 서가의 실제 책과 매칭합니다. 제목·저자·ISBN 등 사실 정보만 사용하고, 해설 문구는 복제하지 않습니다.</li>
+    </ul>
+
+    <h2>데이터 출처</h2>
+    <ul>
+      <li>도서 정보 · 이미지: <a href="https://developers.yes24.com" target="_blank" rel="noopener">예스24 Open API</a></li>
+      <li>종료 예정 공지: 밀리의 서재 등 구독 플랫폼 공개 목록</li>
+      <li>추천 목록: 서울대학교 중앙도서관 · KPIPA 세종도서 · The Harvard Classics (1909)</li>
+    </ul>
+    <p class="hint">자세한 이용 조건은 <a href="legal.html#sources">데이터 출처</a>와 <a href="legal.html#terms">이용약관</a>을 확인해 주세요.</p>
+
+    <h2>자주 묻는 질문</h2>
+    <details><summary>구독 가용성이 “미확인”인 책이 많아요.</summary><p>공개된 확인 자료가 있을 때만 가용성을 표시합니다. 확인되지 않은 정보를 추정해 표시하지 않는 대신, 상세 화면에서 <b>직접 제보</b>할 수 있어요. 제보는 확인 후 반영됩니다.</p></details>
+    <details><summary>왜 모든 책이 서가에 있나요?</summary><p>인기·신간 중심으로 약 1.9만 권을 수록하고, 그 밖의 책은 검색 시 <b>실시간 조회</b>로 보여드립니다.</p></details>
+    <details><summary>추천 목록은 어떻게 고르나요?</summary><p>공식 기관·공개 문서로 확인되는 목록만 사용합니다. 출처 링크와 라이선스 문구를 컬렉션 화면에 표시합니다.</p></details>
+    <details><summary>서비스는 무료인가요?</summary><p>네. 도서 정보와 가용성 확인은 무료이며, 회원가입도 필요 없습니다. 관심 책·읽는 중 표시는 이 기기의 브라우저에만 저장됩니다.</p></details>
+
+    <h2>업데이트 로그</h2>
+    <ul class="changelog">
+      <li><b>2026-10-29</b> · 홈 확장: 오늘의 책 · 7개 발견 레일 · 서가 현황 · 최근 본 책 / 상세에 같은 작가의 책 추가</li>
+      <li><b>2026-10-28</b> · 세종도서 2025(교양 423·학술 353) 추가, 온디맨드 조회, 제보 GCS 영속화, PWA</li>
+      <li><b>2026-10-27</b> · 검색 자동완성, 종료 예정 타임라인, 비슷한 책 추천</li>
+      <li><b>2026-10-26</b> · 서가록 리브랜딩 · 하이브리드 검색(키워드+벡터)</li>
+    </ul>
+
+    <h2>문의</h2>
+    <p>버그·데이터 오류 제보는 상세 화면의 <b>가용성 제보</b> 또는 저장소 이슈로 남겨주세요.</p>
+  </section>
+
+  <div style="margin:40px 0 60px; display:flex; gap:14px;">
+    <a class="btn-primary" style="display:inline-flex; align-items:center; text-decoration:none;" href="/">서가록으로 →</a>
+    <a class="link" href="legal.html">이용약관·데이터 출처</a>
+  </div>
+</main>
+</body>
+</html>
