@@ -46,7 +46,8 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY --from=builder --chown=app:app /root/.cache/huggingface /home/app/.cache/huggingface
 COPY --chown=app:app server ./server
-COPY --chown=app:app index.html styles.css app.js data.js legal.html ./
+COPY --chown=app:app index.html styles.css app.js data.js legal.html manifest.webmanifest sw.js ./
+COPY --chown=app:app icons ./icons
 # 빌더 단계에서 만든 인덱스를 가져온다 (빌드 컨텍스트의 DB 파일이 아니라)
 COPY --from=builder --chown=app:app /app/data/seoga.db ./data/seoga.db
 COPY --chown=app:app scripts/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

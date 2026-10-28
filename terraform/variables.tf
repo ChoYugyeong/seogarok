@@ -80,6 +80,12 @@ variable "allow_unauthenticated" {
   type        = bool
   default     = true
 }
+variable "www_domain" {
+  description = "추가 서브도메인 (예: www.seogarok.com). 비우면 생성하지 않음"
+  type        = string
+  default     = ""
+}
+
 variable "custom_domain" {
   description = "커스텀 도메인 (예: seoga.example.com). 비우면 생성하지 않음"
   type        = string

@@ -3,7 +3,7 @@
 # -----------------------------------------------
 resource "google_artifact_registry_repository" "images" {
   location      = var.artifact_region
-  repository_id = "seoga"
+  repository_id = "seogarok"
   description   = "seoga-api container images"
   format        = "DOCKER"
   labels        = local.labels
@@ -205,6 +205,24 @@ resource "google_project_iam_member" "deploy_sa_user" {
 resource "google_cloud_run_domain_mapping" "custom" {
   count    = var.custom_domain != "" ? 1 : 0
   name     = var.custom_domain
+  location = var.region
+
+  metadata {
+    namespace = var.project_id
+  }
+
+  spec {
+    route_name = google_cloud_run_v2_service.api.name
+  }
+}
+
+# -----------------------------------------------
+# www 서브도메인 (선택) — 루트 도메인과 별도 매핑
+#  DNS: CNAME www -> ghs.googlehosted.com (DNS only)
+# -----------------------------------------------
+resource "google_cloud_run_domain_mapping" "www" {
+  count    = var.www_domain != "" ? 1 : 0
+  name     = var.www_domain
   location = var.region
 
   metadata {

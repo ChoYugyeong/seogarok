@@ -1608,6 +1608,13 @@ async function initApi() {
   }
   state.api.checked = true;
 }
+// PWA: 홈 화면 추가 지원 (HTTPS/localhost 에서만)
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { });
+  });
+}
+
 setupSuggest('#heroSearch', '#heroSuggest');
 setupSuggest('#searchInput', '#navSuggest');
 renderRecent();

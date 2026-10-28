@@ -39,3 +39,11 @@ output "custom_domain_records" {
     { name = r.name, type = r.type, rrdata = r.rrdata }
   ]
 }
+
+output "www_domain_records" {
+  description = "www 서브도메인 연결 시 등록할 DNS 레코드"
+  value = var.www_domain == "" ? [] : [
+    for r in google_cloud_run_domain_mapping.www[0].status[0].resource_records :
+    { name = r.name, type = r.type, rrdata = r.rrdata }
+  ]
+}

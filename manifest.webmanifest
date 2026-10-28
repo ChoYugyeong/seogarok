@@ -1,0 +1,19 @@
+{
+  "name": "서가록",
+  "short_name": "서가록",
+  "description": "이 책, 지금 어느 서가에 있나 — 도서 가용성 색인",
+  "lang": "ko",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f2e8",
+  "theme_color": "#f7f2e8",
+  "categories": ["books", "reference", "education"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

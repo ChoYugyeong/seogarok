@@ -483,11 +483,19 @@ class Handler(BaseHTTPRequestHandler):
         target = (root / path.lstrip("/")).resolve()
         if not str(target).startswith(str(root)) or not target.is_file():
             return self._send(404, b"not found", "text/plain; charset=utf-8")
-        ctype = mimetypes.guess_type(str(target))[0] or "application/octet-stream"
+        ext = target.suffix.lower()
+        extra_types = {
+            ".webmanifest": "application/manifest+json",
+            ".png": "image/png",
+            ".svg": "image/svg+xml",
+            ".ico": "image/x-icon",
+        }
+        ctype = extra_types.get(ext) or mimetypes.guess_type(str(target))[0] or "application/octet-stream"
         if ctype.startswith("text/") or ctype in ("application/javascript", "application/json"):
             ctype += "; charset=utf-8"
         data = target.read_bytes()
-        cache = "no-store" if target.suffix in (".html", ".js", ".css") else "public, max-age=300"
+        no_store = ext in (".html", ".js", ".css", ".webmanifest")
+        cache = "no-store" if no_store else "public, max-age=300"
         return self._send(200, data, ctype, cache)
 
 

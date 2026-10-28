@@ -83,6 +83,7 @@ docker compose --profile load run --rm k6 run /scripts/search.js   # 부하테�
 | **롤백** | `gcloud run services update-traffic --to-revisions <직전>=100` (약 20~40초) — [deploy-rollback.md](docs/runbooks/deploy-rollback.md) |
 | **충돌 방지** | `ignore_changes = [image, traffic]` — Terraform 이 CD/롤백 상태를 되돌리지 않게 역할 분리 |
 | **검증** | `terraform fmt/validate` 통과, `actionlint` 3개 워크플로 통과, [`scripts/smoke.sh`](scripts/smoke.sh) **5/5** (실행 중 컨테이너 대상 실측) |
+| **상표** | [docs/trademark-guide.md](docs/trademark-guide.md) — KIPRIS 선행 0건, 9·16·35·41류 출원 가이드 |
 | **도메인** | [domain-cloudflare.md](docs/runbooks/domain-cloudflare.md) — 도메인 연 1.2~2만원, DNS/SSL/도메인매핑 무료 |
 | **무료 티어** | Cloud Run 무료 한도 내(`min_instances=0` → 유휴 시 0원, 콜드스타트 약 8~10초, 실측). 이 워크로드의 실제 비용은 **$0**(Artifact Registry 초과분 월 9센트 수준) |
 
