@@ -138,7 +138,7 @@ GitHub 저장소 → Settings → Secrets and variables → **Variables** 에 �
 | `GCP_PROJECT` | 프로젝트 ID |
 | `GCP_REGION` | `asia-northeast3` |
 | `CLOUD_RUN_SERVICE` | `seogarok-api` |
-| `IMAGE_REPO` | `asia-northeast3-docker.pkg.dev/PROJECT/seoga/seogarok-api` |
+| `IMAGE_REPO` | `asia-northeast3-docker.pkg.dev/PROJECT/seogarok/seogarok-api` |
 | `TF_STATE_BUCKET` | state 버킷 이름 |
 
 Environment `production`, `production-infra` 를 만들고 **Required reviewers** 를 걸면 apply/배포에 승인 게이트가 생긴다.
