@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /metrics
+
+Sitemap: https://seogarok.com/sitemap.xml

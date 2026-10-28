@@ -31,6 +31,19 @@ UA = "seoga/0.4 (+book availability layer; contact: local)"
 MIN_INTERVAL = 0.35  # 예의: 초당 ~3회
 
 
+
+# 카테고리 랭킹 밖에 있지만 사용자가 자주 찾는 책/작가 (커버리지 보강)
+DEFAULT_QUERIES = [
+    "클린 코드", "82년생 김지영", "마흔에 읽는 쇼펜하우어", "아몬드", "불편한 편의점",
+    "세이노의 가르침", "역행자", "사피엔스", "코스모스", "침묵의 봄",
+    "데미안", "어린 왕자", "인간 실격", "노르웨이의 숲", "1Q84",
+    "해리 포터", "미드나잇 라이브러리", "달러구트 꿈 백화점", "정재승의 과학콘서트",
+    "정의란 무엇인가", "총, 균, 쇠", "호모 데우스", "부의 추월차선", "돈의 심리학",
+    "부자 아빠 가난한 아빠", "원씽", "타이탄의 도구들", "아주 작은 습관의 힘", "미움받을 용기",
+    "한강", "김초엽", "무라카미 하루키", "베르나르 베르베르", "정유정",
+    "김영하", "박경리", "이문열", "한강 소설", "SF 소설", "에세이 베스트",
+]
+
 def load_env(path: Path = ROOT / ".env") -> dict:
     env = dict(os.environ)
     if path.exists():
@@ -202,33 +215,57 @@ def discover_categories(api: Yes24API, limit: int = 24, root: str = "국내도�
     return picked[:limit]
 
 
-def collect(api: Yes24API, category_ids: list[str], per_category: int = 40) -> list[dict]:
+def collect(api: Yes24API, category_ids: list[str], per_category: int = 40, pages: int = 1,
+            queries: list[str] | None = None) -> list[dict]:
     rows: list[dict] = []
     seen: set[str] = set()
     kinds = (("bestseller", api.bestseller), ("newproduct", api.newproduct), ("steady", api.steady))
     for cid in category_ids:
         for name, fn in kinds:
-            try:
-                items = fn(cid, page=1, page_size=per_category)
-            except RuntimeError as exc:
-                print(f"  [{cid}/{name}] 실패: {exc}")
-                continue
-            added = 0
-            for it in items:
-                row = to_row(it)
-                if not row or row["id"] in seen:
+            for page in range(1, max(1, pages) + 1):
+                try:
+                    items = fn(cid, page=page, page_size=per_category)
+                except RuntimeError as exc:
+                    print(f"  [{cid}/{name}/p{page}] 실패: {exc}")
                     continue
-                seen.add(row["id"])
-                rows.append(row)
-                added += 1
-            print(f"  [{cid}/{name}] +{added} (누적 {len(rows)})")
+                added = 0
+                for it in items:
+                    row = to_row(it)
+                    if not row or row["id"] in seen:
+                        continue
+                    seen.add(row["id"])
+                    rows.append(row)
+                    added += 1
+                if added:
+                    print(f"  [{cid}/{name}/p{page}] +{added} (누적 {len(rows)})")
+                if not items:
+                    break
+
+    # 인기 검색어 시딩 (카테고리 랭킹 밖 도서 보강)
+    for q in (queries or []):
+        try:
+            items = api.search(q, page=1, page_size=20)
+        except RuntimeError as exc:
+            print(f"  [query:{q}] 실패: {exc}")
+            continue
+        added = 0
+        for it in items:
+            row = to_row(it)
+            if not row or row["id"] in seen:
+                continue
+            seen.add(row["id"])
+            rows.append(row)
+            added += 1
+        print(f"  [query:{q}] +{added} (누적 {len(rows)})")
     return rows
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="YES24 Open API → catalog JSONL")
     ap.add_argument("--out", default=str(ROOT / "data" / "catalog.jsonl"))
-    ap.add_argument("--per-category", type=int, default=40, help="카테고리×종류별 수집 수")
+    ap.add_argument("--per-category", type=int, default=40, help="카테고리×종류×페이지별 수집 수")
+    ap.add_argument("--pages", type=int, default=1, help="페이지네이션 수 (커버리지 확대)")
+    ap.add_argument("--no-default-queries", action="store_true", help="기본 인기 검색어 시딩 비활성화")
     ap.add_argument("--categories", type=int, default=12, help="자동 선택할 카테고리 수")
     ap.add_argument("--search", default=None, help="검색어로만 수집 (테스트용)")
     ap.add_argument("--no-cache", action="store_true")
@@ -242,7 +279,8 @@ def main(argv=None) -> int:
     else:
         cats = discover_categories(api, args.categories)
         print(f"[yes24] categories({len(cats)}): {cats}")
-        rows = collect(api, cats, args.per_category)
+        queries = [] if args.no_default_queries else DEFAULT_QUERIES
+        rows = collect(api, cats, args.per_category, args.pages, queries)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

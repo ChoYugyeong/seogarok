@@ -774,7 +774,11 @@ function renderApiSearch() {
   if (api.loading && !api.hits.length) {
     body = `<div class="grid skeleton-grid">${Array.from({ length: 6 }).map(() => '<div class="skel"></div>').join('')}</div>`;
   } else if (api.error) {
-    body = `<div class="empty"><b>검색 백엔드에 연결하지 못했어요</b><p>${esc(api.error)}</p></div>`;
+    body = `<div class="empty">
+        <b>검색 백엔드에 연결하지 못했어요</b>
+        <p>${esc(api.error)}</p>
+        <button class="retry" data-act="retry-search">다시 시도</button>
+      </div>`;
   } else if (!api.hits.length) {
     body = `<div class="empty">
         <b>'${esc(q)}' 검색 결과가 없어요</b>
@@ -1418,6 +1422,7 @@ document.addEventListener('click', (e) => {
     if (a === 'find-all') { setQuery(''); state.filter = 'all'; render(); window.scrollTo({ top: 0 }); return; }
     if (a === 'go') { toast(`${act.dataset.plat}로 이동합니다 (데모)`); return; }
     if (a === 'taste-reset') { state.taste.answers = []; render(); return; }
+    if (a === 'retry-search') { state.api.error = null; state.api.loading = true; render(); runApiSearch(); return; }
   }
 
   const quick = t.closest('[data-quick]');

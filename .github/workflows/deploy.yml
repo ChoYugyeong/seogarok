@@ -75,13 +75,13 @@ jobs:
           fi
           python -m pip install --quiet -r requirements.ingest.txt
           python -m ingest.notices.run --out data/notices.jsonl
-          python -m ingest.books.yes24_api --out data/catalog.jsonl \
+          python -m ingest.books.yes24_api --out data/catalog.jsonl --pages 4 \
             --per-category 100 --categories 22 --no-cache
           CAT=$(wc -l < data/catalog.jsonl)
           NOT=$(wc -l < data/notices.jsonl)
           echo "catalog=$CAT notices=$NOT"
           # 수집 실패 시 seed(38권)로 배포되어 라이브 인덱스가 줄어드는 사고를 막는다
-          [ "$CAT" -ge 1000 ] || { echo "::error::카탈로그 수집 부족 ($CAT rows) — 배포 중단"; exit 1; }
+          [ "$CAT" -ge 8000 ] || { echo "::error::카탈로그 수집 부족 ($CAT rows) — 배포 중단"; exit 1; }
 
       - name: image tag
         id: meta
