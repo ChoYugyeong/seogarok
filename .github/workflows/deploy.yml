@@ -74,9 +74,10 @@ jobs:
             exit 1
           fi
           python -m pip install --quiet -r requirements.ingest.txt
-          python -m ingest.notices.run --out data/notices.jsonl
-          python -m ingest.books.yes24_api --out data/catalog.jsonl --pages 4 \
-            --per-category 100 --categories 22 --no-cache
+          # 외부 API 행(hang) 대비 하드 타임아웃 — 실패 시 배포는 중단되지만 라이브는 유지된다
+          timeout 180 python -m ingest.notices.run --out data/notices.jsonl || echo "::warning::공지 수집 시간초과/실패 — 계속 진행"
+          timeout 420 python -m ingest.books.yes24_api --out data/catalog.jsonl --pages 3 \
+            --per-category 100 --categories 22 --no-cache || echo "::warning::도서 수집 시간초과"
           CAT=$(wc -l < data/catalog.jsonl)
           NOT=$(wc -l < data/notices.jsonl)
           echo "catalog=$CAT notices=$NOT"

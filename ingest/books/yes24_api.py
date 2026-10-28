@@ -85,7 +85,7 @@ class Yes24API:
         req = urllib.request.Request(url, headers={"X-Api-Key": self.key, "Accept": "application/json",
                                                    "User-Agent": UA})
         try:
-            with urllib.request.urlopen(req, timeout=20) as r:
+            with urllib.request.urlopen(req, timeout=10) as r:
                 data = json.loads(r.read().decode("utf-8", "replace"))
         except urllib.error.HTTPError as e:
             body = e.read().decode("utf-8", "replace")

@@ -367,6 +367,13 @@ def sync_catalog(conn: sqlite3.Connection, embedder, rows: Iterable[dict], batch
     conn.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('vec_backend',?)", (store.backend,))
     conn.execute("INSERT OR REPLACE INTO meta(k,v) VALUES('synced_at',?)", (time.strftime("%Y-%m-%dT%H:%M:%S%z"),))
     conn.commit()
+    try:
+        from .collections import sync_collections
+
+        cstats = sync_collections(conn)
+        print(f"[sync] collections={cstats['collections']} matched={cstats['matched']}")
+    except Exception as exc:
+        print(f"[sync] collections skip: {exc}")
     return {
         "books": n,
         "vectors": vec_total,

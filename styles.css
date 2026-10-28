@@ -1678,3 +1678,29 @@ svg { display: block; }
   .filter-bar-2 .fchip { height: 28px; font-size: 11.5px; padding: 0 10px; }
   .sort-select { width: 100%; }
 }
+/* ==========================================================================
+   큐레이션 컬렉션
+   ========================================================================== */
+.cur-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.cur-card {
+  display: flex; gap: 16px; align-items: center; padding: 16px; text-align: left;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  transition: all .18s ease;
+}
+.cur-card:hover { border-color: var(--ink-2); transform: translateY(-2px); box-shadow: var(--shadow-pop); }
+.cur-covers { display: grid; grid-template-columns: repeat(2, 34px); gap: 3px; flex: none; }
+.cur-cover { width: 34px; height: 48px; border-radius: 2px; overflow: hidden; background: var(--paper-2); }
+.cur-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cur-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.cur-body b { font-family: var(--serif); font-size: 16px; letter-spacing: -.02em; }
+.cur-desc { font-size: 12.5px; color: var(--text-2); line-height: 1.45; }
+.cur-meta { font-family: var(--mono); font-size: 10.5px; color: var(--muted); }
+.cur-head { margin: 6px 0 20px; }
+.cur-head h2 { font-family: var(--serif); font-size: clamp(24px, 3vw, 36px); letter-spacing: -.03em; }
+.cur-head .lede { color: var(--text-2); margin: 6px 0 10px; }
+.cur-source { font-size: 12px; color: var(--muted); }
+.cur-note { font-size: 11.5px; color: var(--text-3); margin-top: 6px; line-height: 1.6; }
+.cur-cat { font-family: var(--serif); font-size: 16px; margin: 26px 0 12px; }
+.cur-cat span { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: 4px; }
+.cur-back { margin-bottom: 12px; }
+@media (max-width: 560px) { .cur-card { padding: 13px; gap: 12px; } .cur-covers { grid-template-columns: repeat(2, 30px); } .cur-cover { width: 30px; height: 42px; } }

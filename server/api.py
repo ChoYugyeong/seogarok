@@ -44,7 +44,7 @@ CHAOS_ENABLED = os.getenv("SEOG_CHAOS", "0") == "1"
 CHAOS = {"latency_ms": 0, "error_rate": 0.0}
 
 # 라벨 카디널리티를 낮추기 위한 경로 정규화
-_ROUTES = ("/api/search", "/api/book", "/api/notices", "/api/stats", "/api/suggest", "/api/report",
+_ROUTES = ("/api/search", "/api/book", "/api/notices", "/api/stats", "/api/suggest", "/api/report", "/api/collections", "/api/collection",
            "/api/health", "/api/_chaos", "/healthz", "/livez", "/readyz", "/metrics")
 
 
@@ -289,7 +289,11 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, body, "text/plain; version=0.0.4; charset=utf-8")
 
     def handle_report(self, method: str, parsed):
-        """가용성 제보: POST /api/report {book_id, platform, note?}"""
+        """가용성 제보: POST /api/report {book_id, platform, note?}
+
+        컨테이너가 read_only 이므로 DB 쓰기가 실패하면 /tmp JSONL 로 폴백한다.
+        (제보 원본은 Cloud Logging 에도 남겨 나중에 배치로 반영할 수 있게 한다)
+        """
         if method != "POST":
             return self._json({"error": "method_not_allowed"}, 405)
         length = int(self.headers.get("Content-Length") or 0)
@@ -309,30 +313,55 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"error": "invalid_params", "allowed": SUB_PLATFORMS}, 400)
 
         app = get_app()
-        conn, _ = app.ctx()
-        exists = conn.execute("SELECT 1 FROM books WHERE id = ?", (book_id,)).fetchone()
-        if not exists:
-            return self._json({"error": "book_not_found", "book_id": book_id}, 404)
-
         ip = (self.headers.get("X-Forwarded-For") or self.client_address[0] or "").split(",")[0].strip()
         ip_hash = hashlib.sha256((ip or "unknown").encode("utf-8")).hexdigest()[:16]
         now = datetime.now().astimezone().isoformat(timespec="seconds")
-        # 같은 사람이 같은 책/플랫폼을 12시간 내 반복 제보하는 것은 1회로 친다
-        dup = conn.execute(
-            "SELECT 1 FROM reports WHERE book_id=? AND platform=? AND ip_hash=? AND created_at >= ?",
-            (book_id, platform, ip_hash, (datetime.now().astimezone() - timedelta(hours=12)).isoformat(timespec="seconds")),
-        ).fetchone()
-        if not dup:
-            conn.execute(
-                "INSERT INTO reports(book_id, platform, note, ua, ip_hash, created_at) VALUES (?,?,?,?,?,?)",
-                (book_id, platform, note or None, self.headers.get("User-Agent", "")[:120], ip_hash, now),
+        record = {
+            "book_id": book_id,
+            "platform": platform,
+            "note": note or None,
+            "ua": self.headers.get("User-Agent", "")[:120],
+            "ip_hash": ip_hash,
+            "created_at": now,
+        }
+        count = 0
+        dup = False
+        stored = "db"
+        try:
+            conn, _ = app.ctx()
+            exists = conn.execute("SELECT 1 FROM books WHERE id = ?", (book_id,)).fetchone()
+            if not exists:
+                return self._json({"error": "book_not_found", "book_id": book_id}, 404)
+            dup = bool(
+                conn.execute(
+                    "SELECT 1 FROM reports WHERE book_id=? AND platform=? AND ip_hash=? AND created_at >= ?",
+                    (book_id, platform, ip_hash,
+                     (datetime.now().astimezone() - timedelta(hours=12)).isoformat(timespec="seconds")),
+                ).fetchone()
             )
-            conn.commit()
-        count = conn.execute(
-            "SELECT count(*) FROM reports WHERE book_id=? AND platform = ?", (book_id, platform)
-        ).fetchone()[0]
-        log_event(level="info", msg="availability_report", book_id=book_id, platform=platform, count=count, dup=bool(dup))
-        return self._json({"ok": True, "book_id": book_id, "platform": platform, "count": count, "duplicate": bool(dup)})
+            if not dup:
+                conn.execute(
+                    "INSERT INTO reports(book_id, platform, note, ua, ip_hash, created_at) VALUES (?,?,?,?,?,?)",
+                    (book_id, platform, record["note"], record["ua"], ip_hash, now),
+                )
+                conn.commit()
+            count = conn.execute(
+                "SELECT count(*) FROM reports WHERE book_id=? AND platform = ?", (book_id, platform)
+            ).fetchone()[0]
+        except Exception:
+            # read_only 파일시스템 등 — /tmp 에 적재하고 로그로도 남긴다
+            stored = "tmp"
+            try:
+                with open("/tmp/seogarok_reports.jsonl", "a", encoding="utf-8") as f:
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+                count = 1
+            except Exception:
+                stored = "log"
+                count = 0
+        log_event(level="info", msg="availability_report", book_id=book_id, platform=platform,
+                  count=count, dup=dup, stored=stored)
+        return self._json({"ok": True, "book_id": book_id, "platform": platform, "count": count,
+                           "duplicate": dup, "stored": stored})
 
     def handle_chaos(self, method: str, parsed):
         if not CHAOS_ENABLED:
@@ -516,6 +545,42 @@ class Handler(BaseHTTPRequestHandler):
                 conn.execute("SELECT count(*) FROM notices WHERE source_kind IS NOT NULL AND source_kind != 'fixture'").fetchone()[0]
             )
             return self._json({"count": len(rows), "total": total, "real": real, "notices": [dict(r) for r in rows]})
+
+        if path == "/api/collections":
+            conn, _ = app.ctx()
+            rows = conn.execute("SELECT * FROM collections ORDER BY ord").fetchall()
+            out = []
+            for r in rows:
+                matched = int(
+                    conn.execute("SELECT count(*) FROM collection_items WHERE slug = ?", (r["slug"],)).fetchone()[0]
+                )
+                samples = conn.execute(
+                    "SELECT b.id, b.title, b.author, b.cover_url FROM collection_items ci "
+                    "JOIN books b ON b.id = ci.book_id WHERE ci.slug = ? ORDER BY ci.ord LIMIT 4",
+                    (r["slug"],),
+                ).fetchall()
+                item = dict(r)
+                item["matched"] = matched
+                item["samples"] = [dict(x) for x in samples]
+                out.append(item)
+            return self._json({"count": len(out), "collections": out})
+
+        if path == "/api/collection":
+            slug = (qs.get("slug") or [""])[0].strip()
+            conn, _ = app.ctx()
+            row = conn.execute("SELECT * FROM collections WHERE slug = ?", (slug,)).fetchone()
+            if not row:
+                return self._json({"error": "not_found", "slug": slug}, 404)
+            items = conn.execute(
+                "SELECT ci.book_id, ci.item_title, ci.item_author, ci.category, "
+                "b.title AS book_title, b.author AS book_author, b.cover_url, b.price "
+                "FROM collection_items ci JOIN books b ON b.id = ci.book_id "
+                "WHERE ci.slug = ? ORDER BY ci.ord",
+                (slug,),
+            ).fetchall()
+            meta = dict(row)
+            meta["matched"] = len(items)
+            return self._json({"collection": meta, "books": [dict(x) for x in items]})
 
         if path == "/api/suggest":
             q = (qs.get("q") or [""])[0].strip()

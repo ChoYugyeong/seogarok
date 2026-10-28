@@ -34,6 +34,8 @@ const state = {
   searchFilter: 'all',
   searchSort: 'relevance',
   priceRange: 'all',
+  collections: [],
+  collection: null,
   cache: {}, // id -> api book (검색 결과/상세 캐시)
   notices: [], // 수집된 종료 예정 공지 (실데이터 + fixture)
 };
@@ -66,6 +68,8 @@ const API = {
     return res.json();
   },
   report(bookId, platform) { return this.post('/api/report', { book_id: bookId, platform }); },
+  collections() { return this.call('/api/collections'); },
+  collection(slug) { return this.call('/api/collection', { slug }); },
 };
 
 function mapApiBook(r) {
@@ -542,6 +546,90 @@ function renderGenreChips() {
   </section>`;
 }
 
+/* ---------------- 큐레이션 컬렉션 (공개 추천 목록) ---------------- */
+async function loadCollections() {
+  if (!state.api.on) return;
+  try {
+    const r = await API.collections();
+    state.collections = r.collections || [];
+    render();
+  } catch (e) { }
+}
+
+async function openCollection(slug) {
+  try {
+    const r = await API.collection(slug);
+    state.collection = r;
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } catch (e) {
+    toast('컬렉션을 불러오지 못했어요');
+  }
+}
+
+function renderCollections() {
+  const list = state.collections || [];
+  if (!list.length) return '';
+  const cards = list.map((c) => {
+    const covers = (c.samples || []).slice(0, 4).map((x) => `<span class="cur-cover">${x.cover_url ? `<img src="${esc(x.cover_url)}" alt="" loading="lazy">` : ''}</span>`).join('');
+    return `<button class="cur-card" data-collection="${esc(c.slug)}">
+      <span class="cur-covers">${covers}</span>
+      <span class="cur-body">
+        <b>${esc(c.title)}</b>
+        <span class="cur-desc">${esc(c.subtitle || '')}</span>
+        <span class="cur-meta">${c.matched}/${c.total}권 수록 · ${esc(c.source || '')}</span>
+      </span>
+    </button>`;
+  }).join('');
+  return `<section class="section">
+    <div class="sec-head">
+      <div>
+        <h3 class="sec-title">공개 추천 목록</h3>
+        <p class="sec-desc">서울대·하버드 같은 공개된 큐레이션을 서가의 실제 책과 매칭했어요. 출처와 원문 링크를 함께 표시합니다.</p>
+      </div>
+    </div>
+    <div class="cur-grid">${cards}</div>
+  </section>`;
+}
+
+function renderCollection() {
+  const data = state.collection || {};
+  const c = data.collection || {};
+  // 검색 결과와 동일한 스키마로 정규화 (가용성/가격 필드 기본값 포함)
+  const items = (data.books || []).map((x) => ({
+    ...mapApiBook({
+      id: x.book_id,
+      title: x.book_title,
+      author: x.book_author || '',
+      cover_url: x.cover_url,
+      price: x.price,
+      av: {},
+      av_origin: {},
+      notices: [],
+    }),
+    category: x.category || '기타',
+  }));
+  cacheBooks(items);
+
+  const byCat = new Map();
+  items.forEach((b) => {
+    if (!byCat.has(b.category)) byCat.set(b.category, []);
+    byCat.get(b.category).push(b);
+  });
+  const catSections = [...byCat.entries()].map(([cat, list]) => `
+    <h3 class="cur-cat">${esc(cat)} <span>${list.length}권</span></h3>
+    <div class="grid">${list.map(bookCardHTML).join('')}</div>`).join('');
+
+  return `<button class="link cur-back" data-act="collections-back">← 홈으로</button>
+  <div class="cur-head">
+    <h2>${esc(c.title || '')}</h2>
+    <p class="lede">${esc(c.subtitle || '')}</p>
+    <p class="cur-source">출처 · ${esc(c.source || '')}${c.source_url ? ` · <a href="${esc(c.source_url)}" target="_blank" rel="noopener">원문 보기 ↗</a>` : ''}</p>
+    <p class="cur-note">${c.matched || 0}/${c.total || 0}권이 서가에 있어요. ${esc(c.license_note || '')}</p>
+  </div>
+  ${catSections || '<div class="empty"><b>아직 매칭된 책이 없어요</b></div>'}`;
+}
+
 function renderExploreApi() {
   const collections = COLLECTIONS.map((c) => `
     <button class="col-card" data-col="${c.id}">
@@ -551,6 +639,7 @@ function renderExploreApi() {
     </button>`).join('');
   return `
   ${noticesSection()}
+  ${renderCollections()}
   ${renderGenreChips()}
   ${renderDiscoverRails()}
 
@@ -1432,7 +1521,7 @@ function render() {
   if (heroInput && document.activeElement !== heroInput && heroInput.value !== state.query) heroInput.value = state.query;
 
   const view = $('#view');
-  if (isExplore) view.innerHTML = searching ? renderSearch() : renderExplore();
+  if (isExplore) view.innerHTML = state.collection ? renderCollection() : searching ? renderSearch() : renderExplore();
   else if (state.tab === 'shelf') view.innerHTML = renderShelf();
   else view.innerHTML = renderTaste();
 
@@ -1497,6 +1586,7 @@ document.addEventListener('click', (e) => {
     if (a === 'find-all') { setQuery(''); state.filter = 'all'; render(); window.scrollTo({ top: 0 }); return; }
     if (a === 'go') { toast(`${act.dataset.plat}로 이동합니다 (데모)`); return; }
     if (a === 'taste-reset') { state.taste.answers = []; render(); return; }
+    if (a === 'collections-back') { state.collection = null; render(); return; }
     if (a === 'retry-search') { state.api.error = null; state.api.loading = true; render(); runApiSearch(); return; }
   }
 
@@ -1508,6 +1598,9 @@ document.addEventListener('click', (e) => {
 
   const pr = t.closest('[data-price]');
   if (pr) { state.priceRange = pr.dataset.price; render(); return; }
+
+  const collCard = t.closest('[data-collection]');
+  if (collCard) { openCollection(collCard.dataset.collection); return; }
 
   const repBtn = t.closest('[data-report]');
   if (repBtn) {
@@ -1697,6 +1790,7 @@ async function initApi() {
       } catch (e) { state.notices = []; }
       render();
       loadDiscover();
+      loadCollections();
       renderRecent();
       if (state.query.trim()) {
         scheduleApiSearch();
