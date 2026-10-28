@@ -417,22 +417,40 @@ class Handler(BaseHTTPRequestHandler):
             q = (qs.get("q") or [""])[0].strip()
             conn, _ = app.ctx()
             if not q:
-                return self._json({"q": q, "suggestions": []})
+                return self._json({"q": q, "suggestions": [], "items": []})
             from .kotext import fts_query
 
             fq = fts_query(q)
-            out = []
+            titles: list[str] = []
+            items: list[dict] = []
             if fq:
                 try:
                     rows = conn.execute(
-                        "SELECT b.title FROM books_fts f JOIN books b ON b.id = f.book_id "
-                        "WHERE books_fts MATCH ? ORDER BY bm25(books_fts) LIMIT 8",
+                        "SELECT b.id, b.title, b.author, b.cover_url "
+                        "FROM books_fts f JOIN books b ON b.id = f.book_id "
+                        "WHERE books_fts MATCH ? ORDER BY bm25(books_fts) LIMIT 10",
                         (fq,),
                     ).fetchall()
-                    out = [r["title"] for r in rows]
+                    seen: set[str] = set()
+                    for r in rows:
+                        t = (r["title"] or "").strip()
+                        if not t or t in seen:
+                            continue
+                        seen.add(t)
+                        titles.append(t)
+                        items.append(
+                            {
+                                "id": r["id"],
+                                "title": t,
+                                "author": (r["author"] or "").strip() or "저자 미상",
+                                "cover_url": r["cover_url"],
+                            }
+                        )
+                        if len(items) >= 7:
+                            break
                 except Exception:
-                    out = []
-            return self._json({"q": q, "suggestions": out})
+                    titles, items = [], []
+            return self._json({"q": q, "suggestions": titles, "items": items})
 
         return self._json({"error": "unknown_endpoint", "path": path}, 404)
 

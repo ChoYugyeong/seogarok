@@ -29,6 +29,7 @@ const state = {
   // --- 백엔드 연동 상태 ---
   searchMode: 'hybrid',
   api: { on: false, checked: false, loading: false, hits: [], meta: null, error: null, seq: 0, health: null },
+  discover: [],
   cache: {}, // id -> api book (검색 결과/상세 캐시)
   notices: [], // 수집된 종료 예정 공지 (실데이터 + fixture)
 };
@@ -50,6 +51,7 @@ const API = {
   health() { return this.call('/api/health'); },
   search(q, mode, limit) { return this.call('/api/search', { q, mode, limit: limit || 24 }); },
   book(id) { return this.call('/api/book', { id }); },
+  suggest(q) { return this.call('/api/suggest', { q }); },
 };
 
 function mapApiBook(r) {
@@ -367,6 +369,163 @@ const COLLECTION_QUERY = {
 
 /* API(운영) 모드 홈: 실수집 공지 + 검색으로 이어지는 컬렉션만 보여준다.
    데모 전용 데이터(시뮬레이션 종료/가용성)를 라이브 화면에 노출하지 않기 위함. */
+/* ---------------- 검색 자동완성 / 최근 검색 / 발견 ---------------- */
+const RECENT_KEY = 'seogarok.recent';
+const GENRE_CHIPS = ['소설', '에세이', '인문', '과학', 'SF', '역사', '자기계발', '경제', '여행', '어린이'];
+const DISCOVER_QUERIES = [
+  { label: '지금 서가의 소설', q: '소설' },
+  { label: '이번 주 에세이', q: '에세이' },
+];
+
+function hl(text, q) {
+  const term = (q || '').trim();
+  const t = String(text || '');
+  if (!term) return esc(t);
+  const i = t.toLowerCase().indexOf(term.toLowerCase());
+  if (i < 0) return esc(t);
+  return esc(t.slice(0, i)) + '<mark>' + esc(t.slice(i, i + term.length)) + '</mark>' + esc(t.slice(i + term.length));
+}
+
+function recentSearches() {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]').slice(0, 6); } catch (e) { return []; }
+}
+function pushRecent(q) {
+  const v = String(q || '').trim();
+  if (!v) return;
+  const list = recentSearches().filter((x) => x !== v);
+  list.unshift(v);
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 6))); } catch (e) { }
+  renderRecent();
+}
+function renderRecent() {
+  const row = document.querySelector('#recentRow');
+  if (!row) return;
+  const list = recentSearches();
+  if (!list.length) { row.hidden = true; row.innerHTML = ''; return; }
+  row.hidden = false;
+  row.innerHTML = `<span class="recent-label">최근 검색</span>` +
+    list.map((q) => `<button class="recent-chip" data-recent="${esc(q)}">${esc(q)}</button>`).join('') +
+    `<button class="recent-clear" data-recent-clear aria-label="최근 검색 지우기">지우기</button>`;
+}
+
+function setupSuggest(inputSel, popSel) {
+  const input = document.querySelector(inputSel);
+  const pop = document.querySelector(popSel);
+  if (!input || !pop) return;
+  let items = [];
+  let active = -1;
+  let timer = null;
+  let seq = 0;
+
+  const close = () => { pop.hidden = true; pop.innerHTML = ''; active = -1; items = []; };
+  const render = (q) => {
+    if (!items.length) { close(); return; }
+    pop.innerHTML =
+      items.map((it, i) => `<button class="sug-row${i === active ? ' is-active' : ''}" data-sug="${i}" role="option" aria-selected="${i === active}">
+        <span class="sug-cover">${it.cover_url ? `<img src="${esc(it.cover_url)}" alt="" loading="lazy">` : ''}</span>
+        <span class="sug-main"><b>${hl(it.title, q)}</b><span class="sug-author">${hl(it.author || '', q)}</span></span>
+      </button>`).join('') +
+      `<button class="sug-more" data-sug-more>‘${esc(q)}’ 전체 결과 보기 <span aria-hidden="true">→</span></button>`;
+    pop.hidden = false;
+  };
+  const fetchItems = (q) => {
+    const my = ++seq;
+    clearTimeout(timer);
+    if (!q) { close(); return; }
+    timer = setTimeout(async () => {
+      try {
+        let next = [];
+        if (state.api.on) {
+          const r = await API.suggest(q);
+          next = (r.items || []).slice(0, 6);
+        } else {
+          const lower = q.toLowerCase();
+          next = BOOKS
+            .filter((b) => `${b.title} ${b.author}`.toLowerCase().includes(lower))
+            .slice(0, 6)
+            .map((b) => ({ id: b.id, title: b.title, author: b.author, cover_url: b.cover_url }));
+        }
+        if (my !== seq) return;
+        items = next;
+        active = -1;
+        render(q);
+      } catch (e) { close(); }
+    }, 160);
+  };
+  const choose = (i) => {
+    const it = items[i];
+    if (!it) return;
+    close();
+    input.blur();
+    openBook(it.id);
+  };
+  const searchAll = () => {
+    const q = input.value.trim();
+    if (!q) return;
+    close();
+    setQuery(q);
+    pushRecent(q);
+  };
+
+  input.addEventListener('input', () => fetchItems(input.value.trim()));
+  input.addEventListener('focus', () => { if (input.value.trim()) fetchItems(input.value.trim()); });
+  input.addEventListener('keydown', (e) => {
+    if (pop.hidden) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); active = (active + 1) % items.length; render(input.value.trim()); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); active = (active - 1 + items.length) % items.length; render(input.value.trim()); }
+    else if (e.key === 'Enter') { if (active >= 0) { e.preventDefault(); choose(active); } else { searchAll(); } }
+    else if (e.key === 'Escape') { close(); }
+  });
+  pop.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    const row = e.target.closest('[data-sug]');
+    if (row) { choose(Number(row.dataset.sug)); return; }
+    if (e.target.closest('[data-sug-more]')) searchAll();
+  });
+  document.addEventListener('click', (e) => {
+    if (!pop.hidden && !pop.contains(e.target) && e.target !== input) close();
+  });
+}
+
+async function loadDiscover() {
+  if (!state.api.on) return;
+  try {
+    const res = await Promise.all(DISCOVER_QUERIES.map((d) => API.search(d.q, 'hybrid', 6)));
+    state.discover = DISCOVER_QUERIES
+      .map((d, i) => ({ label: d.label, q: d.q, books: (res[i].results || []).map(mapApiBook) }))
+      .filter((x) => x.books.length);
+    cacheBooks(state.discover.flatMap((x) => x.books));
+    render();
+  } catch (e) { }
+}
+
+function renderDiscoverRails() {
+  const rails = (state.discover || []).map((r) => `<section class="section">
+    <div class="sec-head">
+      <div>
+        <h3 class="sec-title">${esc(r.label)}</h3>
+        <p class="sec-desc">실제 서가에서 찾은 ${r.books.length}권 · ‘${esc(r.q)}’ 검색</p>
+      </div>
+      <button class="sec-more" data-genre="${esc(r.q)}">더 보기 →</button>
+    </div>
+    <div class="grid rail-grid">${r.books.map(bookCardHTML).join('')}</div>
+  </section>`).join('');
+  return rails;
+}
+
+function renderGenreChips() {
+  const chips = GENRE_CHIPS.map((g) => `<button class="genre-chip" data-genre="${esc(g)}">${esc(g)}</button>`).join('');
+  return `<section class="section">
+    <div class="sec-head">
+      <div>
+        <h3 class="sec-title">장르로 둘러보기</h3>
+        <p class="sec-desc">지금 서가에 있는 책을 장르로 바로 찾아보세요.</p>
+      </div>
+    </div>
+    <div class="genre-row">${chips}</div>
+  </section>`;
+}
+
 function renderExploreApi() {
   const collections = COLLECTIONS.map((c) => `
     <button class="col-card" data-col="${c.id}">
@@ -376,6 +535,8 @@ function renderExploreApi() {
     </button>`).join('');
   return `
   ${noticesSection()}
+  ${renderGenreChips()}
+  ${renderDiscoverRails()}
 
   <section class="section">
     <div class="sec-head">
@@ -673,6 +834,7 @@ function scheduleApiSearch() {
 async function runApiSearch() {
   const q = state.query.trim();
   if (!q) return;
+  pushRecent(q);
   const seq = ++state.api.seq;
   try {
     const r = await API.search(q, state.searchMode, 24);
@@ -1194,6 +1356,30 @@ document.addEventListener('click', (e) => {
   const quick = t.closest('[data-quick]');
   if (quick) { const h = $('#heroSearch'); if (h) h.value = quick.dataset.quick; setQuery(quick.dataset.quick); return; }
 
+  const genreEl = t.closest('[data-genre]');
+  if (genreEl) {
+    const q = genreEl.dataset.genre;
+    const h = $('#heroSearch'); if (h) h.value = q;
+    setQuery(q);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
+  const recentEl = t.closest('[data-recent]');
+  if (recentEl) {
+    const q = recentEl.dataset.recent;
+    const h = $('#heroSearch'); if (h) h.value = q;
+    setQuery(q);
+    return;
+  }
+
+  const recentClear = t.closest('[data-recent-clear]');
+  if (recentClear) {
+    try { localStorage.removeItem(RECENT_KEY); } catch (e) { }
+    renderRecent();
+    return;
+  }
+
   const tabEl = t.closest('[data-tab]');
   if (tabEl) { goTab(tabEl.dataset.tab); return; }
 
@@ -1331,6 +1517,8 @@ async function initApi() {
         state.noticeReal = (n && n.real) || 0;
       } catch (e) { state.notices = []; }
       render();
+      loadDiscover();
+      renderRecent();
       if (state.query.trim()) {
         scheduleApiSearch();
         render();
@@ -1341,4 +1529,7 @@ async function initApi() {
   }
   state.api.checked = true;
 }
+setupSuggest('#heroSearch', '#heroSuggest');
+setupSuggest('#searchInput', '#navSuggest');
+renderRecent();
 initApi();

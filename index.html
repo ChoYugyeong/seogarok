@@ -35,11 +35,12 @@
     </nav>
 
     <div class="nav-right">
-      <label class="search-mini" for="searchInput">
+      <div class="search-mini">
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input id="searchInput" type="search" placeholder="책, 저자 검색" autocomplete="off" />
+        <input id="searchInput" type="search" placeholder="책, 저자 검색" autocomplete="off" aria-label="책, 저자 검색" aria-autocomplete="list" aria-controls="navSuggest" />
         <kbd>/</kbd>
-      </label>
+        <div class="suggest-pop suggest-pop--nav" id="navSuggest" hidden role="listbox" aria-label="검색 제안"></div>
+      </div>
       <button class="subs-btn" id="subsBtn" aria-expanded="false">
         내 구독
         <span class="count" id="subsCount">0</span>
@@ -68,11 +69,13 @@
 
       <div class="search-big">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input id="heroSearch" type="search" placeholder="『채식주의자』, 김초엽, SF …" autocomplete="off" aria-label="책 검색" />
+        <input id="heroSearch" type="search" placeholder="『채식주의자』, 김초엽, SF …" autocomplete="off" aria-label="책 검색" aria-autocomplete="list" aria-controls="heroSuggest" />
         <button class="search-go" data-act="search">검색</button>
+        <div class="suggest-pop" id="heroSuggest" hidden role="listbox" aria-label="검색 제안"></div>
       </div>
 
       <div class="quick" id="quickChips"></div>
+      <div class="recent-row" id="recentRow" hidden></div>
       <div class="live-badge" id="liveIndex" hidden></div>
     </div>
 
