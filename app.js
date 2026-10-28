@@ -31,6 +31,9 @@ const state = {
   api: { on: false, checked: false, loading: false, hits: [], meta: null, error: null, seq: 0, health: null },
   discover: [],
   tlDate: null,
+  searchFilter: 'all',
+  searchSort: 'relevance',
+  priceRange: 'all',
   cache: {}, // id -> api book (검색 결과/상세 캐시)
   notices: [], // 수집된 종료 예정 공지 (실데이터 + fixture)
 };
@@ -53,6 +56,16 @@ const API = {
   search(q, mode, limit) { return this.call('/api/search', { q, mode, limit: limit || 24 }); },
   book(id) { return this.call('/api/book', { id }); },
   suggest(q) { return this.call('/api/suggest', { q }); },
+  async post(path, body) {
+    const res = await fetch((this.base ?? '') + path, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(path + ' ' + res.status);
+    return res.json();
+  },
+  report(bookId, platform) { return this.post('/api/report', { book_id: bookId, platform }); },
 };
 
 function mapApiBook(r) {
@@ -77,6 +90,7 @@ function mapApiBook(r) {
     link: r.link,
     score: r.score,
     similar: r.similar || [],
+    reports: r.reports || [],
     real: true,
   };
 }
@@ -765,10 +779,34 @@ function renderApiSearch() {
   const cand = m && m.candidates
     ? `<span class="cand">후보 · 키워드 ${m.candidates.keyword} · 벡터 ${m.candidates.vector}</span>`
     : '';
-  const STRAT = { 'exact-first': '정확 일치 우선', rrf: 'RRF 융합', 'vector-only': '벡터 단독' };
+  const STRAT = { 'exact-first': '정확 일치 우선', rrf: 'RRF 융합', 'vector-only': '벡터 단독', chosung: '초성 검색' };
   const strat = m && m.strategy
     ? `<span class="strat strat-${m.strategy}">${STRAT[m.strategy] || m.strategy}</span>`
     : '';
+
+  // ③ 필터·정렬 (클라이언트 측, 결과 18k 커버리지 대응)
+  const avail = (b) => avInfo(b);
+  const hasSub = (b) => avail(b).subs.some((x) => x.status !== 'none');
+  const hasEnd = (b) => endings(b).length > 0;
+  const hasBuy = (b) => avail(b).buy.length > 0;
+  const priceOk = (b) => {
+    if (state.priceRange === 'all') return true;
+    const p = Number(b.price || 0);
+    if (!p) return false;
+    if (state.priceRange === 'under10') return p < 10000;
+    if (state.priceRange === '10to20') return p >= 10000 && p < 20000;
+    return p >= 20000;
+  };
+  const filterOk = (b) =>
+    (state.searchFilter === 'all' || (state.searchFilter === 'readable' && hasSub(b)) ||
+      (state.searchFilter === 'ending' && hasEnd(b)) || (state.searchFilter === 'buyable' && hasBuy(b))) && priceOk(b);
+  let view = api.hits.filter(filterOk);
+  const sortFn = {
+    price: (a, b) => (Number(a.price) || 9e9) - (Number(b.price) || 9e9),
+    new: (a, b) => String(b.year || '').localeCompare(String(a.year || '')),
+    title: (a, b) => String(a.title).localeCompare(String(b.title), 'ko'),
+  }[state.searchSort];
+  if (sortFn) view = view.slice().sort(sortFn);
 
   let body;
   if (api.loading && !api.hits.length) {
@@ -788,13 +826,13 @@ function renderApiSearch() {
         ${state.searchMode === 'keyword' ? '<button class="link" data-mode="hybrid">하이브리드로 검색 →</button>' : ''}
       </div>`;
   } else {
-    body = gridHTML(api.hits);
+    body = gridHTML(view);
   }
 
   return `
   <div class="result-head">
     <h2>‘${esc(q)}’</h2>
-    <span>${api.hits.length}권</span>
+    <span>${view.length}권${view.length !== api.hits.length ? ` <small style="color:var(--muted)">/ 전체 ${api.hits.length}권</small>` : ''}</span>
     <span class="spacer"></span>
     <button class="sec-more" data-act="clear-query">검색 지우기 ✕</button>
   </div>
@@ -810,15 +848,31 @@ function renderApiSearch() {
     ${timing}
   </div>
 
+  <div class="filter-bar filter-bar-2">
+    <span class="fb-label">필터</span>
+    ${[['all', '전체'], ['readable', '구독 제공'], ['ending', '종료 임박'], ['buyable', '구매 가능']]
+      .map(([id, label]) => `<button class="fchip ${state.searchFilter === id ? 'is-on' : ''}" data-search-filter="${id}">${label}</button>`).join('')}
+    <span class="fb-label" style="margin-left:8px">가격</span>
+    ${[['all', '전체'], ['under10', '1만↓'], ['10to20', '1~2만'], ['over20', '2만↑']]
+      .map(([id, label]) => `<button class="fchip ${state.priceRange === id ? 'is-on' : ''}" data-price="${id}">${label}</button>`).join('')}
+    <span class="spacer"></span>
+    <select class="sort-select" data-sort-select aria-label="정렬">
+      ${[['relevance', '관련도순'], ['price', '가격 낮은순'], ['new', '최신순'], ['title', '제목순']]
+        .map(([id, label]) => `<option value="${id}" ${state.searchSort === id ? 'selected' : ''}>${label}</option>`).join('')}
+    </select>
+  </div>
+
   ${body}
 
   <div class="search-note">
-    <b>${MODE_LABEL[state.searchMode]}</b> ·
-    ${state.searchMode === 'keyword'
-      ? '정확한 단어로 찾았어요. 의미가 비슷한 책은 ‘벡터’ 모드에서 더 잘 나와요.'
-      : state.searchMode === 'vector'
-        ? '뜻이 비슷한 책을 찾았어요. 단어가 정확히 겹치지 않아도 찾아드려요.'
-        : '제목·저자 정확 일치를 우선하고, 의미가 비슷한 책도 함께 찾았어요.'}
+    <b>${m && m.strategy === 'chosung' ? '초성' : MODE_LABEL[state.searchMode]}</b> ·
+    ${m && m.strategy === 'chosung'
+      ? '자음만 입력한 초성 검색이에요. 예: ㅎㄱ → 한강'
+      : state.searchMode === 'keyword'
+        ? '정확한 단어로 찾았어요. 의미가 비슷한 책은 ‘벡터’ 모드에서 더 잘 나와요.'
+        : state.searchMode === 'vector'
+          ? '뜻이 비슷한 책을 찾았어요. 단어가 정확히 겹치지 않아도 찾아드려요.'
+          : '제목·저자 정확 일치를 우선하고, 의미가 비슷한 책도 함께 찾았어요.'}
   </div>`;
 }
 
@@ -1244,6 +1298,13 @@ function drawerHTML(book) {
       </button>`).join('')}</div>
     </div>` : ''}
 
+    <div class="dw-block">
+      <h3>이 책, 어디서 봤나요?</h3>
+      <p class="sub">제보해 주시면 확인 후 가용성에 반영해요. 확인되지 않은 정보는 “미확인”으로 유지됩니다.</p>
+      <div class="report-row">${SUB_KEYS.map((k) => `<button class="report-btn" data-report="${k}" data-report-book="${esc(book.id)}">${esc(PLATFORMS[k].short)}</button>`).join('')}</div>
+      ${(book.reports || []).length ? `<p class="dw-hint">확인 중인 제보 · ${book.reports.map((r) => `${esc((PLATFORMS[r.platform] || {}).short || r.platform)} <b>${r.count}</b>건`).join(' · ')}</p>` : ''}
+    </div>
+
     <div class="dw-actions">
       <button class="act-btn ${cur === 'want' ? 'is-on' : ''}" data-shelf-set="want">관심 ${cur === 'want' ? '✓' : ''}</button>
       <button class="act-btn ${cur === 'reading' ? 'is-on' : ''}" data-shelf-set="reading">읽는 중 ${cur === 'reading' ? '✓' : ''}</button>
@@ -1257,6 +1318,20 @@ function drawerHTML(book) {
 }
 
 let lastFocused = null;
+async function sendReport(bookId, platform) {
+  try {
+    const r = await API.report(bookId, platform);
+    toast(r.duplicate ? '이미 접수된 제보예요. 감사합니다!' : `${PLATFORMS[platform].short} 제보 접수! 확인 후 반영할게요`);
+    try {
+      const fresh = mapApiBook(await API.book(bookId));
+      cacheBooks([fresh]);
+      if (state.openId === bookId) refreshDrawer();
+    } catch (e) { }
+  } catch (e) {
+    toast('제보를 보내지 못했어요. 잠시 후 다시 시도해 주세요');
+  }
+}
+
 async function openBook(id) {
   // API 모드에서는 similar(비슷한 책)까지 포함한 상세를 받아서 연다
   if (state.api.on) {
@@ -1428,6 +1503,18 @@ document.addEventListener('click', (e) => {
   const quick = t.closest('[data-quick]');
   if (quick) { const h = $('#heroSearch'); if (h) h.value = quick.dataset.quick; setQuery(quick.dataset.quick); return; }
 
+  const sf = t.closest('[data-search-filter]');
+  if (sf) { state.searchFilter = sf.dataset.searchFilter; render(); return; }
+
+  const pr = t.closest('[data-price]');
+  if (pr) { state.priceRange = pr.dataset.price; render(); return; }
+
+  const repBtn = t.closest('[data-report]');
+  if (repBtn) {
+    sendReport(repBtn.dataset.reportBook, repBtn.dataset.report);
+    return;
+  }
+
   const tl = t.closest('[data-tl]');
   if (tl) {
     const k = tl.dataset.tl;
@@ -1553,6 +1640,14 @@ document.addEventListener('input', (e) => {
     state.filter = 'all';
     state.tab = 'explore';
     if (state.api.on) scheduleApiSearch();
+    render();
+  }
+});
+
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-sort-select]');
+  if (sel) {
+    state.searchSort = sel.value;
     render();
   }
 });

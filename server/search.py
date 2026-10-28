@@ -119,11 +119,61 @@ def exact_match_first(conn, kw_ids: list[str], query: str, top: int = 5) -> bool
     return False
 
 
+def chosung_search(conn, query: str, limit: int = 24) -> list[str]:
+    """자음 질의('ㅎㄱ') → 초성 LIKE 매칭.
+
+    랭킹: 제목 접두 > 제목 포함 > 저자 접두 > 저자 포함, 같은 순위면 제목이 짧은 순.
+    (예: 'ㅎㄱ' → '한강' 작가 책, '한강'으로 시작하는 책이 먼저)
+    """
+    from .kotext import to_chosung
+
+    q = to_chosung(query)
+    if not q:
+        return []
+    rows = conn.execute(
+        "SELECT id, title, chosung, chosung_author FROM books "
+        "WHERE chosung LIKE ? OR chosung_author LIKE ?",
+        (f"%{q}%", f"%{q}%"),
+    ).fetchall()
+
+    def rank(r) -> tuple:
+        title_c = r["chosung"] or ""
+        author_c = r["chosung_author"] or ""
+        if author_c == q:
+            tier = -2          # 초성이 정확히 일치하는 작가 (한강)
+        elif title_c == q:
+            tier = -1          # 초성이 정확히 일치하는 책 (채식주의자)
+        elif title_c.startswith(q):
+            tier = 0
+        elif q in title_c:
+            tier = 1
+        elif author_c.startswith(q):
+            tier = 2
+        elif q in author_c:
+            tier = 3
+        else:
+            tier = 4
+        return (tier, len(r["title"] or ""), r["title"] or "")
+
+    rows.sort(key=rank)
+    return [r["id"] for r in rows[:limit]]
+
+
 def search(conn, store, embedder, query: str, mode: str = "hybrid", limit: int = 24) -> tuple[list[str], SearchDebug]:
     dbg = SearchDebug(mode=mode)
     query = (query or "").strip()
     if not query:
         return [], dbg
+
+    # ① 초성 검색 (ㅎㄱ → 한강): 자음만 입력한 경우
+    from .kotext import is_chosung_query
+
+    if is_chosung_query(query):
+        ids = chosung_search(conn, query, limit=limit)
+        dbg.extra["strategy"] = "chosung"
+        dbg.keyword_candidates = len(ids)
+        dbg.keyword_ms = 0.0
+        return ids, dbg
 
     kw_ids: list[str] = []
     vec_hits: list[tuple[str, float]] = []

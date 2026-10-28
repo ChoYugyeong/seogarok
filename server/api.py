@@ -14,12 +14,14 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import mimetypes
 import os
 import random
 import threading
 import time
+from datetime import datetime, timedelta
 import traceback
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -42,7 +44,7 @@ CHAOS_ENABLED = os.getenv("SEOG_CHAOS", "0") == "1"
 CHAOS = {"latency_ms": 0, "error_rate": 0.0}
 
 # 라벨 카디널리티를 낮추기 위한 경로 정규화
-_ROUTES = ("/api/search", "/api/book", "/api/notices", "/api/stats", "/api/suggest",
+_ROUTES = ("/api/search", "/api/book", "/api/notices", "/api/stats", "/api/suggest", "/api/report",
            "/api/health", "/api/_chaos", "/healthz", "/livez", "/readyz", "/metrics")
 
 
@@ -263,6 +265,8 @@ class Handler(BaseHTTPRequestHandler):
         self._chaos_apply(parsed.path)
         if parsed.path.startswith("/api/_chaos"):
             return self.handle_chaos(method, parsed)
+        if parsed.path == "/api/report":
+            return self.handle_report(method, parsed)
         if parsed.path.startswith("/api/"):
             return self.route_api(parsed.path, parse_qs(parsed.query))
         if parsed.path in ("/healthz", "/livez", "/readyz", "/metrics"):
@@ -283,6 +287,52 @@ class Handler(BaseHTTPRequestHandler):
                 log_event(level="warn", msg="metrics_gauge_refresh_failed", error=str(exc))
             body = METRICS.render().encode("utf-8")
             return self._send(200, body, "text/plain; version=0.0.4; charset=utf-8")
+
+    def handle_report(self, method: str, parsed):
+        """가용성 제보: POST /api/report {book_id, platform, note?}"""
+        if method != "POST":
+            return self._json({"error": "method_not_allowed"}, 405)
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length) if length else b"{}"
+        try:
+            body = json.loads(raw or b"{}")
+        except json.JSONDecodeError:
+            return self._json({"error": "invalid_json"}, 400)
+        if not isinstance(body, dict):
+            return self._json({"error": "invalid_body"}, 400)
+        book_id = str(body.get("book_id") or "").strip()[:120]
+        platform = str(body.get("platform") or "").strip()
+        note = str(body.get("note") or "").strip()[:200]
+        from .availability import SUB_PLATFORMS
+
+        if not book_id or platform not in SUB_PLATFORMS:
+            return self._json({"error": "invalid_params", "allowed": SUB_PLATFORMS}, 400)
+
+        app = get_app()
+        conn, _ = app.ctx()
+        exists = conn.execute("SELECT 1 FROM books WHERE id = ?", (book_id,)).fetchone()
+        if not exists:
+            return self._json({"error": "book_not_found", "book_id": book_id}, 404)
+
+        ip = (self.headers.get("X-Forwarded-For") or self.client_address[0] or "").split(",")[0].strip()
+        ip_hash = hashlib.sha256((ip or "unknown").encode("utf-8")).hexdigest()[:16]
+        now = datetime.now().astimezone().isoformat(timespec="seconds")
+        # 같은 사람이 같은 책/플랫폼을 12시간 내 반복 제보하는 것은 1회로 친다
+        dup = conn.execute(
+            "SELECT 1 FROM reports WHERE book_id=? AND platform=? AND ip_hash=? AND created_at >= ?",
+            (book_id, platform, ip_hash, (datetime.now().astimezone() - timedelta(hours=12)).isoformat(timespec="seconds")),
+        ).fetchone()
+        if not dup:
+            conn.execute(
+                "INSERT INTO reports(book_id, platform, note, ua, ip_hash, created_at) VALUES (?,?,?,?,?,?)",
+                (book_id, platform, note or None, self.headers.get("User-Agent", "")[:120], ip_hash, now),
+            )
+            conn.commit()
+        count = conn.execute(
+            "SELECT count(*) FROM reports WHERE book_id=? AND platform = ?", (book_id, platform)
+        ).fetchone()[0]
+        log_event(level="info", msg="availability_report", book_id=book_id, platform=platform, count=count, dup=bool(dup))
+        return self._json({"ok": True, "book_id": book_id, "platform": platform, "count": count, "duplicate": bool(dup)})
 
     def handle_chaos(self, method: str, parsed):
         if not CHAOS_ENABLED:
@@ -442,6 +492,17 @@ class Handler(BaseHTTPRequestHandler):
                         ]
             except Exception:
                 payload["similar"] = []
+            # ② 가용성 제보 집계 (확인 중)
+            try:
+                rep = conn.execute(
+                    "SELECT platform, count(*) AS c, max(created_at) AS last_at FROM reports WHERE book_id=? GROUP BY platform",
+                    (bid,),
+                ).fetchall()
+                payload["reports"] = [
+                    {"platform": r["platform"], "count": int(r["c"]), "last_at": r["last_at"]} for r in rep
+                ]
+            except Exception:
+                payload["reports"] = []
             return self._json(payload)
 
         if path == "/api/notices":
@@ -461,7 +522,20 @@ class Handler(BaseHTTPRequestHandler):
             conn, _ = app.ctx()
             if not q:
                 return self._json({"q": q, "suggestions": [], "items": []})
-            from .kotext import fts_query
+            from .kotext import fts_query, is_chosung_query
+
+            if is_chosung_query(q):
+                from .search import chosung_search
+
+                ids = chosung_search(conn, q, limit=7)
+                rows = fetch_books(conn, ids) if ids else []
+                by_id = {r["id"]: r for r in rows}
+                items = [
+                    {"id": r["id"], "title": r["title"], "author": (r["author"] or "").strip() or "저자 미상",
+                     "cover_url": r["cover_url"]}
+                    for r in (by_id[i] for i in ids if i in by_id)
+                ]
+                return self._json({"q": q, "suggestions": [x["title"] for x in items], "items": items})
 
             fq = fts_query(q)
             titles: list[str] = []

@@ -16,6 +16,27 @@ HANGUL_RE = re.compile(r"^[가-힣]+$")
 # 검색에서 의미 없는 토큰
 STOPWORDS = {"의", "을", "를", "이", "가", "은", "는", "와", "과", "도", "에", "로", "으로"}
 
+CHOSUNG = list("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ")
+_JAMO_ONLY = re.compile(r"^[ㄱ-ㅎ]+$")
+
+
+def is_chosung_query(text: str) -> bool:
+    """자음(초성)만으로 이루어진 질의인가. 예: 'ㅎㄱ', 'ㄱㅊㅇ'."""
+    t = re.sub(r"\s+", "", text or "")
+    return bool(t) and bool(_JAMO_ONLY.match(t))
+
+
+def to_chosung(text: str) -> str:
+    """'한강' -> 'ㅎㄱ'. 한글 음절은 초성으로, 영숫자는 그대로, 그 외는 버린다."""
+    out: list[str] = []
+    for ch in str(text or ""):
+        code = ord(ch)
+        if 0xAC00 <= code <= 0xD7A3:
+            out.append(CHOSUNG[(code - 0xAC00) // 588])
+        elif ch.isalnum():
+            out.append(ch.lower())
+    return "".join(out)
+
 
 def normalize(text: str) -> str:
     """NFKC + 소문자 + 공백 정리."""

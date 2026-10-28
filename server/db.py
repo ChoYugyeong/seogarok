@@ -19,7 +19,7 @@ from typing import Iterable, Sequence
 import numpy as np
 
 from . import config
-from .kotext import index_text, light_stem
+from .kotext import index_text, light_stem, to_chosung
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS books (
   category     TEXT,
   description  TEXT,
   search_terms TEXT,
+  chosung      TEXT,
+  chosung_author TEXT,
   collected_at TEXT
 );
 
@@ -72,6 +74,17 @@ CREATE TABLE IF NOT EXISTS availability (
   updated_at  TEXT,
   PRIMARY KEY (book_id, platform)
 );
+
+CREATE TABLE IF NOT EXISTS reports (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  book_id    TEXT NOT NULL,
+  platform   TEXT NOT NULL,
+  note       TEXT,
+  ua         TEXT,
+  ip_hash    TEXT,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_reports_book ON reports(book_id, platform);
 
 CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT);
 
@@ -238,6 +251,12 @@ def load_catalog_rows(path: Path | None = None) -> list[dict]:
     return rows
 
 
+def _author_core(author) -> str:
+    """'한강 저/홍은주 역' -> '한강' (역할어 제거, 첫 저자)."""
+    first = str(author or "").split("/")[0]
+    for w in ("저자", "지음", "엮음", "옮김", "그림", "감수", "편저", "원저", "저", "역", "글", "편"):
+        first = first.replace(w, " ")
+    return " ".join(first.split())
 def _clean(v):
     if v in ("", "null", "None"):
         return None
@@ -248,6 +267,13 @@ def sync_catalog(conn: sqlite3.Connection, embedder, rows: Iterable[dict], batch
     """카탈로그 JSONL -> books + FTS + 벡터."""
     store = VectorStore(conn, embedder.dim)
     store.reset()
+    # 구버전 DB 대비 chosung 컬럼/인덱스 보장
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(books)").fetchall()}
+    if "chosung" not in cols:
+        conn.execute("ALTER TABLE books ADD COLUMN chosung TEXT")
+    if "chosung_author" not in cols:
+        conn.execute("ALTER TABLE books ADD COLUMN chosung_author TEXT")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_books_chosung ON books(chosung)")
     conn.execute("DELETE FROM books")
     conn.execute("DELETE FROM books_fts")
     conn.commit()
@@ -266,9 +292,9 @@ def sync_catalog(conn: sqlite3.Connection, embedder, rows: Iterable[dict], batch
         conn.executemany(
             """INSERT OR REPLACE INTO books
                (id, source, title, subtitle, author, publisher, pubdate, isbn13, item_code,
-                price, price_list, rating, cover_url, link, category, description, search_terms, collected_at)
+                price, price_list, rating, cover_url, link, category, description, search_terms, chosung, chosung_author, collected_at)
                VALUES (:id,:source,:title,:subtitle,:author,:publisher,:pubdate,:isbn13,:item_code,
-                       :price,:price_list,:rating,:cover_url,:link,:category,:description,:search_terms,:collected_at)""",
+                       :price,:price_list,:rating,:cover_url,:link,:category,:description,:search_terms,:chosung,:chosung_author,:collected_at)""",
             buf_books,
         )
         conn.executemany(
@@ -310,6 +336,8 @@ def sync_catalog(conn: sqlite3.Connection, embedder, rows: Iterable[dict], batch
                 "category": _clean(row.get("category")),
                 "description": _clean(row.get("description")),
                 "search_terms": terms,
+                "chosung": to_chosung(row.get("title") or ""),
+                "chosung_author": to_chosung(_author_core(row.get("author"))),
                 "collected_at": _clean(row.get("collected_at")),
             }
         )
