@@ -776,6 +776,28 @@ function renderRecentRail() {
   </section>`;
 }
 
+function renderRanking() {
+  const rail = (state.discover || [])[0];
+  if (!rail || !rail.books.length) return '';
+  const books = rail.books.slice(0, 6);
+  const items = books.map((b, i) => `<button class="rank-item" data-book="${esc(b.id)}">
+    <span class="rank-no">${i + 1}</span>
+    <span class="rank-cover">${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="" loading="lazy">` : ''}</span>
+    <span class="rank-title">${esc(b.title)}</span>
+    <span class="rank-author">${esc(b.author)}</span>
+  </button>`).join('');
+  return `<section class="section rank-section">
+    <div class="sec-head">
+      <div>
+        <h3 class="sec-title">서가 랭킹</h3>
+        <p class="sec-desc">예스24 인기·스테디 목록에서 서가가 고른 순서예요.</p>
+      </div>
+      <button class="sec-more" data-genre="${esc(rail.q)}">더 보기 ›</button>
+    </div>
+    <div class="rank-row">${items}</div>
+  </section>`;
+}
+
 function renderDiscoverRails() {
   const rails = (state.discover || []).map((r) => `<section class="section">
     <div class="sec-head">
@@ -902,8 +924,8 @@ function renderExploreApi() {
       <span class="col-n">검색 · ${esc(COLLECTION_QUERY[c.id] || '')}</span>
     </button>`).join('');
   return `
-  ${renderGenreChips()}
   ${renderDailyPick()}
+  ${renderRanking()}
   ${noticesSection()}
   ${renderCollections()}
   ${renderDiscoverRails()}
