@@ -1125,21 +1125,6 @@ function renderApiSearch() {
   const modeBtn = (id, label) =>
     `<button class="fchip ${state.searchMode === id ? 'is-on' : ''}" data-mode="${id}">${label}</button>`;
 
-  const timing = m
-    ? `<span class="timing">
-         <b>${m.took_ms}ms</b>
-         <span class="timing-sub">키워드 ${(m.stage_ms && m.stage_ms.keyword) || 0}ms · 벡터 ${(m.stage_ms && m.stage_ms.vector) || 0}ms · 융합 ${(m.stage_ms && m.stage_ms.fuse) || 0}ms</span>
-       </span>`
-    : '';
-
-  const cand = m && m.candidates
-    ? `<span class="cand">후보 · 키워드 ${m.candidates.keyword} · 벡터 ${m.candidates.vector}</span>`
-    : '';
-  const STRAT = { 'exact-first': '정확 일치 우선', rrf: 'RRF 융합', 'vector-only': '벡터 단독', chosung: '초성 검색', 'on-demand': '실시간 조회', 'hybrid-live': '서가+실시간' };
-  const strat = m && m.strategy
-    ? `<span class="strat strat-${m.strategy}">${STRAT[m.strategy] || m.strategy}</span>`
-    : '';
-
   // ③ 필터·정렬 (클라이언트 측, 결과 18k 커버리지 대응)
   const avail = (b) => avInfo(b);
   const hasSub = (b) => avail(b).subs.some((x) => x.status !== 'none');
@@ -1199,9 +1184,6 @@ function renderApiSearch() {
     ${modeBtn('keyword', '키워드')}
     ${modeBtn('vector', '벡터')}
     <span class="spacer"></span>
-    ${strat}
-    ${cand}
-    ${timing}
   </div>
 
   <div class="filter-bar filter-bar-2">
@@ -1230,7 +1212,7 @@ function renderApiSearch() {
         ? '정확한 단어로 찾았어요. 의미가 비슷한 책은 ‘벡터’ 모드에서 더 잘 나와요.'
         : state.searchMode === 'vector'
           ? '뜻이 비슷한 책을 찾았어요. 단어가 정확히 겹치지 않아도 찾아드려요.'
-          : '제목·저자 정확 일치를 우선하고, 의미가 비슷한 책도 함께 찾았어요.'}
+          : '제목·저자가 맞는 책을 먼저, 의미가 비슷한 책도 함께 찾았어요.'}
   </div>`;
 }
 
