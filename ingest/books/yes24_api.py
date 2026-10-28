@@ -216,9 +216,10 @@ def discover_categories(api: Yes24API, limit: int = 24, root: str = "국내도�
 
 
 def collect(api: Yes24API, category_ids: list[str], per_category: int = 40, pages: int = 1,
-            queries: list[str] | None = None) -> list[dict]:
+            queries: list[str] | None = None, max_failures: int = 8) -> list[dict]:
     rows: list[dict] = []
     seen: set[str] = set()
+    fails = 0
     kinds = (("bestseller", api.bestseller), ("newproduct", api.newproduct), ("steady", api.steady))
     for cid in category_ids:
         for name, fn in kinds:
@@ -226,8 +227,13 @@ def collect(api: Yes24API, category_ids: list[str], per_category: int = 40, page
                 try:
                     items = fn(cid, page=page, page_size=per_category)
                 except RuntimeError as exc:
-                    print(f"  [{cid}/{name}/p{page}] 실패: {exc}")
+                    fails += 1
+                    print(f"  [{cid}/{name}/p{page}] 실패({fails}/{max_failures}): {exc}")
+                    if fails >= max_failures:
+                        print(f"[yes24] 연속 실패 {fails}회 — 수집 중단(폴백 사용)")
+                        return rows
                     continue
+                fails = 0
                 added = 0
                 for it in items:
                     row = to_row(it)

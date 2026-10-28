@@ -75,14 +75,24 @@ jobs:
           fi
           python -m pip install --quiet -r requirements.ingest.txt
           # 외부 API 행(hang) 대비 하드 타임아웃 — 실패 시 배포는 중단되지만 라이브는 유지된다
-          timeout 180 python -m ingest.notices.run --out data/notices.jsonl || echo "::warning::공지 수집 시간초과/실패 — 계속 진행"
-          timeout 420 python -m ingest.books.yes24_api --out data/catalog.jsonl --pages 3 \
+          timeout 120 python -m ingest.notices.run --out data/notices.jsonl || echo "::warning::공지 수집 시간초과/실패"
+          timeout 300 python -m ingest.books.yes24_api --out data/catalog.jsonl --pages 2 \
             --per-category 100 --categories 22 --no-cache || echo "::warning::도서 수집 시간초과"
-          CAT=$(wc -l < data/catalog.jsonl)
-          NOT=$(wc -l < data/notices.jsonl)
+          CAT=$(wc -l < data/catalog.jsonl 2>/dev/null || echo 0)
+          NOT=$(wc -l < data/notices.jsonl 2>/dev/null || echo 0)
+          # 러너 IP에서 외부 API가 막히는 경우가 있어, 신선 수집이 부족하면 커밋된 스냅샷으로 폴백한다.
+          if [ "${CAT:-0}" -lt 8000 ]; then
+            echo "::warning::신선 카탈로그 부족($CAT rows) — 커밋된 스냅샷으로 폴백"
+            gunzip -c data/catalog_fallback.jsonl.gz > data/catalog.jsonl
+            CAT=$(wc -l < data/catalog.jsonl)
+          fi
+          if [ "${NOT:-0}" -lt 50 ]; then
+            echo "::warning::신선 공지 부족($NOT rows) — 커밋된 스냅샷으로 폴백"
+            gunzip -c data/notices_fallback.jsonl.gz > data/notices.jsonl
+            NOT=$(wc -l < data/notices.jsonl)
+          fi
           echo "catalog=$CAT notices=$NOT"
-          # 수집 실패 시 seed(38권)로 배포되어 라이브 인덱스가 줄어드는 사고를 막는다
-          [ "$CAT" -ge 8000 ] || { echo "::error::카탈로그 수집 부족 ($CAT rows) — 배포 중단"; exit 1; }
+          [ "$CAT" -ge 8000 ] || { echo "::error::카탈로그 부족 ($CAT rows) — 배포 중단"; exit 1; }
 
       - name: image tag
         id: meta
