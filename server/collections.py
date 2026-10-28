@@ -71,18 +71,30 @@ def match_items(conn, items: list[dict]) -> list[dict]:
         for bt, ba, bid, btitle in prepared:
             if not bt:
                 continue
+            author_ok = bool(a and ba and (a == ba or ba.startswith(a) or a in ba))
             score = 0.0
             if bt == t:
-                score = 100.0
-            elif bt.startswith(t) or t.startswith(bt):
-                score = 92.0 - abs(len(bt) - len(t))
-            elif len(t) >= 2 and t in bt:
-                score = 80.0 - (len(bt) - len(t)) * 0.5
+                score = 100.0            # 제목 완전 일치 (부제 유무와 무관)
+            elif bt.startswith(t):
+                score = 90.0 - min(len(bt) - len(t), 20) * 0.25
+            elif t.startswith(bt):
+                score = 86.0 - min(len(t) - len(bt), 20) * 0.25
+            elif len(t) >= 5 and t in bt:
+                # '고전시가'처럼 짧은 토큰이 다른 제목에 우연히 포함되는 오탐 방지
+                score = 78.0 - min(len(bt) - len(t), 20) * 0.3
+            elif len(t) >= 2 and author_ok and t in bt:
+                # '국가' → '플라톤 국가'처럼 짧은 제목이지만 저자가 일치하면 허용
+                score = 74.0
             if score <= 0:
                 continue
             if a and ba:
-                if a == ba or ba.startswith(a) or a in ba:
+                if author_ok:
                     score += 8.0
+                elif len(t) <= 4 and score < 100:
+                    # 짧은 제목은 저자 확인 필수 (단, 제목 완전 일치는 예외)
+                    continue
+                else:
+                    score -= 6.0
             if score > best_score:
                 best_score, best = score, bid
         if best and best_score >= 70:
