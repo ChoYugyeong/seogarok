@@ -170,6 +170,23 @@ class VectorStore:
                 self._mat = np.zeros((0, self.dim), dtype=np.float32)
         return self._ids, self._mat
 
+    def get(self, book_id: str) -> np.ndarray | None:
+        """책 하나의 임베딩 벡터를 반환 (없으면 None)."""
+        if self.backend == "sqlite-vec":
+            row = self.conn.execute(
+                "SELECT embedding FROM vec_books WHERE book_id = ?", (book_id,)
+            ).fetchone()
+        else:
+            row = self.conn.execute(
+                "SELECT vec FROM book_vectors WHERE book_id = ?", (book_id,)
+            ).fetchone()
+        if not row:
+            return None
+        try:
+            return np.frombuffer(row[0], dtype=np.float32).copy()
+        except Exception:
+            return None
+
     def search(self, qvec: np.ndarray, k: int = 50) -> list[tuple[str, float]]:
         """(book_id, cosine similarity) 내림차순."""
         q = np.asarray(qvec, dtype=np.float32).reshape(-1)

@@ -30,6 +30,7 @@ const state = {
   searchMode: 'hybrid',
   api: { on: false, checked: false, loading: false, hits: [], meta: null, error: null, seq: 0, health: null },
   discover: [],
+  tlDate: null,
   cache: {}, // id -> api book (검색 결과/상세 캐시)
   notices: [], // 수집된 종료 예정 공지 (실데이터 + fixture)
 };
@@ -75,6 +76,7 @@ function mapApiBook(r) {
     rating: r.rating,
     link: r.link,
     score: r.score,
+    similar: r.similar || [],
     real: true,
   };
 }
@@ -665,44 +667,84 @@ function noticesSection() {
   const all = state.notices || [];
   if (!all.length) return '';
   const real = all.filter((n) => n.source_kind && n.source_kind !== 'fixture');
-  // 같은 시리즈(Vol.01, Vol.02 …)가 연속으로 보이지 않도록 제목 기준으로 다양화
-  const seen = new Set();
-  const list = [];
-  for (const n of real.length ? real : all) {
-    const key = String(n.title).replace(/[0-9]+|vol\.?/gi, '').trim().slice(0, 10);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    list.push(n);
-    if (list.length >= 6) break;
-  }
-  const platforms = [...new Set(real.map((n) => n.platform))];
+  const src = real.length ? real : all;
+  const platforms = [...new Set(src.map((n) => n.platform))];
   const label = platforms.map((p) => PLATFORM_NAME[p] || p).join(' · ');
+  const realCount = state.noticeReal || real.length;
 
-  const rows = list.map((n) => {
+  // 날짜별 버킷 (YYYY-MM-DD)
+  const buckets = new Map();
+  src.forEach((n) => {
+    const k = String(n.ends_at || '').slice(0, 10);
+    if (!k) return;
+    if (!buckets.has(k)) buckets.set(k, []);
+    buckets.get(k).push(n);
+  });
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    days.push({ i, date: d, k, n: (buckets.get(k) || []).length });
+  }
+  const totalUpcoming = days.reduce((a, b) => a + b.n, 0);
+
+  const rowFor = (n) => {
     const d = daysUntil(n.ends_at);
     const isReal = n.source_kind && n.source_kind !== 'fixture';
     const dd = d === null ? '미확인' : d < 0 ? '종료됨' : d === 0 ? '오늘' : `D-${d}`;
     return `<div class="notice-row">
       <div class="notice-main">
         <b>${esc(n.title)}</b>
-        <p>${esc(n.author || '저자 미상')}<span class="sep">·</span><span class="plat">${esc(PLATFORM_NAME[n.platform] || n.platform)}</span>${n.ends_at ? `<span class="sep">·</span>${esc(n.ends_at)}` : ''}</p>
+        <p>${esc(n.author || '저자 미상')}<span class="sep">·</span><span class="plat">${esc(PLATFORM_NAME[n.platform] || n.platform)}</span></p>
       </div>
       <div class="notice-right">
         <span class="notice-dday ${d !== null && d <= 3 ? 'hot' : ''}">${dd}</span>
         ${n.source_url && isReal ? `<a class="notice-src" href="${esc(n.source_url)}" target="_blank" rel="noopener" title="출처 열기">↗</a>` : ''}
       </div>
     </div>`;
+  };
+
+  // 타임라인 스트립 (오늘~D-6)
+  const dow = ['일', '월', '화', '수', '목', '금', '토'];
+  const strip = days.map((d) => `<button class="tl-day${d.i === 0 ? ' is-today' : ''}${d.n ? ' has' : ''}${state.tlDate === d.k ? ' is-on' : ''}" data-tl="${d.k}" aria-label="${d.date.getMonth() + 1}월 ${d.date.getDate()}일 ${d.n}권">
+      <span class="tl-dow">${dow[d.date.getDay()]}</span>
+      <span class="tl-date">${d.date.getDate()}</span>
+      <span class="tl-n">${d.n || '·'}</span>
+    </button>`).join('');
+
+  // 그룹 (선택된 날짜가 있으면 그것만, 없으면 전체 예정일, 예정이 없으면 최근 6건)
+  const visible = state.tlDate ? days.filter((d) => d.k === state.tlDate) : days.filter((d) => d.n);
+  const groups = visible.map((d) => {
+    const list = (buckets.get(d.k) || []).slice(0, 4);
+    const head = d.i === 0 ? '오늘' : d.i === 1 ? '내일' : `D-${d.i}`;
+    return `<div class="tl-group">
+      <div class="tl-group-head"><b>${head}</b> · ${d.date.getMonth() + 1}월 ${d.date.getDate()}일 (${dow[d.date.getDay()]}) <span>${d.n}권</span></div>
+      <div class="notice-panel">${list.map(rowFor).join('')}</div>
+    </div>`;
   }).join('');
 
-  const realCount = state.noticeReal || real.length;
-  return `<section class="section">
+  const fallback = (() => {
+    const past = src
+      .filter((n) => n.ends_at && daysUntil(n.ends_at) < 0)
+      .sort((a, b) => String(b.ends_at).localeCompare(String(a.ends_at)))
+      .slice(0, 6);
+    return past.length ? `<div class="notice-panel">${past.map(rowFor).join('')}</div>` : '';
+  })();
+
+  return `<section class="section" id="timeline">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title"><span class="ico">↓</span>이번 주, 서가에서 내려간 책</h3>
-        <p class="sec-desc">${esc(label)} 공개 목록에서 확인된 종료 공지 <b style="color:var(--text-2)">${realCount}건</b> · 매일 갱신</p>
+        <h3 class="sec-title"><span class="ico">↓</span>종료 예정 타임라인</h3>
+        <p class="sec-desc">${esc(label)} 공지 <b style="color:var(--text-2)">${realCount}건</b> · 이번 주 예정 <b style="color:var(--accent)">${totalUpcoming}권</b> · 매일 갱신</p>
       </div>
+      ${state.tlDate ? `<button class="sec-more" data-tl-clear>전체 보기 →</button>` : ''}
     </div>
-    <div class="notice-panel">${rows}</div>
+    <div class="tl-strip">${strip}</div>
+    <div class="tl-groups">${groups || fallback}</div>
   </section>`;
 }
 
@@ -1188,6 +1230,16 @@ function drawerHTML(book) {
       <div class="av-table">${avRowHTML(book)}</div>
     </div>
 
+    ${(book.similar || []).length ? `<div class="dw-block">
+      <h3>이 책과 비슷한 책 <span class="n">${book.similar.length}권</span></h3>
+      <p class="sub">같은 임베딩 공간에서 가까운 순서예요.</p>
+      <div class="similar-row">${book.similar.map((x) => `<button class="sim-card" data-book="${esc(x.id)}">
+        <span class="sim-cover">${x.cover_url ? `<img src="${esc(x.cover_url)}" alt="" loading="lazy">` : ''}</span>
+        <b>${esc(x.title)}</b>
+        <span>${esc(x.author || '')}</span>
+      </button>`).join('')}</div>
+    </div>` : ''}
+
     <div class="dw-actions">
       <button class="act-btn ${cur === 'want' ? 'is-on' : ''}" data-shelf-set="want">관심 ${cur === 'want' ? '✓' : ''}</button>
       <button class="act-btn ${cur === 'reading' ? 'is-on' : ''}" data-shelf-set="reading">읽는 중 ${cur === 'reading' ? '✓' : ''}</button>
@@ -1202,6 +1254,17 @@ function drawerHTML(book) {
 
 let lastFocused = null;
 async function openBook(id) {
+  // API 모드에서는 similar(비슷한 책)까지 포함한 상세를 받아서 연다
+  if (state.api.on) {
+    try {
+      const r = await API.book(id);
+      const nb = mapApiBook(r);
+      cacheBooks([nb]);
+      return showDrawer(nb);
+    } catch (e) {
+      // 상세 실패 시 캐시로 폴백
+    }
+  }
   let b = lookupBook(id);
   if (!b && state.api.on) {
     try {
@@ -1214,7 +1277,11 @@ async function openBook(id) {
     }
   }
   if (!b) return;
-  state.openId = id;
+  return showDrawer(b);
+}
+
+function showDrawer(b) {
+  state.openId = b.id;
   const root = $('#drawerRoot');
   $('.drawer', root).innerHTML = drawerHTML(b);
   $('.drawer', root).scrollTop = 0;
@@ -1355,6 +1422,18 @@ document.addEventListener('click', (e) => {
 
   const quick = t.closest('[data-quick]');
   if (quick) { const h = $('#heroSearch'); if (h) h.value = quick.dataset.quick; setQuery(quick.dataset.quick); return; }
+
+  const tl = t.closest('[data-tl]');
+  if (tl) {
+    const k = tl.dataset.tl;
+    state.tlDate = state.tlDate === k ? null : k;
+    render();
+    const el = document.getElementById('timeline');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return;
+  }
+  const tlClear = t.closest('[data-tl-clear]');
+  if (tlClear) { state.tlDate = null; render(); return; }
 
   const genreEl = t.closest('[data-genre]');
   if (genreEl) {

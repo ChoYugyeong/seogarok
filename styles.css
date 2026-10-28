@@ -1595,3 +1595,49 @@ svg { display: block; }
   .genre-chip { height: 34px; font-size: 12.5px; padding: 0 14px; }
   .sug-cover { width: 26px; height: 36px; }
 }
+/* ==========================================================================
+   종료 예정 타임라인 · 비슷한 책
+   ========================================================================== */
+.tl-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin-bottom: 22px; }
+.tl-day {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 10px 4px 8px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); transition: all .16s ease;
+}
+.tl-day:hover { border-color: var(--ink-2); transform: translateY(-1px); }
+.tl-day.is-today { border-color: var(--accent); background: var(--accent-soft); }
+.tl-day.is-on { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.tl-day.is-on .tl-dow, .tl-day.is-on .tl-n { color: var(--paper); }
+.tl-dow { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; color: var(--muted); }
+.tl-date { font-family: var(--serif); font-size: 19px; font-weight: 700; letter-spacing: -.03em; }
+.tl-n { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.tl-day.has .tl-n { color: var(--accent); font-weight: 600; }
+.tl-group + .tl-group { margin-top: 18px; }
+.tl-group-head { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.tl-group-head b { color: var(--accent); font-family: var(--serif); font-size: 14px; margin-right: 2px; }
+.tl-group-head span { color: var(--text-2); }
+
+.similar-row {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 92px; gap: 12px;
+  overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin;
+}
+.sim-card { display: flex; flex-direction: column; gap: 6px; text-align: left; min-width: 0; }
+.sim-cover {
+  aspect-ratio: 3 / 4.35; border-radius: 3px; overflow: hidden; background: var(--paper-2);
+  box-shadow: 0 1px 2px rgba(23,18,14,.14), 0 8px 18px -12px rgba(23,18,14,.4);
+  transition: transform .18s ease;
+}
+.sim-card:hover .sim-cover { transform: translateY(-3px); }
+.sim-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.sim-card b {
+  font-family: var(--serif); font-size: 12px; font-weight: 600; line-height: 1.35; letter-spacing: -.02em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.sim-card > span:last-child { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 560px) {
+  .tl-strip { gap: 5px; }
+  .tl-day { padding: 8px 2px 6px; }
+  .tl-date { font-size: 16px; }
+  .similar-row { grid-auto-columns: 78px; }
+}

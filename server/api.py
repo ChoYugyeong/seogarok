@@ -391,7 +391,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path == "/api/book":
             bid = unquote((qs.get("id") or [""])[0])
-            conn, _ = app.ctx()
+            conn, store = app.ctx()
             rows = fetch_books(conn, [bid])
             if not rows:
                 return self._json({"error": "not_found", "id": bid}, 404)
@@ -399,7 +399,28 @@ class Handler(BaseHTTPRequestHandler):
             avs = fetch_availability(conn, [bid])
             nts = fetch_notices(conn, [bid])
             av, origins = build_availability(row, avs.get(bid, []), nts.get(bid, []))
-            return self._json(serialize_book(row, av, origins, nts.get(bid, [])))
+            payload = serialize_book(row, av, origins, nts.get(bid, []))
+            # ① 이 책과 비슷한 책: 같은 임베딩 공간에서 최근접 6권 (자기 제외)
+            try:
+                vec = store.get(bid)
+                if vec is not None:
+                    hits = store.search(vec, k=7)
+                    sim_ids = [h[0] for h in hits if h[0] != bid][:6]
+                    if sim_ids:
+                        order = {rid: n for n, rid in enumerate(sim_ids)}
+                        rows2 = sorted(fetch_books(conn, sim_ids), key=lambda r: order.get(r["id"], 99))
+                        payload["similar"] = [
+                            {
+                                "id": r["id"],
+                                "title": r["title"],
+                                "author": r["author"],
+                                "cover_url": r["cover_url"],
+                            }
+                            for r in rows2
+                        ]
+            except Exception:
+                payload["similar"] = []
+            return self._json(payload)
 
         if path == "/api/notices":
             limit = int((qs.get("limit") or ["50"])[0])
