@@ -47,3 +47,8 @@ output "www_domain_records" {
     { name = r.name, type = r.type, rrdata = r.rrdata }
   ]
 }
+
+output "reports_bucket" {
+  description = "가용성 제보 원본 GCS 버킷"
+  value       = google_storage_bucket.reports.name
+}

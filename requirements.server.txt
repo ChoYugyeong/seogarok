@@ -2,3 +2,4 @@
 numpy>=1.26
 sqlite-vec>=0.1.6
 model2vec>=0.3
+google-cloud-storage>=2.18

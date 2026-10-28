@@ -1704,3 +1704,12 @@ svg { display: block; }
 .cur-cat span { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-left: 4px; }
 .cur-back { margin-bottom: 12px; }
 @media (max-width: 560px) { .cur-card { padding: 13px; gap: 12px; } .cur-covers { grid-template-columns: repeat(2, 30px); } .cur-cover { width: 30px; height: 42px; } }
+/* 컬렉션 미수록 항목 (온디맨드 검색 유도) */
+.cur-unmatched { margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--line); }
+.cur-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.cur-chip {
+  height: 30px; padding: 0 12px; border-radius: 999px;
+  border: 1px dashed var(--line-2); background: transparent;
+  font-size: 12px; color: var(--text-2);
+}
+.cur-chip:hover { border-style: solid; border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }

@@ -327,6 +327,14 @@ class Handler(BaseHTTPRequestHandler):
         count = 0
         dup = False
         stored = "db"
+        # ① 제보 원본을 GCS 에 영속화 (컨테이너 재시작에도 유지)
+        try:
+            from .reports_store import persist_report
+
+            persist_report(record)
+            stored = "gcs"
+        except Exception:
+            pass
         try:
             conn, _ = app.ctx()
             exists = conn.execute("SELECT 1 FROM books WHERE id = ?", (book_id,)).fetchone()
@@ -467,6 +475,41 @@ class Handler(BaseHTTPRequestHandler):
             for row in rows:
                 av, origins = build_availability(row, avs.get(row["id"], []), nts.get(row["id"], []))
                 results.append(serialize_book(row, av, origins, nts.get(row["id"], []), scores.get(row["id"])))
+            # ③ 카탈로그에 없으면 실시간 조회 (YES24 Open API)
+            #    - 로컬 결과 0건이면 온디맨드 단독
+            #    - FTS 후보 0건(벡터만 걸린 경우)이면 온디맨드 결과를 앞에 병합
+            strategy = dbg.extra.get("strategy")
+            if dbg.keyword_candidates == 0 and q.strip() and results:
+                try:
+                    from .on_demand import search as od_search
+
+                    live_merge = od_search(q, limit=min(limit, 8))
+                except Exception as exc:
+                    log_event(level="warn", msg="on_demand_merge_failed", error=str(exc)[:200])
+                    live_merge = []
+                if live_merge:
+                    seen_titles = {x["title"] for x in live_merge}
+                    results = live_merge + [x for x in results if x["title"] not in seen_titles][: max(0, limit - len(live_merge))]
+                    strategy = "hybrid-live"
+            if not results and q.strip():
+                try:
+                    from .on_demand import search as od_search
+
+                    live = od_search(q, limit=min(limit, 12))
+                except Exception:
+                    live = []
+                if live:
+                    return self._json({
+                        "q": q,
+                        "mode": mode,
+                        "count": len(live),
+                        "took_ms": round((time.perf_counter() - t0) * 1000, 2),
+                        "stage_ms": {"keyword": 0, "vector": 0, "fuse": 0},
+                        "candidates": {"keyword": 0, "vector": 0},
+                        "strategy": "on-demand",
+                        "live": True,
+                        "results": live,
+                    })
             payload = {
                 "q": q,
                 "mode": mode,
@@ -478,7 +521,7 @@ class Handler(BaseHTTPRequestHandler):
                     "fuse": dbg.fuse_ms,
                 },
                 "candidates": {"keyword": dbg.keyword_candidates, "vector": dbg.vector_candidates},
-                "strategy": dbg.extra.get("strategy"),
+                "strategy": strategy,
                 "results": results,
             }
             if debug:
@@ -495,7 +538,29 @@ class Handler(BaseHTTPRequestHandler):
             conn, store = app.ctx()
             rows = fetch_books(conn, [bid])
             if not rows:
-                return self._json({"error": "not_found", "id": bid}, 404)
+                # ③ 온디맨드 상세 + 임베딩 유사 책
+                try:
+                    from .on_demand import fetch_book as od_book
+
+                    payload = od_book(bid)
+                except Exception:
+                    payload = None
+                if not payload:
+                    return self._json({"error": "not_found", "id": bid}, 404)
+                try:
+                    vec = app.embedder.encode_one(f"{payload['title']} {payload.get('author') or ''}")
+                    hits = store.search(vec, k=7)
+                    sim_ids = [h[0] for h in hits][:6]
+                    by_id = {r["id"]: r for r in fetch_books(conn, sim_ids)}
+                    payload["similar"] = [
+                        {"id": i, "title": by_id[i]["title"], "author": by_id[i]["author"],
+                         "cover_url": by_id[i]["cover_url"]}
+                        for i in sim_ids if i in by_id
+                    ]
+                except Exception:
+                    payload["similar"] = []
+                payload["reports"] = []
+                return self._json(payload)
             row = rows[0]
             avs = fetch_availability(conn, [bid])
             nts = fetch_notices(conn, [bid])
@@ -580,7 +645,20 @@ class Handler(BaseHTTPRequestHandler):
             ).fetchall()
             meta = dict(row)
             meta["matched"] = len(items)
-            return self._json({"collection": meta, "books": [dict(x) for x in items]})
+            # 미수록 항목 (프론트에서 '실시간 조회' 칩으로 노출)
+            try:
+                from .collections import load_collections
+
+                src = next((c for c in load_collections() if c.get("slug") == slug), None)
+                matched_titles = {x["item_title"] for x in items}
+                unmatched = [
+                    {"title": x.get("title"), "author": x.get("author"), "category": x.get("category")}
+                    for x in (src.get("items") or [])
+                    if x.get("title") not in matched_titles
+                ][:60]
+            except Exception:
+                unmatched = []
+            return self._json({"collection": meta, "books": [dict(x) for x in items], "unmatched": unmatched})
 
         if path == "/api/suggest":
             q = (qs.get("q") or [""])[0].strip()
@@ -596,43 +674,57 @@ class Handler(BaseHTTPRequestHandler):
                 rows = fetch_books(conn, ids) if ids else []
                 by_id = {r["id"]: r for r in rows}
                 items = [
-                    {"id": r["id"], "title": r["title"], "author": (r["author"] or "").strip() or "저자 미상",
-                     "cover_url": r["cover_url"]}
+                    {
+                        "id": r["id"],
+                        "title": r["title"],
+                        "author": (r["author"] or "").strip() or "저자 미상",
+                        "cover_url": r["cover_url"],
+                    }
                     for r in (by_id[i] for i in ids if i in by_id)
                 ]
-                return self._json({"q": q, "suggestions": [x["title"] for x in items], "items": items})
+            else:
+                items = []
+                fq = fts_query(q)
+                if fq:
+                    try:
+                        rows = conn.execute(
+                            "SELECT b.id, b.title, b.author, b.cover_url "
+                            "FROM books_fts f JOIN books b ON b.id = f.book_id "
+                            "WHERE books_fts MATCH ? ORDER BY bm25(books_fts) LIMIT 10",
+                            (fq,),
+                        ).fetchall()
+                        seen: set[str] = set()
+                        for r in rows:
+                            t = (r["title"] or "").strip()
+                            if not t or t in seen:
+                                continue
+                            seen.add(t)
+                            items.append(
+                                {
+                                    "id": r["id"],
+                                    "title": t,
+                                    "author": (r["author"] or "").strip() or "저자 미상",
+                                    "cover_url": r["cover_url"],
+                                }
+                            )
+                            if len(items) >= 7:
+                                break
+                    except Exception:
+                        items = []
 
-            fq = fts_query(q)
-            titles: list[str] = []
-            items: list[dict] = []
-            if fq:
+            # ③ 카탈로그에 없으면 온디맨드 제안
+            if not items and q:
                 try:
-                    rows = conn.execute(
-                        "SELECT b.id, b.title, b.author, b.cover_url "
-                        "FROM books_fts f JOIN books b ON b.id = f.book_id "
-                        "WHERE books_fts MATCH ? ORDER BY bm25(books_fts) LIMIT 10",
-                        (fq,),
-                    ).fetchall()
-                    seen: set[str] = set()
-                    for r in rows:
-                        t = (r["title"] or "").strip()
-                        if not t or t in seen:
-                            continue
-                        seen.add(t)
-                        titles.append(t)
-                        items.append(
-                            {
-                                "id": r["id"],
-                                "title": t,
-                                "author": (r["author"] or "").strip() or "저자 미상",
-                                "cover_url": r["cover_url"],
-                            }
-                        )
-                        if len(items) >= 7:
-                            break
+                    from .on_demand import search as od_search
+
+                    live = od_search(q, limit=6)
+                    items = [
+                        {"id": x["id"], "title": x["title"], "author": x["author"], "cover_url": x["cover_url"]}
+                        for x in live
+                    ]
                 except Exception:
-                    titles, items = [], []
-            return self._json({"q": q, "suggestions": titles, "items": items})
+                    items = []
+            return self._json({"q": q, "suggestions": [x["title"] for x in items], "items": items})
 
         return self._json({"error": "unknown_endpoint", "path": path}, 404)
 
@@ -673,6 +765,13 @@ def serve(host: str | None = None, port: int | None = None):
     httpd.daemon_threads = True
     print(f"[seoga] http://{host}:{port}  books={app.book_count} notices={app.notice_count}")
     print(f"[seoga] embed={app.meta.get('embed_backend')} dim={app.dim} vec={app.vec_backend}")
+    try:
+        from .on_demand import enabled as _od_enabled
+
+        _od = _od_enabled()
+    except Exception:
+        _od = False
+    print(f"[seoga] on_demand={_od} reports_bucket={bool(__import__('os').getenv('REPORTS_BUCKET'))}")
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

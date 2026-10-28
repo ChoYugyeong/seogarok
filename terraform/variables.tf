@@ -91,3 +91,16 @@ variable "custom_domain" {
   type        = string
   default     = ""
 }
+
+variable "yes24_api_key" {
+  description = "YES24 Open API 키 (온디맨드 조회용, 민감)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "reports_bucket" {
+  description = "가용성 제보 원본을 저장할 GCS 버킷 이름"
+  type        = string
+  default     = "seogarok-reports"
+}

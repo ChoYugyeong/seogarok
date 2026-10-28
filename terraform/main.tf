@@ -76,6 +76,16 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "PYTHONUNBUFFERED"
         value = "1"
       }
+      env {
+        # ③ 온디맨드 조회 (카탈로그 미수록 책) — 비어 있으면 기능 비활성
+        name  = "YES24_API_KEY"
+        value = var.yes24_api_key
+      }
+      env {
+        # ① 제보 원본 영속화 버킷
+        name  = "REPORTS_BUCKET"
+        value = google_storage_bucket.reports.name
+      }
 
       # 이미지에 인덱스를 구워두므로 기동만 확인하면 된다
       startup_probe {
@@ -232,4 +242,30 @@ resource "google_cloud_run_domain_mapping" "www" {
   spec {
     route_name = google_cloud_run_v2_service.api.name
   }
+}
+
+# -----------------------------------------------
+# 제보 영속화 버킷 (컨테이너 FS 는 인메모리라 재시작 시 소실)
+# -----------------------------------------------
+resource "google_storage_bucket" "reports" {
+  name                        = var.reports_bucket
+  location                    = var.artifact_region
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  force_destroy               = false
+
+  lifecycle_rule {
+    condition {
+      age = 730
+    }
+    action {
+      type = "Delete"
+    }
+  }
+}
+
+resource "google_storage_bucket_iam_member" "runtime_reports" {
+  bucket = google_storage_bucket.reports.name
+  role   = "roles/storage.objectAdmin"
+  member = "serviceAccount:${google_service_account.runtime.email}"
 }

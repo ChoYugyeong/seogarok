@@ -627,7 +627,12 @@ function renderCollection() {
     <p class="cur-source">출처 · ${esc(c.source || '')}${c.source_url ? ` · <a href="${esc(c.source_url)}" target="_blank" rel="noopener">원문 보기 ↗</a>` : ''}</p>
     <p class="cur-note">${c.matched || 0}/${c.total || 0}권이 서가에 있어요. ${esc(c.license_note || '')}</p>
   </div>
-  ${catSections || '<div class="empty"><b>아직 매칭된 책이 없어요</b></div>'}`;
+  ${catSections || '<div class="empty"><b>아직 매칭된 책이 없어요</b></div>'}
+  ${(data.unmatched || []).length ? `<div class="cur-unmatched">
+    <h3 class="cur-cat">서가에 없는 ${data.unmatched.length}권 <span>실시간 조회</span></h3>
+    <p class="cur-desc" style="margin-bottom:10px">카탈로그에 없어서, 검색하면 예스24에서 실시간으로 찾아드려요.</p>
+    <div class="cur-chips">${data.unmatched.slice(0, 40).map((x) => `<button class="cur-chip" data-search-q="${esc(x.title)}">${esc(x.title)}</button>`).join('')}</div>
+  </div>` : ''}`;
 }
 
 function renderExploreApi() {
@@ -868,7 +873,7 @@ function renderApiSearch() {
   const cand = m && m.candidates
     ? `<span class="cand">후보 · 키워드 ${m.candidates.keyword} · 벡터 ${m.candidates.vector}</span>`
     : '';
-  const STRAT = { 'exact-first': '정확 일치 우선', rrf: 'RRF 융합', 'vector-only': '벡터 단독', chosung: '초성 검색' };
+  const STRAT = { 'exact-first': '정확 일치 우선', rrf: 'RRF 융합', 'vector-only': '벡터 단독', chosung: '초성 검색', 'on-demand': '실시간 조회', 'hybrid-live': '서가+실시간' };
   const strat = m && m.strategy
     ? `<span class="strat strat-${m.strategy}">${STRAT[m.strategy] || m.strategy}</span>`
     : '';
@@ -955,7 +960,9 @@ function renderApiSearch() {
 
   <div class="search-note">
     <b>${m && m.strategy === 'chosung' ? '초성' : MODE_LABEL[state.searchMode]}</b> ·
-    ${m && m.strategy === 'chosung'
+    ${m && (m.strategy === 'on-demand' || m.strategy === 'hybrid-live')
+      ? '서가에 없는 책이라 예스24에서 실시간으로 찾았어요. 상세는 열 때 다시 조회됩니다.'
+      : m && m.strategy === 'chosung'
       ? '자음만 입력한 초성 검색이에요. 예: ㅎㄱ → 한강'
       : state.searchMode === 'keyword'
         ? '정확한 단어로 찾았어요. 의미가 비슷한 책은 ‘벡터’ 모드에서 더 잘 나와요.'
@@ -1598,6 +1605,15 @@ document.addEventListener('click', (e) => {
 
   const pr = t.closest('[data-price]');
   if (pr) { state.priceRange = pr.dataset.price; render(); return; }
+
+  const sq = t.closest('[data-search-q]');
+  if (sq) {
+    state.collection = null;
+    const h = $('#heroSearch');
+    if (h) h.value = sq.dataset.searchQ;
+    setQuery(sq.dataset.searchQ);
+    return;
+  }
 
   const collCard = t.closest('[data-collection]');
   if (collCard) { openCollection(collCard.dataset.collection); return; }
