@@ -153,13 +153,13 @@ test:
 #
 # PowerShell 등가:
 #   make tf-validate     -> cd terraform; terraform fmt -check -recursive; terraform init -backend=false; terraform validate
-#   make deploy-status   -> $env:SERVICE='seoga-api'; $env:REGION='asia-northeast3'; bash scripts/deploy_canary.sh status
-#   make deploy-rollback -> $env:SERVICE='seoga-api'; $env:REGION='asia-northeast3'; bash scripts/deploy_canary.sh rollback
+#   make deploy-status   -> $env:SERVICE='seogarok-api'; $env:REGION='asia-northeast3'; bash scripts/deploy_canary.sh status
+#   make deploy-rollback -> $env:SERVICE='seogarok-api'; $env:REGION='asia-northeast3'; bash scripts/deploy_canary.sh rollback
 # ============================================================================
 
 TF_DIR      ?= terraform
 TF_BUCKET   ?= $(TF_STATE_BUCKET)
-SERVICE     ?= seoga-api
+SERVICE     ?= seogarok-api
 REGION      ?= asia-northeast3
 
 ## tf-validate: Terraform fmt + init(no backend) + validate — 자격증명 없이 실행 가능

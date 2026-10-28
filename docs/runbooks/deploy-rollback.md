@@ -30,29 +30,29 @@ push(main)
 
 ```bash
 # 직전 리비전으로 100% 트래픽 이동
-PREV=$(gcloud run revisions list --service seoga-api --region asia-northeast3 \
+PREV=$(gcloud run revisions list --service seogarok-api --region asia-northeast3 \
   --sort-by '~metadata.creationTimestamp' --format 'value(metadata.name)' | sed -n '2p')
-gcloud run services update-traffic seoga-api --region asia-northeast3 \
+gcloud run services update-traffic seogarok-api --region asia-northeast3 \
   --to-revisions "${PREV}=100"
 ```
 
 배포 스크립트로도 동일하게:
 
 ```bash
-SERVICE=seoga-api REGION=asia-northeast3 bash scripts/deploy_canary.sh rollback
+SERVICE=seogarok-api REGION=asia-northeast3 bash scripts/deploy_canary.sh rollback
 ```
 
 ### 2-2. 워크플로에서 롤백
 
 Actions → **deploy-cloudrun** → Run workflow →
-`rollback_to` 에 `previous` 또는 특정 리비전 이름(`seoga-api-00042-abc`)을 입력.
+`rollback_to` 에 `previous` 또는 특정 리비전 이름(`seogarok-api-00042-abc`)을 입력.
 
 ### 2-3. 롤백 확인
 
 ```bash
-bash scripts/smoke.sh "$(gcloud run services describe seoga-api \
+bash scripts/smoke.sh "$(gcloud run services describe seogarok-api \
   --region asia-northeast3 --format 'value(status.url)')"
-gcloud run services describe seoga-api --region asia-northeast3 \
+gcloud run services describe seogarok-api --region asia-northeast3 \
   --format 'table(status.traffic[].revisionName, status.traffic[].percent)'
 ```
 
@@ -134,11 +134,11 @@ GitHub 저장소 → Settings → Secrets and variables → **Variables** 에 �
 | 이름 | 값 |
 |---|---|
 | `GCP_WIF_PROVIDER` | `projects/.../locations/global/workloadIdentityPools/github/providers/github-oidc` |
-| `GCP_DEPLOY_SA` | `seoga-api-deploy@PROJECT.iam.gserviceaccount.com` |
+| `GCP_DEPLOY_SA` | `seogarok-api-deploy@PROJECT.iam.gserviceaccount.com` |
 | `GCP_PROJECT` | 프로젝트 ID |
 | `GCP_REGION` | `asia-northeast3` |
-| `CLOUD_RUN_SERVICE` | `seoga-api` |
-| `IMAGE_REPO` | `asia-northeast3-docker.pkg.dev/PROJECT/seoga/seoga-api` |
+| `CLOUD_RUN_SERVICE` | `seogarok-api` |
+| `IMAGE_REPO` | `asia-northeast3-docker.pkg.dev/PROJECT/seoga/seogarok-api` |
 | `TF_STATE_BUCKET` | state 버킷 이름 |
 
 Environment `production`, `production-infra` 를 만들고 **Required reviewers** 를 걸면 apply/배포에 승인 게이트가 생긴다.

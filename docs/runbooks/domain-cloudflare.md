@@ -77,13 +77,13 @@ bash scripts/smoke.sh https://seoga.example.com
 ## Cloudflare 프록시(CDN/WAF)를 쓰고 싶다면
 
 Cloud Run 도메인 매핑과 Cloudflare 프록시를 같이 쓰면 인증서 이슈가 잦다.
-대안은 **Cloudflare Worker**로 `https://seoga.example.com/*` → `https://seoga-api-*.run.app/*` 프록시:
+대안은 **Cloudflare Worker**로 `https://seoga.example.com/*` → `https://seogarok-api-*.run.app/*` 프록시:
 
 ```js
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    url.hostname = env.ORIGIN_HOST; // seoga-api-ipampmpkwq-du.a.run.app
+    url.hostname = env.ORIGIN_HOST; // seogarok-api-ipampmpkwq-du.a.run.app
     return fetch(new Request(url, request));
   },
 };

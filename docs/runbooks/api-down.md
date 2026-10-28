@@ -2,7 +2,7 @@
 
 > **이 문서가 답하는 질문:** ① API가 죽었을 때 5분 안에 "프로세스 문제 / 준비 실패 / 배포 문제"로 분류하려면? ② 재시작과 롤백 중 무엇을 먼저 해야 하나? ③ 복구를 무엇으로 검증하나?
 
-관련 알림: `SeogaApiDown`(`up{job="seoga-api"} == 0`, 30s), `SeogaErrorBudgetBurnFast`(5xx 급증, 2m). 관련 문서: [SRE.md](../SRE.md), [slow-search.md](slow-search.md), [index-stale.md](index-stale.md).
+관련 알림: `SeogaApiDown`(`up{job="seogarok-api"} == 0`, 30s), `SeogaErrorBudgetBurnFast`(5xx 급증, 2m). 관련 문서: [SRE.md](../SRE.md), [slow-search.md](slow-search.md), [index-stale.md](index-stale.md).
 
 ---
 
@@ -10,7 +10,7 @@
 
 - Prometheus `/alerts`에 `SeogaApiDown` firing, Grafana 상단 **API Ready = 0**.
 - 브라우저/curl이 `Connection refused` 또는 timeout.
-- `docker compose ps`에서 `seoga-api`가 `Up`이 아니거나 재시작 루프(`Restarting`).
+- `docker compose ps`에서 `seogarok-api`가 `Up`이 아니거나 재시작 루프(`Restarting`).
 - k6 실행 중이면 `http_req_failed`가 급등.
 
 ## 2. 심각도와 영향
@@ -48,7 +48,7 @@ curl.exe -s -o NUL -w "readyz=%{http_code}`n"  http://127.0.0.1:8100/readyz
 
 1. **exit code 확인** — 재시작 루프는 exit code가 원인을 말해준다.
    ```powershell
-   docker inspect --format '{{.State.Status}} exit={{.State.ExitCode}}' seoga-api
+   docker inspect --format '{{.State.Status}} exit={{.State.ExitCode}}' seogarok-api
    ```
 2. **로그에서 흔한 원인 4가지 확인** (`docker compose logs --tail=200 api`):
    - `db_seeded_to_tmpfs` 이후 `Read-only file system` → `read_only`인데 tmpfs `/tmp`가 빠진 경우. compose의 `tmpfs` 설정을 확인하고 **파일을 고친 뒤** 재기동.
@@ -79,10 +79,10 @@ curl.exe -s -o NUL -w "readyz=%{http_code}`n"  http://127.0.0.1:8100/readyz
 
 ```powershell
 # 배포 전에 반드시 해둘 것 (표준 절차)
-docker tag seoga-api:local seoga-api:rollback
+docker tag seogarok-api:local seogarok-api:rollback
 
 # 문제 발생 시
-docker tag seoga-api:rollback seoga-api:local
+docker tag seogarok-api:rollback seogarok-api:local
 docker compose up -d --no-build api
 make smoke
 ```

@@ -182,7 +182,7 @@
 
 | 알림 | 첫 질문 | 런북 | 판정 기준(복구) |
 |---|---|---|---|
-| `SeogaApiDown` | 프로세스가 떴나? | [api-down.md](runbooks/api-down.md) | `up{job="seoga-api"}==1` + `/healthz` 200 |
+| `SeogaApiDown` | 프로세스가 떴나? | [api-down.md](runbooks/api-down.md) | `up{job="seogarok-api"}==1` + `/healthz` 200 |
 | `SeogaErrorBudgetBurnFast/Slow` | 5xx의 원인이 배포인가 외부인가? | [api-down.md](runbooks/api-down.md) | 5xx 비율 정상화(알림 resolve), 롤백 여부 결정 |
 | `SeogaSearchLatencyP95High` | 어느 단계(keyword/vector/fuse)가 느린가? | [slow-search.md](runbooks/slow-search.md) | p95 < 300ms로 10분 유지 |
 | `SeogaNotReady` | docs/vectors 중 무엇이 0이거나 불일치인가? | [index-stale.md](runbooks/index-stale.md) | `/readyz` `ready:true`, `docs==vectors` |
@@ -223,7 +223,7 @@
 | job | 목적 | 핵심 단계 | 실패 의미 |
 |---|---|---|---|
 | `test` | 오프라인 회귀 | Python 3.12 + `requirements.server.txt` 설치(패키지 설치에는 PyPI 네트워크 필요, **모델 가중치 다운로드는 없음**) → `server.sync --embed hashing`(seed 38권) → 검색 단언 | 검색 파이프라인/스키마 깨짐 |
-| `build` | 이미지·보안 | `docker build -t seoga-api:ci .` → **Trivy** `HIGH,CRITICAL` 발견 시 fail(`ignore-unfixed: true`) | 취약 베이스/의존성, 빌드 실패 |
+| `build` | 이미지·보안 | `docker build -t seogarok-api:ci .` → **Trivy** `HIGH,CRITICAL` 발견 시 fail(`ignore-unfixed: true`) | 취약 베이스/의존성, 빌드 실패 |
 | `compose-smoke` | 실제 기동 검증 | `docker compose up -d --build api prometheus` → `/healthz` 200, `/metrics`에 `seogarok_index_documents 500`, `/api/search` 200 → `down -v` | compose/엔트리포인트/read-only+tmpfs 구성 회귀 |
 
 - `permissions: contents: read` 최소 권한, `concurrency`로 같은 ref의 중복 실행 취소, job별 timeout 지정.
@@ -274,7 +274,7 @@
 
 컨테이너 이미지(500권 샘플 인덱스) + compose 스택에서 `make load` 로 측정했다.
 측정 환경: Windows 11 / Docker Desktop 29.6.1 / Ryzen 5 7500F / Python 3.12.10 slim 이미지.
-이미지 다이제스트·빌드 시각은 `docker images seoga-api:local --digests` 로 확인한다.
+이미지 다이제스트·빌드 시각은 `docker images seogarok-api:local --digests` 로 확인한다.
 
 | 시나리오 | VU 최대 | 실행시간 | p50 | p95 | p99 | 실패율 | RPS | API CPU/메모리 (idle) |
 |---|---|---|---|---|---|---|---|---|
@@ -328,12 +328,12 @@
 | k6 checks 통과율 | 〃 | **100.00%** (8,151/8,151) |
 | 처리량(RPS) | 〃 | **56.9 req/s** (50초, 2,844건) |
 | API CPU/메모리 (idle) | `docker stats`, 부하 종료 후 idle | CPU **0.02%** / MEM **1.80GiB** |
-| `/metrics` 스크레이프 소요 | Prometheus `avg(scrape_duration_seconds{job="seoga-api"})` | **2.0ms** |
+| `/metrics` 스크레이프 소요 | Prometheus `avg(scrape_duration_seconds{job="seogarok-api"})` | **2.0ms** |
 | 컨테이너 cold start (기동→ready) | `docker compose up` 후 `/readyz` 200까지 | **약 10–12초** |
 | 게임데이 알림 발화 지연 | 주입(00:00:33) → 첫 firing 관측(00:02:57) | **약 2분 24초** (`for: 2m` + 평가주기 5s) |
 | 게임데이 알림 복구 | 리셋 직후 정상 응답 | **5초 내 200 복구**. 알림 resolve는 for 윈도우 경과 후(정밀 측정 생략) |
 | 재색인 소요(4,865권 전체) | 로컬 `python -m server.sync` | 9.5초 (실측) |
-| 이미지 크기 | `seoga-api:local` (모델+인덱스 포함) | 1.36GB |
+| 이미지 크기 | `seogarok-api:local` (모델+인덱스 포함) | 1.36GB |
 
 **게임데이 실측 요약:** `latency 400ms / error_rate 0.45` 주입 + 10스레드 지속 트래픽 →
 `SeogaSearchLatencyP95High` **FIRING**, `SeogaErrorBudgetBurnFast` **FIRING**, `SeogaErrorBudgetBurnSlow` PENDING.

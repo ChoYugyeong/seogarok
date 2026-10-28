@@ -31,7 +31,7 @@ variable "env" {
 variable "service_name" {
   description = "Cloud Run 서비스 이름"
   type        = string
-  default     = "seoga-api"
+  default     = "seogarok-api"
 }
 
 variable "image" {

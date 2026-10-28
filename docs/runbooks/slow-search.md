@@ -35,7 +35,7 @@ curl.exe -s http://127.0.0.1:8100/api/_chaos
 #    seogarok_build_info{vector="sqlite-vec"}   (numpy 폴백이면 느릴 수 있음)
 
 # 5) 컨테이너 리소스
-docker stats --no-stream seoga-api
+docker stats --no-stream seogarok-api
 ```
 
 ## 3. 진단 매트릭스
@@ -70,7 +70,7 @@ docker stats --no-stream seoga-api
 ## 5. 리소스·용량
 
 ```powershell
-docker stats --no-stream seoga-api
+docker stats --no-stream seogarok-api
 docker compose logs --tail=100 api | Select-String "dur_ms"
 ```
 

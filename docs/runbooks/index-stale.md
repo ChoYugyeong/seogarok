@@ -97,7 +97,7 @@ make smoke   # 컨테이너 기준. /healthz, /readyz, /metrics, /api/search
 
 `seogarok_index_age_seconds`는 DB meta의 `synced_at`(= **이미지 빌드 시점**) 기준이다. 컨테이너를 오래 띄워두면 24h가 지나 `SeogaIndexStale`이 발화할 수 있는데, 이는 인덱스가 깨진 것이 아니라 "배포된 아티팩트가 오래됐다"는 뜻이다.
 
-- 확인: `seogarok_build_info`의 `version`과 이미지 빌드 시각(`docker inspect --format '{{.Created}}' seoga-api:local`).
+- 확인: `seogarok_build_info`의 `version`과 이미지 빌드 시각(`docker inspect --format '{{.Created}}' seogarok-api:local`).
 - 조치: 재빌드/재배포로 인덱스를 갱신하거나, 운영 기준상 문제없으면 알림을 acknowledge하고 정기 재배포 주기를 조정한다.
 - 로컬 전체 인덱스는 실제 sync 시각이므로 24h 초과는 진짜 stale이다 → §3-B.
 
