@@ -206,7 +206,7 @@ gcloud storage rm -r "gs://${TF_STATE_BUCKET}"
 
 | 항목 | 내용 |
 |---|---|
-| 라이브 URL | https://seoga-api-ipampmpkwq-an.a.run.app |
+| 라이브 URL | https://seogarok.com |
 | 프로젝트 | `seoga-prod` (asia-northeast3) |
 | 검증 | `scripts/smoke.sh` **5/5 PASS**, `/readyz` 4,865/4,865 |
 
