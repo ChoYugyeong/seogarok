@@ -145,8 +145,12 @@ def sync_collections(conn) -> dict:
           slug TEXT NOT NULL, book_id TEXT, item_title TEXT, item_author TEXT,
           category TEXT, score REAL, ord INTEGER
         );
+        CREATE TABLE IF NOT EXISTS collection_unmatched (
+          slug TEXT NOT NULL, item_title TEXT, item_author TEXT, category TEXT, ord INTEGER
+        );
         DELETE FROM collections;
         DELETE FROM collection_items;
+        DELETE FROM collection_unmatched;
         """
     )
     # 구버전 스키마 마이그레이션
@@ -165,6 +169,20 @@ def sync_collections(conn) -> dict:
             "INSERT INTO collection_items(slug,book_id,item_title,item_author,category,score,ord) VALUES (?,?,?,?,?,?,?)",
             [(c["slug"], m["book_id"], m["item_title"], m["item_author"], m["category"], m["score"], i)
              for i, m in enumerate(matched)],
+        )
+        # 미수록 항목도 DB 에 저장 (프론트 '실시간 조회' 칩)
+        matched_titles = [m["item_title"] for m in matched]
+        remaining = list(matched_titles)
+        unmatched_rows = []
+        for item in (c.get("items") or []):
+            t = item.get("title")
+            if t in remaining:
+                remaining.remove(t)
+                continue
+            unmatched_rows.append((c["slug"], t, item.get("author"), item.get("category"), len(unmatched_rows)))
+        conn.executemany(
+            "INSERT INTO collection_unmatched(slug,item_title,item_author,category,ord) VALUES (?,?,?,?,?)",
+            unmatched_rows,
         )
         total_matched += len(matched)
     conn.commit()

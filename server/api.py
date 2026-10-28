@@ -645,17 +645,17 @@ class Handler(BaseHTTPRequestHandler):
             ).fetchall()
             meta = dict(row)
             meta["matched"] = len(items)
-            # 미수록 항목 (프론트에서 '실시간 조회' 칩으로 노출)
+            # 미수록 항목 (프론트에서 '실시간 조회' 칩으로 노출) — DB 저장본 사용
             try:
-                from .collections import load_collections
-
-                src = next((c for c in load_collections() if c.get("slug") == slug), None)
-                matched_titles = {x["item_title"] for x in items}
+                urows = conn.execute(
+                    "SELECT item_title, item_author, category FROM collection_unmatched "
+                    "WHERE slug = ? ORDER BY ord LIMIT 60",
+                    (slug,),
+                ).fetchall()
                 unmatched = [
-                    {"title": x.get("title"), "author": x.get("author"), "category": x.get("category")}
-                    for x in (src.get("items") or [])
-                    if x.get("title") not in matched_titles
-                ][:60]
+                    {"title": r["item_title"], "author": r["item_author"], "category": r["category"]}
+                    for r in urows
+                ]
             except Exception:
                 unmatched = []
             return self._json({"collection": meta, "books": [dict(x) for x in items], "unmatched": unmatched})
