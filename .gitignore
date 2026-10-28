@@ -34,3 +34,5 @@ terraform/crash.log
 !.env.example
 terraform/backend.tf
 terraform/backend.tf.bak
+.taste-skill/
+
