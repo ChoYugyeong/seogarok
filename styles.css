@@ -1788,3 +1788,74 @@ html { scroll-padding-top: 92px; }
 @media (pointer: coarse) {
   .chip, .fchip, .tab, .sug-row, .recent-chip, .notice-src, .sec-more, .act-btn, .report-btn, .btn-alert { min-height: 44px; }
 }
+
+/* ==========================================================================
+   UI UX Pro Max 적용분 — 내비/포커스/모션/스켈레톤
+   ========================================================================== */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 300;
+  background: var(--ink, #17120e);
+  color: var(--paper, #f7f2e8);
+  padding: 10px 14px;
+  font-size: 13px;
+}
+.skip-link:focus { left: 12px; top: 12px; }
+
+.bottom-nav { display: none; }
+
+@media (max-width: 860px) {
+  .tabs { display: none; }
+  .bottom-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: var(--paper, #f7f2e8);
+    border-top: 1px solid var(--line, rgba(23, 18, 14, 0.12));
+    padding: 4px 6px calc(4px + env(safe-area-inset-bottom));
+  }
+  .bottom-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 48px;
+    font-size: 11.5px;
+    color: var(--text-3, #8a7d6d);
+  }
+  .bottom-tab[data-tab] { position: relative; }
+  .bottom-tab.is-on { color: var(--accent, #b8371f); font-weight: 600; }
+  .bottom-tab .count { margin-left: 4px; font-size: 10px; }
+  body { padding-bottom: calc(58px + env(safe-area-inset-bottom)); }
+  html { scroll-padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
+
+/* 스켈레톤 (드로어/부트) */
+.skel-line {
+  display: block;
+  height: 14px;
+  background: var(--line, rgba(23, 18, 14, 0.1));
+  border-radius: 2px;
+}
+.drawer .skel { background: var(--line, rgba(23, 18, 14, 0.1)); }
+.dw-hero .skel { border-radius: 2px; }
+
+/* 섹션 리빌 — 250-350ms, y 8px (reduced motion은 CSS가 해제) */
+.reveal { opacity: 0; transform: translateY(8px); transition: opacity 300ms ease, transform 300ms ease; }
+.reveal.is-in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* 눌림 피드백 */
+.search-go:active, .btn-primary:active, .cta-btn:active, .fchip:active,
+.act-btn:active, .report-btn:active, .subs-btn:active, .genre-chip:active, .col-card:active,
+.cur-card:active, .chip:active { transform: translateY(1px); }
+

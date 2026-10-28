@@ -31,9 +31,30 @@
 - Testimonials 캐러셀 패턴 — 실제 후기 데이터 없음(허위 금지)
 - Cormorant Garamond 단독 사용 — 한글 글리프 없음 → Noto Serif KR 유지
 
-## 남은 UX 개선 후보
+## 적용 결과 (2026-10-29)
 
-1. 뒤로가기/딥링크 (`?q=` 검색, `#book=` 상세)
-2. 모바일 하단 내비게이션(≤5)
-3. 드로어 로딩 스켈레톤
-4. 검색 콤보박스 `aria-expanded`/`aria-activedescendant`
+| 항목 | 상태 |
+| --- | --- |
+| 딥링크/뒤로가기 (`?q=`, `?col=`, `?tab=`, `#book=`) | ✅ 적용 — popstate 복원, 드로어 닫기 시 history.back |
+| 모바일 하단 내비게이션(4개, safe-area) | ✅ 적용 — ≤860px에서 상단 탭 숨김 |
+| 드로어 로딩 스켈레톤 + 포커스 트랩 + Esc + 포커스 복귀 | ✅ 적용 |
+| 검색 콤보박스 `aria-expanded`/`aria-activedescendant` + 행 id | ✅ 적용 |
+| `inputmode`/`enterkeyhint` 검색 인풋 | ✅ 적용 |
+| 스킵 링크(본문으로) | ✅ 적용 |
+| sticky nav focus 비가림 (`scroll-padding`) | ✅ 적용 |
+| 섹션 리빌 300ms/y8 + reduced-motion | ✅ 적용 |
+| 눌림 피드백(active translate) + hover 150–300ms | ✅ 적용 |
+| 카테고리(장르)를 히어로 다음 1번 섹션으로 (Marketplace/Directory 패턴) | ✅ 적용 |
+| 첫 로딩 스켈레톤(데모 데이터 깜빡임 제거) | ✅ 적용 |
+| 다크 모드 | ⏸ 보류 (라이트 단일 테마 유지) |
+| 차트/데이터 접근성 | ✅ 라벨 텍스트 병기 (색 단독 의존 없음) |
+
+## Pre-Delivery 체크리스트 결과
+
+- [x] 이모지 아이콘 없음 (SVG만)
+- [x] 클릭 요소 `cursor:pointer`
+- [x] hover 150–300ms 전환
+- [x] 라이트 모드 텍스트 대비 4.5:1 이상
+- [x] 키보드 포커스 가시
+- [x] `prefers-reduced-motion` 존중
+- [x] 반응형 375 / 768 / 1024 / 1440 확인

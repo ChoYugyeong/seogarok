@@ -4,6 +4,115 @@
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+/* ---------------- URL 상태: 딥링크 + 뒤로가기 (UI UX Pro Max: Navigation) ---------------- */
+let suppressUrl = false;
+
+function readUrlState() {
+  const p = new URLSearchParams(location.search || '');
+  const hash = location.hash || '';
+  return {
+    q: p.get('q') || '',
+    col: p.get('col') || '',
+    tab: p.get('tab') || '',
+    book: hash.startsWith('#book=') ? decodeURIComponent(hash.slice(6)) : '',
+  };
+}
+
+function writeUrlForState() {
+  if (suppressUrl) return;
+  let next = '/';
+  const cslug = state.collection && state.collection.collection ? state.collection.collection.slug : '';
+  if (cslug) next = `/?col=${encodeURIComponent(cslug)}`;
+  else if (state.query.trim()) next = `/?q=${encodeURIComponent(state.query.trim())}`;
+  else if (state.tab !== 'explore') next = `/?tab=${state.tab}`;
+  if (state.openId) next += `#book=${encodeURIComponent(state.openId)}`;
+  const cur = location.pathname + location.search + location.hash;
+  if (cur === next) return;
+  try { history.pushState({ next }, '', next); } catch (e) { /* file:// 등 */ }
+}
+
+function applyUrlState() {
+  const u = readUrlState();
+  suppressUrl = true;
+  try {
+    state.openId = null;
+    $('#drawerRoot').hidden = true;
+    document.body.style.overflow = '';
+    state.collection = null;
+    state.tab = 'explore';
+    state.query = '';
+    if (u.tab === 'shelf' || u.tab === 'taste') {
+      goTab(u.tab, { push: false });
+    } else {
+      if (u.q) {
+        state.query = u.q;
+        if (state.api.on) scheduleApiSearch();
+      }
+      render();
+    }
+  } finally {
+    suppressUrl = false;
+  }
+  if (u.col) openCollection(u.col, { push: false });
+  else if (u.book) openBook(u.book, { push: false });
+}
+window.addEventListener('popstate', applyUrlState);
+
+function restoreFromUrl() {
+  const u = readUrlState();
+  if (!u.q && !u.col && !u.tab && !u.book) return;
+  applyUrlState();
+}
+
+function showDrawerSkeleton() {
+  const root = $('#drawerRoot');
+  if (!root) return;
+  $('.drawer', root).innerHTML = `<div class="drawer-top">
+      <button class="drawer-close" data-act="close-drawer" aria-label="닫기">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="dw-hero">
+      <div class="dw-cover skel" style="height:176px"></div>
+      <div class="dw-meta" style="flex:1">
+        <span class="skel-line" style="height:24px;width:72%"></span>
+        <span class="skel-line" style="height:14px;width:44%;margin-top:12px"></span>
+        <span class="skel-line" style="height:14px;width:60%;margin-top:10px"></span>
+      </div>
+    </div>
+    <div class="dw-block"><span class="skel-line" style="height:96px"></span></div>
+    <div class="dw-block"><span class="skel-line" style="height:64px"></span></div>`;
+  root.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+/* ---------------- 섹션 리빌 (250–350ms, y 8px) ---------------- */
+let revealObs = null;
+function armReveals() {
+  const view = $('#view');
+  if (!view) return;
+  if (!revealObs) {
+    revealObs = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            en.target.classList.add('is-in');
+            revealObs.unobserve(en.target);
+          }
+        });
+      },
+      { rootMargin: '0px 0px -5% 0px', threshold: 0.04 },
+    );
+  }
+  view.querySelectorAll('.section, .pick-section, .grid, .rail-grid').forEach((el) => {
+    if (el.dataset.rev) return;
+    el.dataset.rev = '1';
+    el.classList.add('reveal');
+    revealObs.observe(el);
+  });
+}
+
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -447,16 +556,26 @@ function setupSuggest(inputSel, popSel) {
   let timer = null;
   let seq = 0;
 
-  const close = () => { pop.hidden = true; pop.innerHTML = ''; active = -1; items = []; };
+  const close = () => {
+    pop.hidden = true;
+    pop.innerHTML = '';
+    active = -1;
+    items = [];
+    input.setAttribute('aria-expanded', 'false');
+    input.removeAttribute('aria-activedescendant');
+  };
   const render = (q) => {
     if (!items.length) { close(); return; }
     pop.innerHTML =
-      items.map((it, i) => `<button class="sug-row${i === active ? ' is-active' : ''}" data-sug="${i}" role="option" aria-selected="${i === active}">
+      items.map((it, i) => `<button class="sug-row${i === active ? ' is-active' : ''}" id="${pop.id}-${i}" data-sug="${i}" role="option" aria-selected="${i === active}">
         <span class="sug-cover">${it.cover_url ? `<img src="${esc(it.cover_url)}" alt="" loading="lazy">` : ''}</span>
         <span class="sug-main"><b>${hl(it.title, q)}</b><span class="sug-author">${hl(it.author || '', q)}</span></span>
       </button>`).join('') +
       `<button class="sug-more" data-sug-more>‘${esc(q)}’ 전체 결과 보기 <span aria-hidden="true">→</span></button>`;
     pop.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+    if (active >= 0) input.setAttribute('aria-activedescendant', `${pop.id}-${active}`);
+    else input.removeAttribute('aria-activedescendant');
   };
   const fetchItems = (q) => {
     const my = ++seq;
@@ -694,10 +813,12 @@ async function loadCollections() {
   } catch (e) { }
 }
 
-async function openCollection(slug) {
+async function openCollection(slug, opts = {}) {
+  const { push = true } = opts;
   try {
     const r = await API.collection(slug);
     state.collection = r;
+    if (push) writeUrlForState();
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (e) {
@@ -781,10 +902,10 @@ function renderExploreApi() {
       <span class="col-n">검색 · ${esc(COLLECTION_QUERY[c.id] || '')}</span>
     </button>`).join('');
   return `
+  ${renderGenreChips()}
   ${renderDailyPick()}
   ${noticesSection()}
   ${renderCollections()}
-  ${renderGenreChips()}
   ${renderDiscoverRails()}
   ${renderOverview()}
   ${renderRecentRail()}
@@ -1574,14 +1695,19 @@ async function sendReport(bookId, platform) {
   }
 }
 
-async function openBook(id) {
+async function openBook(id, opts = {}) {
+  const { push = true } = opts;
+  const wasOpen = Boolean(state.openId);
+  state.openId = id;
+  if (push && !wasOpen) writeUrlForState();
+  if (!wasOpen) showDrawerSkeleton();
   // API 모드에서는 similar(비슷한 책)까지 포함한 상세를 받아서 연다
   if (state.api.on) {
     try {
       const r = await API.book(id);
       const nb = mapApiBook(r);
       cacheBooks([nb]);
-      return showDrawer(nb);
+      return showDrawer(nb, { push: false });
     } catch (e) {
       // 상세 실패 시 캐시로 폴백
     }
@@ -1593,12 +1719,16 @@ async function openBook(id) {
       b = mapApiBook(r);
       cacheBooks([b]);
     } catch (e) {
+      closeDrawer({ historyBack: push });
       toast('책 정보를 불러오지 못했어요');
       return;
     }
   }
-  if (!b) return;
-  return showDrawer(b);
+  if (!b) {
+    closeDrawer({ historyBack: push });
+    return;
+  }
+  return showDrawer(b, { push: false });
 }
 
 async function loadSameAuthor(book) {
@@ -1625,8 +1755,11 @@ async function loadSameAuthor(book) {
   } catch (e) { }
 }
 
-function showDrawer(b) {
+function showDrawer(b, opts = {}) {
+  const { push = false } = opts;
+  const changed = state.openId !== b.id;
   state.openId = b.id;
+  if (changed && push && !suppressUrl) writeUrlForState();
   saveRecentBook(b);
   const root = $('#drawerRoot');
   $('.drawer', root).innerHTML = drawerHTML(b);
@@ -1647,11 +1780,15 @@ function refreshDrawer() {
   drawer.innerHTML = drawerHTML(b);
   drawer.scrollTop = sc;
 }
-function closeDrawer() {
+function closeDrawer(opts = {}) {
+  const { historyBack = true } = opts;
   state.openId = null;
   $('#drawerRoot').hidden = true;
   document.body.style.overflow = '';
   if (lastFocused && lastFocused.focus) lastFocused.focus();
+  if (historyBack && !suppressUrl && location.hash.startsWith('#book=')) {
+    try { history.back(); } catch (e) { /* noop */ }
+  }
 }
 
 /* ---------------- subs popover ---------------- */
@@ -1686,11 +1823,21 @@ function render() {
   hero.classList.toggle('is-hidden', !isExplore);
   hero.classList.toggle('is-compact', searching);
 
-  $$('#nav .tab').forEach((t) => t.classList.toggle('is-on', t.dataset.tab === state.tab));
+  $$('.tab[data-tab], .bottom-tab[data-tab]').forEach((t) => {
+    const on = t.dataset.tab === state.tab;
+    t.classList.toggle('is-on', on);
+    if (on) t.setAttribute('aria-current', 'page');
+    else t.removeAttribute('aria-current');
+  });
   const count = shelfCount();
   const sc = $('#shelfCount');
   sc.textContent = String(count);
   sc.hidden = count === 0;
+  const scb = $('#shelfCountB');
+  if (scb) {
+    scb.textContent = String(count);
+    scb.hidden = count === 0;
+  }
   $('#subsCount').textContent = String(subsOn().length);
   renderSubsOptions();
 
@@ -1706,6 +1853,8 @@ function render() {
   } else if (isExplore) view.innerHTML = state.collection ? renderCollection() : searching ? renderSearch() : renderExplore();
   else if (state.tab === 'shelf') view.innerHTML = renderShelf();
   else view.innerHTML = renderTaste();
+
+  armReveals();
 
   // 백엔드 연결 배지 (기술 정보는 최소화 — 제품 문구 우선)
   const badge = $('#liveIndex');
@@ -1735,18 +1884,22 @@ function render() {
 }
 
 /* ---------------- events ---------------- */
-function goTab(tab) {
+function goTab(tab, opts = {}) {
+  const { push = true } = opts;
   state.tab = tab;
   if (tab !== 'explore') state.query = '';
+  if (push) writeUrlForState();
   render();
   if (tab === 'shelf') hydrateShelf();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function setQuery(q) {
+function setQuery(q, opts = {}) {
+  const { push = true } = opts;
   state.query = q;
   state.filter = 'all';
   state.tab = 'explore';
+  if (push) writeUrlForState();
   if (state.api.on) scheduleApiSearch();
   render();
   if (document.activeElement) document.activeElement.blur();
@@ -1937,6 +2090,17 @@ document.addEventListener('change', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab' && state.openId) {
+    const root = $('#drawerRoot');
+    const focusables = $$('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])', root)
+      .filter((el) => !el.disabled && el.offsetParent !== null);
+    if (focusables.length) {
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
   if (e.key === 'Escape') {
     if (state.openId) closeDrawer();
     else if (!$('#subsPopover').hidden) toggleSubsPopover(false);
@@ -1996,6 +2160,7 @@ async function initApi() {
   }
   state.api.checked = true;
   render();
+  restoreFromUrl();
 }
 // PWA: 홈 화면 추가 지원 (HTTPS/localhost 에서만)
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {

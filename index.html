@@ -28,6 +28,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23f7f2e8'/><rect x='24' y='24' width='10' height='52' rx='2' fill='%2317120e'/><rect x='40' y='32' width='10' height='44' rx='2' fill='%23b8371f'/><rect x='56' y='26' width='10' height='50' rx='2' fill='%2317120e' opacity='.75'/><rect x='72' y='38' width='10' height='38' rx='2' fill='%238a6a24'/></svg>" />
 </head>
 <body>
+<a class="skip-link" href="#view">본문으로 건너뛰기</a>
 <div class="grain" aria-hidden="true"></div>
 
 <header class="nav" id="nav">
@@ -51,7 +52,7 @@
     <div class="nav-right">
       <div class="search-mini">
         <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input id="searchInput" type="search" placeholder="책, 저자 검색" autocomplete="off" aria-label="책, 저자 검색" aria-autocomplete="list" aria-controls="navSuggest" />
+        <input id="searchInput" type="search" inputmode="search" enterkeyhint="search" placeholder="책, 저자 검색" autocomplete="off" aria-label="책, 저자 검색" aria-autocomplete="list" aria-controls="navSuggest" />
         <kbd>/</kbd>
         <div class="suggest-pop suggest-pop--nav" id="navSuggest" hidden role="listbox" aria-label="검색 제안"></div>
       </div>
@@ -83,7 +84,7 @@
 
       <div class="search-big">
         <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16.5 16.5 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <input id="heroSearch" type="search" placeholder="『채식주의자』, 김초엽, SF …" autocomplete="off" aria-label="책 검색" aria-autocomplete="list" aria-controls="heroSuggest" />
+        <input id="heroSearch" type="search" inputmode="search" enterkeyhint="search" placeholder="『채식주의자』, 김초엽, SF …" autocomplete="off" aria-label="책 검색" aria-autocomplete="list" aria-controls="heroSuggest" />
         <button class="search-go" data-act="search">검색</button>
         <div class="suggest-pop" id="heroSuggest" hidden role="listbox" aria-label="검색 제안"></div>
       </div>
@@ -135,6 +136,13 @@
     </div>
   </div>
 </footer>
+
+<nav class="bottom-nav" aria-label="빠른 메뉴">
+  <button class="bottom-tab is-on" data-tab="explore" aria-current="page">탐색</button>
+  <button class="bottom-tab" data-tab="shelf">내 서재<span class="count" id="shelfCountB" hidden>0</span></button>
+  <button class="bottom-tab" data-tab="taste">취향 찾기</button>
+  <a class="bottom-tab" href="about.html">소개</a>
+</nav>
 
 <div id="drawerRoot" class="drawer-root" hidden>
   <div class="drawer-scrim" data-act="close-drawer"></div>
