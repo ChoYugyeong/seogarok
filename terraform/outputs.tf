@@ -5,7 +5,7 @@ output "service_url" {
 
 output "image_repository" {
   description = "이미지를 push 할 Artifact Registry 경로"
-  value       = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
+  value       = "${var.artifact_region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}"
 }
 
 output "service_name" {
@@ -29,7 +29,7 @@ output "github_actions_vars" {
     GCP_PROJECT       = var.project_id
     GCP_REGION        = var.region
     CLOUD_RUN_SERVICE = google_cloud_run_v2_service.api.name
-    IMAGE_REPO        = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}/${var.service_name}"
+    IMAGE_REPO        = "${var.artifact_region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.images.repository_id}/${var.service_name}"
   }
 }
 output "custom_domain_records" {

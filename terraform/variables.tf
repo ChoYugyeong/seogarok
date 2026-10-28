@@ -10,10 +10,16 @@ variable "access_token" {
   sensitive   = true
 }
 
-variable "region" {
-  description = "Cloud Run / Artifact Registry 리전"
+variable "artifact_region" {
+  description = "컨테이너 이미지 저장소(Artifact Registry) 리전. Cloud Run 리전과 분리 가능"
   type        = string
-  default     = "asia-northeast3" # 서울
+  default     = "asia-northeast3"
+}
+
+variable "region" {
+  description = "Cloud Run 리전 (도쿄: 커스텀 도메인 매핑 지원. 서울은 미지원)"
+  type        = string
+  default     = "asia-northeast1" # 도쿄
 }
 
 variable "env" {

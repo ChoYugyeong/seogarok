@@ -2,7 +2,7 @@
 # Artifact Registry (이미지 저장소)
 # -----------------------------------------------
 resource "google_artifact_registry_repository" "images" {
-  location      = var.region
+  location      = var.artifact_region
   repository_id = "seoga"
   description   = "seoga-api container images"
   format        = "DOCKER"
@@ -82,10 +82,11 @@ resource "google_cloud_run_v2_service" "api" {
         http_get {
           path = "/livez"
         }
-        initial_delay_seconds = 5
-        timeout_seconds       = 3
-        period_seconds        = 5
-        failure_threshold     = 12
+        # 서울 AR → 도쿄 리전 이미지(1.36GB) 당겨오는 시간을 고려한 여유 설정
+        initial_delay_seconds = 20
+        timeout_seconds       = 5
+        period_seconds        = 10
+        failure_threshold     = 30
       }
 
       liveness_probe {

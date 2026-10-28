@@ -1,6 +1,7 @@
 # terraform.tfvars.example 을 terraform.tfvars 로 복사해서 값을 채운다.
 project_id  = "your-gcp-project-id"
-region      = "asia-northeast3"
+region      = "asia-northeast1"  # 도쿄: 커스텀 도메인 매핑 지원 (서울은 미지원)
+artifact_region = "asia-northeast3"  # 이미지 저장소는 서울 유지 가능
 github_repo = "your-github-user/seoga"
 
 # 비용/무료 티어 관련 (기본값 권장)

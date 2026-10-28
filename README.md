@@ -2,7 +2,7 @@
 
 > **이 책, 지금 어느 서가에 있나** — 책의 가용성 레이어
 
-**🟢 라이브:** https://seoga-api-ipampmpkwq-du.a.run.app (GCP Cloud Run · asia-northeast3 · scale-to-zero)
+**🟢 라이브:** https://seoga-api-ipampmpkwq-an.a.run.app (GCP Cloud Run · asia-northeast3 · scale-to-zero)
 · 4,865권 실시간 인덱스 · 하이브리드 검색 p50 ~3ms · [약관/개인정보/출처](legal.html)
 
 왓챠피디아의 책 버전. 단, 포지셔닝은 "추천 서비스"가 아니라 **"가용성(어디서 읽을 수 있나) + 종료 추적"**.
