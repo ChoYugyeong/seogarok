@@ -17,7 +17,8 @@ param(
   [int]$Workers = 6,
   [switch]$SkipHtml,
   [int]$HtmlTimeout = 900,
-  [int]$GoogleLimit = 600
+  [int]$GoogleLimit = 600,
+  [switch]$Commit
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,5 +69,17 @@ python -m ingest.books.desc_coverage
 Write-Host "[weekly] GCS 캐시 아카이브 업로드"
 python scripts\enrich_cache_sync.py push
 
-Write-Host "[weekly] 완료. 커밋하려면:"
-Write-Host "  git add data/catalog_fallback.jsonl.gz && git commit -m 'data: 주간 설명 보강' && git push"
+if ($Commit) {
+  Write-Host "[weekly] fallback 스냅샷 자동 커밋/푸시"
+  git add data/catalog_fallback.jsonl.gz
+  $changed = git diff --cached --quiet; if ($LASTEXITCODE -eq 0) {
+    Write-Host "  변경 없음 — 커밋 생략"
+  } else {
+    $stamp = Get-Date -Format "yyyy-MM-dd"
+    git commit -q -m "data: 주간 설명 보강 ($stamp)"
+    if ($LASTEXITCODE -eq 0) { git push -q; Write-Host "  pushed" } else { Write-Host "  commit 실패" }
+  }
+} else {
+  Write-Host "[weekly] 완료. 커밋하려면:"
+  Write-Host "  git add data/catalog_fallback.jsonl.gz && git commit -m 'data: 주간 설명 보강' && git push"
+}
