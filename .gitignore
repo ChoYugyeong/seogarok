@@ -36,3 +36,5 @@ terraform/backend.tf
 terraform/backend.tf.bak
 .taste-skill/
 
+# API 원본 응답 캐시 (로컬 아카이브, 커밋 금지)
+data/enrich_cache/

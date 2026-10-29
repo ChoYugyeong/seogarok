@@ -74,3 +74,24 @@ curl -s https://seogarok.com/api/stats | python -m json.tool | grep description_
 | 도서관정보나루(data4library) | ⛔ 인증키 발급 불가 확인(사용자) → **보류** |
 | Open Library | ⛔ 한국어 커버리지 0/12 |
 | 알라딘 Open API | ⛔ 현재 중단 |
+
+---
+
+## API 응답 캐시/아카이브 정책 (2026-10-30)
+
+### 저장하는 것 (OK)
+- **카탈로그/DB에 결과 저장**: 제목·저자·출판사·ISBN·가격·표지·**설명·페이지·평점**을 `data/catalog.jsonl` → DB로 아카이브. 서빙 시 API 호출 없음(빠름).
+- **원본 API 응답 디스크 캐시**: `data/enrich_cache/` (gitignored, 커밋 금지)
+  - YES24: ISBN/아이템 단위, 30일 TTL, 실패는 3일 TTL
+  - Google Books: ISBN/제목 단위. **0건 응답도 캐시**(쿼터 절약), 429/네트워크 오류는 캐시 안 함
+  - `--refresh` 로 강제 재조회
+- **런타임 extras 캐시**: 서버 메모리 10분 캐시(`server/on_demand.py`) — 책 상세에 붙는 평점/페이지용.
+
+### 저장하지 않는 것
+- 원본 응답 벌크를 공개 저장소/공개 API로 재배포하지 않음 (약관·저작권)
+- 캐시 디렉토리는 `.gitignore` (`data/enrich_cache/`) — 로컬/배치 머신에만 존재
+- 출처 표기 유지: 카드/랜딩에 YES24/Google Books 링크 유지
+
+### 효과
+- 같은 책을 다시 보강할 때 네트워크 호출 0회 → 주간 배치가 수십 초~수 분으로 단축
+- Google 쿼터 소진 시 **서킷브레이커**(연속 429 3회 → 남은 호출 즉시 스킵)로 배치가 빠르게 종료

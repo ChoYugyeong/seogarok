@@ -25,15 +25,68 @@ from pathlib import Path
 
 API_BASE = "https://apis.yes24.com"
 
+# ---- API 응답 디스크 캐시 (원본 아카이브, gitignored) ----
+_ENRICH_CACHE = Path(__file__).resolve().parents[2] / "data" / "enrich_cache"
+_POS_TTL = 30 * 86400
+_NEG_TTL = 3 * 86400
+_REFRESH = False
+
+
+def _cache_file(kind: str, key: str) -> Path:
+    safe = re.sub(r"[^0-9A-Za-z가-힣_-]+", "_", str(key))[:80]
+    d = _ENRICH_CACHE / kind
+    d.mkdir(parents=True, exist_ok=True)
+    return d / (safe + ".json")
+
+
+def _cache_get(kind: str, key: str):
+    if _REFRESH:
+        return None
+    try:
+        obj = json.loads(_cache_file(kind, key).read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    data = obj.get("data")
+    ttl = _POS_TTL if data else _NEG_TTL
+    if time.time() - float(obj.get("ts") or 0) > ttl:
+        return None
+    return data
+
+
+def _cache_put(kind: str, key: str, data) -> None:
+    try:
+        _cache_file(kind, key).write_text(
+            json.dumps({"ts": time.time(), "data": data}, ensure_ascii=False), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+
 # Google Books 무료 한도: 분당 100회 → 안전하게 80/min 으로 제한
 _GOOGLE_LOCK = threading.Lock()
 _GOOGLE_LAST = 0.0
 _GOOGLE_INTERVAL = 0.75
+_GOOGLE_429 = 0
+_GOOGLE_ABORT = False
+
+
+def _google_cached(kind: str, key: str, url: str) -> dict:
+    hit = _cache_get(kind, key)
+    if hit is not None:
+        return hit
+    data = _google_get(url)
+    # 429/오류 응답은 캐시하지 않음(다음 실행에서 재시도)
+    # 성공 응답(0건 포함)은 캐시, 429/네트워크 오류({} 또는 totalItems 없음)는 캐시 안 함
+    if isinstance(data, dict) and "totalItems" in data:
+        _cache_put(kind, key, data)
+    return data
 
 
 def _google_get(url: str, timeout: int = 15) -> dict:
-    """레이트 리밋 + 429 재시도 포함 GET."""
-    global _GOOGLE_LAST
+    """레이트 리밋 + 429 재시도 + 쿼터 소진 서킷브레이커 포함 GET."""
+    global _GOOGLE_LAST, _GOOGLE_429, _GOOGLE_ABORT
+    if _GOOGLE_ABORT:
+        return {}
     for attempt in range(3):
         with _GOOGLE_LOCK:
             wait = _GOOGLE_INTERVAL - (time.monotonic() - _GOOGLE_LAST)
@@ -44,11 +97,19 @@ def _google_get(url: str, timeout: int = 15) -> dict:
             with urllib.request.urlopen(
                 urllib.request.Request(url, headers={"User-Agent": "seogarok-enrich/1"}), timeout=timeout
             ) as resp:
+                _GOOGLE_429 = 0
                 return json.loads(resp.read().decode())
         except urllib.error.HTTPError as exc:
-            if exc.code == 429 and attempt < 2:
-                time.sleep(3.0 + attempt * 3.0)
-                continue
+            if exc.code == 429:
+                _GOOGLE_429 += 1
+                if _GOOGLE_429 >= 3:
+                    _GOOGLE_ABORT = True
+                    print("[enrich] Google 쿼터 소진(429 3회) — 남은 Google 호출 스킵", file=sys.stderr)
+                    return {}
+                if attempt < 2:
+                    time.sleep(2.0 + attempt * 2.0)
+                    continue
+                return {}
             return {}
         except Exception:
             if attempt < 2:
@@ -125,7 +186,7 @@ def _google_books(isbn: str) -> dict:
     url = "https://www.googleapis.com/books/v1/volumes?" + urllib.parse.urlencode(
         {"q": f"isbn:{isbn}", "key": api_key}
     )
-    data = _google_get(url)
+    data = _google_cached("google_isbn", isbn, url)
     items = data.get("items") or []
     if not items:
         return {}
@@ -193,7 +254,7 @@ def _google_title(title: str, author: str = "") -> dict:
     url = "https://www.googleapis.com/books/v1/volumes?" + urllib.parse.urlencode(
         {"q": title, "key": api_key, "maxResults": 10}
     )
-    data = _google_get(url)
+    data = _google_cached("google_title", title, url)
     want = _norm_title(title)
     for it in data.get("items") or []:
         vi = it.get("volumeInfo") or {}
@@ -223,6 +284,11 @@ def fetch_detail(key: str, row: dict) -> dict:
         params = {"searchType": "ItemId", "query": item, "detail": "Y"}
     else:
         return {}
+    _ck = isbn or f"item:{item}"
+    _hit = _cache_get("yes24", _ck)
+    if _hit is not None:
+        return _hit
+
     url = API_BASE + "/v1/goods/itemDetail?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(
         url, headers={"X-Api-Key": key, "Accept": "application/json", "User-Agent": "seogarok-enrich/1"}
@@ -245,12 +311,13 @@ def fetch_detail(key: str, row: dict) -> dict:
                 "subtitle": (it.get("subTitle") or "").strip() or None,
                 "source": "yes24_itemdetail",
             }
+            _cache_put("yes24", _ck, out)
             return out
         except Exception:
             if attempt == 0:
                 time.sleep(0.4)
+    _cache_put("yes24", _ck, {})
     return {}
-
 
 def enrich_html(rows: list[dict], workers: int = 3, timeout: int = 0, min_interval: float = 1.1, limit: int = 0) -> dict:
     """남은 누락 책을 YES24 HTML 상세페이지에서 보강 (robots 준수).
@@ -337,9 +404,12 @@ def main(argv=None) -> int:
     ap.add_argument("--skip-api", action="store_true", help="YES24 API 보강 단계 건너뛰기(HTML/대체소스만)")
     ap.add_argument("--google-only", action="store_true", help="YES24 없이 Google Books만으로 보강(일일 쿼터 주의)")
     ap.add_argument("--google-title", action="store_true", help="Google Books 제목 검색으로 보강(ISBN 미색인 대응)")
+    ap.add_argument("--refresh", action="store_true", help="API 응답 디스크 캐시 무시하고 재조회")
     ap.add_argument("--html-workers", type=int, default=3)
     ap.add_argument("--html-interval", type=float, default=1.1, help="HTML 요청 간 최소 간격(초)")
     args = ap.parse_args(argv)
+    global _REFRESH
+    _REFRESH = bool(args.refresh)
 
     key = _key()
     if not key and not (args.google_only or args.google_title):
