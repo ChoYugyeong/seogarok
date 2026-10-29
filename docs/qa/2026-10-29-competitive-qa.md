@@ -108,3 +108,36 @@
 - CI에 `qa_suite.py`(스모크+SEO+헤더) 연결: PR마다 자동 PASS/FAIL
 - axe 검사 CI(Playwright/axe-core) 주 1회
 - 랭킹 스냅샷 일별 성공 여부 모니터링(GCS 오브젝트 신선도)
+
+---
+
+# 2차 라운드 — SEO/푸시/개인화/CI (2026-10-29 저녁)
+
+## 구현 결과
+
+| 항목 | 내용 | 라이브 검증 |
+| --- | --- | --- |
+| 책별 SEO 랜딩 | `/book/{id}` 서버 렌더 HTML + Book JSON-LD + OG/canonical | 200 · 5,315B · `"@type": "Book"` · canonical · og:image |
+| 책 사이트맵 | `/sitemap-books.xml` 5,000권, robots.txt 연결 | 200 · 749KB · `<loc>` 5,000 |
+| 웹푸시 종료 알림 | VAPID 자동 생성(GCS `push/vapid.json`), `/api/push/{key,subscribe,unsubscribe,cron}` | key 200 · subscribe 200 · cron dry 200 · 무인증 403 |
+| 알림 UI | 내 서재에 "종료 알림 켜기", 서재/알림 변경 시 watches 자동 동기화 | `.push-card` + 버튼 라이브 확인 |
+| SW 푸시 | `push` → 알림 표시, `notificationclick` → 해당 책 딥링크, 캐시 v3 | SW 캐시 `seogarok-v3` 등록 |
+| 개인화 홈 | 최상단 "이어 읽기 / 내 서재에서 볼 책 / 최근 본 책" | `.personal-section` 첫 섹션 · "읽던 책부터 이어가세요 · 내 구독 2곳" |
+| CI 게이트 | `qa.yml`(라이브 QA), `push-digest.yml`(매일 09:00 KST 발송) | 워크플로 파일 추가 |
+
+## 최종 QA (라이브)
+
+```
+QA PASS (warn 0건)
+- API 21종 전부 200(기대 404 포함)
+- sitemap.xml 17 URL + sitemap-books.xml 5,000 URL
+- JSON-LD ✓ · h1 1
+- 부하 48req/12workers: p50 342ms · p95 491ms · max 515ms · 0 errors · 29.5 rps
+```
+
+## 남은 검증/리스크
+
+1. **실제 푸시 발송 E2E**: 기기 알림 권한·푸시 엔드포인트가 필요해 서버 측 dry-run까지 검증. 실제 발송은 사용자가 내 서재에서 "종료 알림 켜기"를 누른 브라우저에서 동작.
+2. **종료 3일 내 공지 부재 시 알림 없음**: 현재 데이터 기준 3일 내 종료 공지가 없어 cron 발송 0건(정상). 메시지 생성 로직은 16일 뒤 종료 건으로 별도 검증.
+3. **cron 인증**: 별도 시크릿 대신 `YES24_API_KEY`를 `X-Cron-Secret`으로 사용(GitHub Secrets에 이미 존재). 추후 전용 시크릿 회전 권장.
+4. **SEO 색인**: sitemap-books는 Google Search Console에 제출 권장.
