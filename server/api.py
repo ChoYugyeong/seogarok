@@ -36,6 +36,7 @@ from .metrics import METRICS
 from .search import fetch_availability, fetch_books, fetch_notices, search
 
 _lock_encode = threading.Lock()
+_rank_cache: dict = {}  # /api/rank 카테고리별 (ts, payload)
 
 VERSION = "0.4.0"
 CHAOS_ENABLED = os.getenv("SEOG_CHAOS", "0") == "1"
@@ -44,7 +45,7 @@ CHAOS_ENABLED = os.getenv("SEOG_CHAOS", "0") == "1"
 CHAOS = {"latency_ms": 0, "error_rate": 0.0}
 
 # 라벨 카디널리티를 낮추기 위한 경로 정규화
-_ROUTES = ("/api/search", "/api/book", "/api/notices", "/api/stats", "/api/suggest", "/api/report", "/api/collections", "/api/collection", "/api/overview", "/api/pick",
+_ROUTES = ("/api/search", "/api/book", "/api/notices", "/api/stats", "/api/suggest", "/api/report", "/api/rank", "/api/collections", "/api/collection", "/api/overview", "/api/pick",
            "/api/health", "/api/_chaos", "/healthz", "/livez", "/readyz", "/metrics")
 
 
@@ -733,6 +734,64 @@ class Handler(BaseHTTPRequestHandler):
                 conn.execute("SELECT count(*) FROM notices WHERE source_kind IS NOT NULL AND source_kind != 'fixture'").fetchone()[0]
             )
             return self._json({"count": len(rows), "total": total, "real": real, "notices": [dict(r) for r in rows]})
+
+        if path == "/api/rank":
+            # 예스24 실시간 베스트셀러 순위 (카테고리별, 10분 캐시)
+            RANK_CATS = {
+                "종합": "001", "소설": "001001046", "에세이": "001001047",
+                "인문": "001001019", "과학": "001001002", "역사": "001001010",
+                "자기계발": "001001026", "경제": "001001025",
+                "여행": "001001009", "어린이": "001001016",
+            }
+            cat = (qs.get("cat") or ["종합"])[0].strip() or "종합"
+            if cat not in RANK_CATS:
+                cat = "종합"
+            limit = int((qs.get("limit") or ["10"])[0])
+            limit = max(3, min(limit, 20))
+            now = time.time()
+            hit = _rank_cache.get(cat)
+            if hit and now - hit[0] < 600:
+                return self._json(hit[1])
+            try:
+                from .on_demand import _get as _od_get
+
+                data = _od_get("/v1/category/bestseller", {
+                    "categoryId": RANK_CATS[cat], "page": 1, "pageSize": limit,
+                })
+            except Exception as exc:
+                return self._json({
+                    "error": "rank_unavailable",
+                    "message": str(exc)[:160],
+                    "category": cat,
+                }, 503)
+            items = []
+            for it in (data.get("items") or []):
+                goods = str(it.get("itemId") or "").strip()
+                title = str(it.get("title") or "").strip()
+                if not goods or not title:
+                    continue
+                try:
+                    price = int(float(it.get("salePrice")))
+                except (TypeError, ValueError):
+                    price = None
+                items.append({
+                    "rank": len(items) + 1,
+                    "id": f"yes24:{goods}",
+                    "title": title,
+                    "author": (it.get("author") or "").strip() or "저자 미상",
+                    "cover_url": it.get("cover") or f"https://image.yes24.com/goods/{goods}/L",
+                    "price": price,
+                    "category": it.get("goodsSortNm") or "",
+                })
+            payload = {
+                "category": cat,
+                "category_id": RANK_CATS[cat],
+                "source": "예스24 베스트셀러",
+                "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                "items": items,
+            }
+            _rank_cache[cat] = (now, payload)
+            return self._json(payload)
 
         if path == "/api/collections":
             conn, _ = app.ctx()

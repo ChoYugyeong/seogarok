@@ -151,6 +151,7 @@ const state = {
   pick: null,
   overview: null,
   recentBooks: [],
+  rank: { cat: '종합', items: null, loading: false, error: null, source: '', fetchedAt: '' },
   cache: {}, // id -> api book (검색 결과/상세 캐시)
   notices: [], // 수집된 종료 예정 공지 (실데이터 + fixture)
 };
@@ -185,6 +186,7 @@ const API = {
   report(bookId, platform) { return this.post('/api/report', { book_id: bookId, platform }); },
   collections() { return this.call('/api/collections'); },
   overview() { return this.call('/api/overview'); },
+  rank(cat) { return this.call('/api/rank', { cat, limit: 10 }); },
   dailyPick() { return this.call('/api/pick'); },
   collection(slug) { return this.call('/api/collection', { slug }); },
 };
@@ -665,6 +667,34 @@ async function loadDiscover() {
   } catch (e) { }
 }
 
+async function loadRank(cat) {
+  if (!state.api.on) return;
+  const target = cat || state.rank.cat || '종합';
+  state.rank.cat = target;
+  state.rank.loading = true;
+  state.rank.error = null;
+  render();
+  try {
+    const r = await API.rank(target);
+    if (state.rank.cat !== target) return; // 탭 경쟁 방지
+    const items = (r.items || []).map((x) => ({
+      ...mapApiBook({ id: x.id, title: x.title, author: x.author, cover_url: x.cover_url, price: x.price, av: {}, av_origin: {}, notices: [] }),
+      rank: x.rank,
+    }));
+    cacheBooks(items);
+    state.rank.items = items;
+    state.rank.source = r.source || '예스24 베스트셀러';
+    state.rank.fetchedAt = r.fetched_at || '';
+    state.rank.error = null;
+  } catch (e) {
+    state.rank.items = null;
+    state.rank.error = '랭킹을 불러오지 못했어요';
+  } finally {
+    state.rank.loading = false;
+    render();
+  }
+}
+
 async function loadOverview() {
   if (!state.api.on) return;
   try {
@@ -780,24 +810,63 @@ function renderRecentRail() {
 }
 
 function renderRanking() {
-  const rail = (state.discover || [])[0];
-  if (!rail || !rail.books.length) return '';
-  const books = rail.books.slice(0, 6);
-  const items = books.map((b, i) => `<button class="rank-item" data-book="${esc(b.id)}">
-    <span class="rank-no">${i + 1}</span>
-    <span class="rank-cover">${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="" loading="lazy">` : ''}</span>
-    <span class="rank-title">${esc(b.title)}</span>
-    <span class="rank-author">${esc(b.author)}</span>
-  </button>`).join('');
-  return `<section class="section rank-section">
-    <div class="sec-head">
+  const r = state.rank || {};
+  const rankCats = ['종합', '소설', '에세이', '인문', '과학', '자기계발', '경제'];
+  const tabs = rankCats
+    .map((c) => `<button class="rank-tab ${r.cat === c ? 'is-on' : ''}" data-rankcat="${c}">${c}</button>`)
+    .join('');
+  const head = `<div class="sec-head">
       <div>
         <h3 class="sec-title">서가 랭킹</h3>
-        <p class="sec-desc">예스24 인기·스테디 목록에서 서가가 고른 순서예요.</p>
+        <p class="sec-desc">${r.items ? `${esc(r.source)} · ${esc(String(r.fetchedAt || '').slice(0, 10))}` : '예스24 실시간 베스트셀러 순위예요.'}</p>
       </div>
-      <button class="sec-more" data-genre="${esc(rail.q)}">더 보기 ›</button>
+      <button class="sec-more" data-genre="${esc(r.cat === '종합' ? '베스트셀러' : r.cat)}">더 보기 ›</button>
+    </div>`;
+
+  if (!state.api.on) return '';
+  if (r.loading && !r.items) {
+    return `<section class="section rank-section">${head}<div class="rank-grid">${Array.from({ length: 3 }).map(() => '<div class="rank-big skel" style="height:118px"></div>').join('')}</div></section>`;
+  }
+  if (!r.items || !r.items.length) {
+    // API 실패/연결 전: 서가 추천 폴백
+    const rail = (state.discover || [])[0];
+    if (!rail || !rail.books.length) return '';
+    const fallback = rail.books.slice(0, 6).map((b, i) => `<button class="rank-row-sm" data-book="${esc(b.id)}">
+        <span class="rank-no">${i + 1}</span>
+        <span class="rank-cover"><img src="${esc(b.cover_url || '')}" alt="" loading="lazy"></span>
+        <span class="rank-meta"><b>${esc(b.title)}</b><span>${esc(b.author)}</span></span>
+      </button>`).join('');
+    return `<section class="section rank-section">
+      ${head.replace('예스24 실시간 베스트셀러 순위예요.', '예스24 연결 전이라 서가 추천 순서로 보여드려요.')}
+      <div class="rank-tabs">${tabs}</div>
+      <div class="rank-list">${fallback}</div>
+    </section>`;
+  }
+
+  const top = r.items.slice(0, 3);
+  const rest = r.items.slice(3, 10);
+  const big = top.map((b, i) => `<button class="rank-big" data-book="${esc(b.id)}">
+      <span class="rank-no">${i + 1}</span>
+      <span class="rank-big-cover"><img src="${esc(b.cover_url || '')}" alt="" loading="lazy"></span>
+      <span class="rank-big-meta">
+        <b>${esc(b.title)}</b>
+        <span class="rank-author">${esc(b.author)}</span>
+        ${b.price ? `<span class="rank-price">${Number(b.price).toLocaleString()}원</span>` : ''}
+      </span>
+    </button>`).join('');
+  const small = rest.map((b) => `<button class="rank-row-sm" data-book="${esc(b.id)}">
+      <span class="rank-no">${b.rank}</span>
+      <span class="rank-cover"><img src="${esc(b.cover_url || '')}" alt="" loading="lazy"></span>
+      <span class="rank-meta"><b>${esc(b.title)}</b><span>${esc(b.author)}</span></span>
+    </button>`).join('');
+
+  return `<section class="section rank-section">
+    ${head}
+    <div class="rank-tabs">${tabs}</div>
+    <div class="rank-cols">
+      <div class="rank-top">${big}</div>
+      <div class="rank-rest">${small}</div>
     </div>
-    <div class="rank-row">${items}</div>
   </section>`;
 }
 
@@ -1978,6 +2047,16 @@ document.addEventListener('click', (e) => {
   const tlClear = t.closest('[data-tl-clear]');
   if (tlClear) { state.tlDate = null; render(); return; }
 
+  const rankTab = t.closest('[data-rankcat]');
+  if (rankTab) {
+    const cat = rankTab.dataset.rankcat;
+    if (cat !== state.rank.cat) {
+      state.rank.items = null;
+      loadRank(cat);
+    }
+    return;
+  }
+
   const genreEl = t.closest('[data-genre]');
   if (genreEl) {
     const q = genreEl.dataset.genre;
@@ -2161,6 +2240,7 @@ async function initApi() {
       loadDiscover();
       loadCollections();
       loadOverview();
+      loadRank('종합');
       loadPick();
       loadRecentBooks();
       renderRecent();
