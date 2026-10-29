@@ -141,6 +141,9 @@ const state = {
   subs: { ...DEFAULT_STATE.subs },
   shelf: { want: [...DEFAULT_STATE.shelf.want], reading: [...DEFAULT_STATE.shelf.reading], done: [...DEFAULT_STATE.shelf.done] },
   alerts: {},
+  pushOn: false,
+  pushLeads: [7, 3, 1, 0],
+  personalLoading: false,
   // --- 백엔드 연동 상태 ---
   searchMode: 'hybrid',
   api: { on: false, checked: false, loading: false, hits: [], meta: null, error: null, seq: 0, health: null },
@@ -288,10 +291,10 @@ async function subscribePush(opts = {}) {
     const res = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription: sub.toJSON(), watches: pushWatches(), platforms: subsOn(), lead_days: state.pushLeads }),
+      body: JSON.stringify({ subscription: sub.toJSON(), watches: pushWatches(), platforms: subsOn(), lead_days: (Array.isArray(state.pushLeads) && state.pushLeads.length ? state.pushLeads : [7, 3, 1, 0]) }),
     });
     if (!res.ok) throw new Error('subscribe failed');
-    try { ANALYTICS.track('alert_enable', { leads: state.pushLeads.join(','), watches: pushWatches().length }); } catch (e) {}
+    try { ANALYTICS.track('alert_enable', { leads: (state.pushLeads || [7, 3, 1, 0]).join(','), watches: pushWatches().length }); } catch (e) {}
     state.pushOn = true;
     save();
     render();
@@ -305,6 +308,7 @@ async function subscribePush(opts = {}) {
 
 function pushBlockHTML() {
   const count = pushWatches().length;
+  if (!Array.isArray(state.pushLeads) || !state.pushLeads.length) state.pushLeads = [7, 3, 1, 0];
   const leadLabels = { 7: '7일 전', 3: '3일 전', 1: '1일 전', 0: '당일' };
   const leadChips = [7, 3, 1, 0]
     .map((n) => `<button class="lead-chip ${state.pushLeads.includes(n) ? 'is-on' : ''}" data-push-lead="${n}" aria-pressed="${state.pushLeads.includes(n)}">${leadLabels[n]}</button>`)
@@ -2331,6 +2335,7 @@ document.addEventListener('click', (e) => {
   const leadBtn = t.closest('[data-push-lead]');
   if (leadBtn) {
     const n = Number(leadBtn.dataset.pushLead);
+    if (!Array.isArray(state.pushLeads)) state.pushLeads = [7, 3, 1, 0];
     const has = state.pushLeads.includes(n);
     ANALYTICS.track('alert_lead', { day: n, on: !has });
     state.pushLeads = has ? state.pushLeads.filter((x) => x !== n) : [...state.pushLeads, n].sort((a, b) => b - a);

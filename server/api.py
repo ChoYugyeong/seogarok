@@ -136,6 +136,27 @@ def get_app() -> AppState:
     return APP
 
 
+def _lex_tokens(q: str) -> list[str]:
+    """질의 토큰(2자 이상) — 공백/기호 제거 후 비교용."""
+    raw = re.split(r"[\s,·/|]+", (q or "").strip())
+    toks = []
+    for t in raw:
+        t = re.sub(r"[^0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ]", "", t).lower()
+        if len(t) >= 2 and t not in toks:
+            toks.append(t)
+    return toks
+
+
+def _lex_match(q: str, *texts: str) -> bool:
+    """질의 토큰이 제목/저자 문자열에 실제 포함되는지."""
+    hay = " ".join(str(t or "") for t in texts).lower()
+    hay_compact = re.sub(r"\s+", "", hay)
+    full = re.sub(r"\s+", "", (q or "").strip().lower())
+    if full and len(full) >= 2 and full in hay_compact:
+        return True
+    return any(tok in hay_compact for tok in _lex_tokens(q))
+
+
 def serialize_book(row: dict, av: dict, origins: dict, notices: list[dict], score: float | None = None) -> dict:
     out = {
         "id": row["id"],
@@ -935,24 +956,42 @@ class Handler(BaseHTTPRequestHandler):
             # ③ 카탈로그에 없으면 실시간 조회 (YES24 Open API)
             #    - 로컬 결과 0건이면 온디맨드 단독
             #    - FTS 후보 0건(벡터만 걸린 경우)이면 온디맨드 결과를 앞에 병합
+            #    - 벡터만 걸린 결과는 유사도가 낮으면(0.4 미만) 노이즈로 간주해 제거
             strategy = dbg.extra.get("strategy")
-            if dbg.keyword_candidates == 0 and q.strip() and results:
+            vector_sims = dbg.extra.get("vector_sims", {}) or {}
+            best_sim = max(vector_sims.values()) if vector_sims else 0.0
+
+            def _live_lexical(live_items):
+                return [
+                    x for x in (live_items or [])
+                    if _lex_match(q, x.get("title") or "", x.get("author") or "")
+                ]
+
+            if dbg.keyword_candidates == 0 and q.strip():
+                live_merge = []
                 try:
                     from .on_demand import search as od_search
 
-                    live_merge = od_search(q, limit=min(limit, 8))
+                    live_merge = _live_lexical(od_search(q, limit=min(limit, 8)))
                 except Exception as exc:
                     log_event(level="warn", msg="on_demand_merge_failed", error=str(exc)[:200])
-                    live_merge = []
                 if live_merge:
-                    seen_titles = {x["title"] for x in live_merge}
-                    results = live_merge + [x for x in results if x["title"] not in seen_titles][: max(0, limit - len(live_merge))]
+                    keep = [
+                        x for x in results
+                        if _lex_match(q, x.get("title") or "", x.get("author") or "")
+                    ]
+                    results = (live_merge + keep)[:limit]
                     strategy = "hybrid-live"
+                elif best_sim < 0.4:
+                    results = []
+                    strategy = "none"
+                else:
+                    strategy = "vector-only"
             if not results and q.strip():
                 try:
                     from .on_demand import search as od_search
 
-                    live = od_search(q, limit=min(limit, 12))
+                    live = _live_lexical(od_search(q, limit=min(limit, 12)))
                 except Exception:
                     live = []
                 if live:
@@ -1106,13 +1145,22 @@ class Handler(BaseHTTPRequestHandler):
             if hit and now - hit[0] < 600:
                 return self._json(hit[1])
             label, endpoint = RANK_KINDS[kind]
-            try:
-                from .on_demand import _get as _od_get
+            data = None
+            last_exc = None
+            for attempt in range(2):
+                try:
+                    from .on_demand import _get as _od_get
 
-                data = _od_get(endpoint, {
-                    "categoryId": RANK_CATS[cat], "page": 1, "pageSize": limit, "detail": "Y",
-                })
-            except Exception as exc:
+                    data = _od_get(endpoint, {
+                        "categoryId": RANK_CATS[cat], "page": 1, "pageSize": limit, "detail": "Y",
+                    })
+                    break
+                except Exception as exc:
+                    last_exc = exc
+                    if attempt == 0:
+                        time.sleep(0.35)
+            if data is None:
+                exc = last_exc
                 return self._json({
                     "error": "rank_unavailable",
                     "message": str(exc)[:160],
