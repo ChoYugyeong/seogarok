@@ -384,24 +384,38 @@ class Handler(BaseHTTPRequestHandler):
             av, _origins = build_availability(row, avs.get(bid, []), nts.get(bid, []))
             related = []
             try:
-                cat = (row.get("category") or "").split(">")[0].strip()
-                if cat:
+                segs = [x.strip() for x in (row.get("category") or "").split(">") if x.strip()]
+                author_key = (row.get("author") or "").split("/")[0].replace(" 저", "").strip()
+                base = (
+                    "SELECT id, title, author, cover_url FROM books "
+                    "WHERE id != ? AND cover_url IS NOT NULL "
+                )
+                if author_key:
                     related = [
                         dict(r)
                         for r in conn.execute(
-                            "SELECT id, title, author, cover_url FROM books "
-                            "WHERE id != ? AND cover_url IS NOT NULL AND category LIKE ? "
-                            "ORDER BY id DESC LIMIT 6",
-                            (bid, cat + "%"),
+                            base + "AND author LIKE ? ORDER BY id DESC LIMIT 6", (bid, "%" + author_key + "%")
+                        ).fetchall()
+                    ]
+                if not related and len(segs) >= 2:
+                    related = [
+                        dict(r)
+                        for r in conn.execute(
+                            base + "AND category LIKE ? ORDER BY id DESC LIMIT 6", (bid, "%" + segs[1] + "%")
+                        ).fetchall()
+                    ]
+                if not related and segs:
+                    related = [
+                        dict(r)
+                        for r in conn.execute(
+                            base + "AND category LIKE ? ORDER BY id DESC LIMIT 6", (bid, segs[0] + "%")
                         ).fetchall()
                     ]
                 if not related:
                     related = [
                         dict(r)
                         for r in conn.execute(
-                            "SELECT id, title, author, cover_url FROM books "
-                            "WHERE id != ? AND cover_url IS NOT NULL ORDER BY id DESC LIMIT 6",
-                            (bid,),
+                            base + "ORDER BY id DESC LIMIT 6", (bid,)
                         ).fetchall()
                     ]
             except Exception:
