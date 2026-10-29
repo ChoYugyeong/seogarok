@@ -65,6 +65,65 @@ def _toc_summary(row: dict, toc: str) -> str | None:
     )
 
 
+def _google_books(isbn: str) -> dict:
+    """Google Books ISBN 조회 (GOOGLE_BOOKS_API_KEY 필요)."""
+    api_key = (os.getenv("GOOGLE_BOOKS_API_KEY") or "").strip()
+    if not api_key or not isbn:
+        return {}
+    url = "https://www.googleapis.com/books/v1/volumes?" + urllib.parse.urlencode(
+        {"q": f"isbn:{isbn}", "key": api_key}
+    )
+    try:
+        with urllib.request.urlopen(
+            urllib.request.Request(url, headers={"User-Agent": "seogarok-enrich/1"}), timeout=15
+        ) as resp:
+            data = json.loads(resp.read().decode())
+    except Exception:
+        return {}
+    items = data.get("items") or []
+    if not items:
+        return {}
+    vi = items[0].get("volumeInfo") or {}
+    desc = _clean_text(vi.get("description"))[:2000]
+    return {
+        "description": desc or None,
+        "pages": vi.get("pageCount"),
+        "subtitle": (vi.get("subtitle") or "").strip() or None,
+        "source": "google_books",
+    }
+
+
+def _naver_book(isbn: str, title: str = "") -> dict:
+    """네이버 책 검색 API (NAVER_CLIENT_ID/SECRET 필요)."""
+    cid = (os.getenv("NAVER_CLIENT_ID") or "").strip()
+    secret = (os.getenv("NAVER_CLIENT_SECRET") or "").strip()
+    q = (isbn or title or "").strip()
+    if not cid or not secret or not q:
+        return {}
+    url = "https://openapi.naver.com/v1/search/book.json?" + urllib.parse.urlencode({"query": q, "display": 3})
+    try:
+        with urllib.request.urlopen(
+            urllib.request.Request(
+                url,
+                headers={
+                    "X-Naver-Client-Id": cid,
+                    "X-Naver-Client-Secret": secret,
+                    "User-Agent": "seogarok-enrich/1",
+                },
+            ),
+            timeout=15,
+        ) as resp:
+            data = json.loads(resp.read().decode())
+    except Exception:
+        return {}
+    items = data.get("items") or []
+    for it in items:
+        desc = _clean_text(it.get("description"))[:2000]
+        if desc:
+            return {"description": desc, "source": "naver_book"}
+    return {}
+
+
 def fetch_detail(key: str, row: dict) -> dict:
     isbn = (row.get("isbn13") or "").strip()
     item = (row.get("item_code") or "").strip()
@@ -87,14 +146,16 @@ def fetch_detail(key: str, row: dict) -> dict:
                 return {}
             it = items[0]
             cd = it.get("contentDetail") or {}
-            return {
+            out = {
                 "intro": _clean_text(cd.get("bookIntroduction"))[:2000] or None,
                 "summary": _clean_text(cd.get("bookSummary"))[:800] or None,
                 "toc": _clean_text(cd.get("tableOfContents"))[:4000] or None,
                 "pages": it.get("pages"),
                 "star": it.get("starScore"),
                 "subtitle": (it.get("subTitle") or "").strip() or None,
+                "source": "yes24_itemdetail",
             }
+            return out
         except Exception:
             if attempt == 0:
                 time.sleep(0.4)
@@ -182,6 +243,7 @@ def main(argv=None) -> int:
     ap.add_argument("--timeout", type=int, default=0, help="초 (0=무제한)")
     ap.add_argument("--min-desc", type=int, default=20, help="이 길이 이하 설명은 누락으로 간주")
     ap.add_argument("--html", action="store_true", help="API로 안 되는 책은 HTML 상세페이지에서 보강")
+    ap.add_argument("--skip-api", action="store_true", help="YES24 API 보강 단계 건너뛰기(HTML/대체소스만)")
     ap.add_argument("--html-workers", type=int, default=3)
     ap.add_argument("--html-interval", type=float, default=1.1, help="HTML 요청 간 최소 간격(초)")
     args = ap.parse_args(argv)
@@ -223,6 +285,22 @@ def main(argv=None) -> int:
             return
         d = fetch_detail(key, row)
         if not d:
+            d = {}
+        if not (d.get("intro") or d.get("summary")):
+            # YES24에 소개가 없으면 키 기반 대체 소스 시도 (없으면 조용히 스킵)
+            alt = {}
+            isbn = (row.get("isbn13") or "").strip()
+            if isbn and os.getenv("GOOGLE_BOOKS_API_KEY"):
+                alt = _google_books(isbn)
+            if not alt.get("description") and os.getenv("NAVER_CLIENT_ID") and os.getenv("NAVER_CLIENT_SECRET"):
+                alt = _naver_book(isbn, row.get("title") or "")
+            if alt.get("description"):
+                d = dict(d)
+                d["intro"] = alt["description"]
+                d["pages"] = d.get("pages") or alt.get("pages")
+                d["subtitle"] = d.get("subtitle") or alt.get("subtitle")
+                d["alt_source"] = alt.get("source")
+        if not d:
             failed += 1
             return
         if d.get("intro") or d.get("summary"):
@@ -240,8 +318,11 @@ def main(argv=None) -> int:
             row["rating"] = float(d["star"])
         row["enriched_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
 
-    with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
-        list(ex.map(work, targets))
+    if args.skip_api:
+        print("[enrich] --skip-api: YES24 API 단계 건너뜀")
+    else:
+        with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
+            list(ex.map(work, targets))
 
     tmp = out.with_suffix(out.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8", newline="\n") as f:
