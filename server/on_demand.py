@@ -230,7 +230,9 @@ def fetch_extras(book: dict) -> dict:
                 return {}
             item = items[0]
             goods = str(item.get("itemId") or "")
+            _d = _desc(item)
             out = {
+                "description": (_d[:800] if _d else None),
                 "rating": float(item["starScore"]) if item.get("starScore") is not None else None,
                 "pages": _int(item.get("pages")),
                 "sale_point": _int(item.get("salePoint")),

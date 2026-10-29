@@ -405,6 +405,17 @@ class Handler(BaseHTTPRequestHandler):
             avs = fetch_availability(conn, [bid])
             nts = fetch_notices(conn, [bid])
             av, _origins = build_availability(row, avs.get(bid, []), nts.get(bid, []))
+            # 설명/페이지/평점이 비어 있으면 YES24 상세로 보강 (JSON-LD/랜딩 품질)
+            if not (row.get("description") or "").strip() or not row.get("pages"):
+                try:
+                    from .on_demand import fetch_extras as _fx
+
+                    _extras = _fx(row) or {}
+                    for _k in ("description", "pages", "rating"):
+                        if not row.get(_k) and _extras.get(_k):
+                            row[_k] = _extras[_k]
+                except Exception:
+                    pass
             related = []
             try:
                 segs = [x.strip() for x in (row.get("category") or "").split(">") if x.strip()]
@@ -1067,8 +1078,8 @@ class Handler(BaseHTTPRequestHandler):
                 from .on_demand import fetch_extras
 
                 extras = fetch_extras(row) or {}
-                for k in ("rating", "pages", "sale_point", "size", "weight"):
-                    if payload.get(k) is None and extras.get(k) is not None:
+                for k in ("description", "rating", "pages", "sale_point", "size", "weight"):
+                    if not payload.get(k) and extras.get(k) is not None:
                         payload[k] = extras[k]
             except Exception:
                 pass

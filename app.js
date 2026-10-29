@@ -1542,6 +1542,12 @@ function renderApiSearch() {
           : '다른 표현으로 검색해 보세요. 예: “우주 과학 소설”, “한강”, “SF”'}</p>
         ${state.searchMode === 'keyword' ? '<button class="link" data-mode="hybrid">하이브리드로 검색 →</button>' : ''}
       </div>`;
+  } else if (!view.length) {
+    body = `<div class="empty">
+        <b>선택한 조건에 맞는 책이 없어요</b>
+        <p>필터나 가격 조건을 바꾸면 전체 ${api.hits.length}권 중에서 찾을 수 있어요.</p>
+        <button class="retry" data-act="reset-filters">필터 해제</button>
+      </div>`;
   } else {
     body = gridHTML(view);
   }
@@ -2330,6 +2336,7 @@ document.addEventListener('click', (e) => {
       return;
     }
     if (a === 'clear-query') { setQuery(''); const h = $('#heroSearch'); if (h) h.value = ''; return; }
+    if (a === 'reset-filters') { state.searchFilter = 'all'; state.priceRange = 'all'; state.searchSort = 'relevance'; render(); return; }
     if (a === 'clear-collection') { state.collection = null; render(); return; }
     if (a === 'close-drawer') { closeDrawer(); return; }
   const leadBtn = t.closest('[data-push-lead]');

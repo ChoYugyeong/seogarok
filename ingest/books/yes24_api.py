@@ -122,7 +122,8 @@ class Yes24API:
         return self._list("/v1/category/bestsellerSteady", category_id, page, page_size)
 
     def _list(self, path: str, category_id: str, page: int, page_size: int) -> list[dict]:
-        d = self._get(path, {"categoryId": category_id, "page": page, "pageSize": page_size})
+        # detail=Y: 목록 응답에 책 소개(contentDetail)까지 포함 → 설명 보강
+        d = self._get(path, {"categoryId": category_id, "page": page, "pageSize": page_size, "detail": "Y"})
         return (d.get("data") or {}).get("items") or []
 
 
