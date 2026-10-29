@@ -1,0 +1,177 @@
+"""SEO 랜딩(/book/{id}) + 책 사이트맵.
+
+서버 표준 라이브러리만 사용. DB 책 18k권을 검색 유입용 정적 페이지로 노출한다.
+"""
+from __future__ import annotations
+
+import html
+from urllib.parse import quote
+
+BASE = "https://seogarok.com"
+SUB_LABEL = {"millie": "밀리", "ridiselect": "리디셀렉트", "sam": "교보 sam", "willa": "윌라"}
+
+
+def esc(v) -> str:
+    return html.escape(str(v if v is not None else ""), quote=True)
+
+
+def _desc(book: dict) -> str:
+    text = (book.get("description") or "").strip()
+    if text:
+        return " ".join(text.split())[:280]
+    return f"{book.get('title') or ''} — 구독 서비스 가용성과 종료 예정일을 서가록에서 한 번에 확인하세요."
+
+
+def book_jsonld(book: dict, av: dict, base: str = BASE) -> str:
+    import json
+
+    canon = f"{base}/book/{quote(str(book['id']), safe='')}"
+    author = (book.get("author") or "").split("/")[0].replace(" 저", "").strip()
+    data = {
+        "@context": "https://schema.org",
+        "@type": "Book",
+        "name": book.get("title"),
+        "author": {"@type": "Person", "name": author or "저자 미상"},
+        "url": canon,
+        "publisher": book.get("publisher") or None,
+        "datePublished": (book.get("pubdate") or "")[:10] or None,
+        "isbn": book.get("isbn13") or None,
+        "image": book.get("cover_url") or None,
+        "description": _desc(book),
+        "inLanguage": "ko",
+    }
+    price = book.get("price")
+    if price:
+        data["offers"] = {
+            "@type": "Offer",
+            "price": int(price),
+            "priceCurrency": "KRW",
+            "availability": "https://schema.org/InStock",
+            "url": book.get("link") or canon,
+        }
+    crumbs = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "서가록", "item": f"{base}/"},
+            {"@type": "ListItem", "position": 2, "name": book.get("title"), "item": canon},
+        ],
+    }
+    return (
+        '<script type="application/ld+json">' + json.dumps(data, ensure_ascii=False) + "</script>\n"
+        '<script type="application/ld+json">' + json.dumps(crumbs, ensure_ascii=False) + "</script>"
+    )
+
+
+def av_rows(av: dict) -> str:
+    rows = []
+    for key, label in SUB_LABEL.items():
+        v = (av or {}).get(key) or {}
+        state = v.get("s")
+        if state == "ending":
+            d = v.get("d")
+            text = f"{d}일 뒤 종료 예정" if isinstance(d, int) and d >= 0 else "종료 예정"
+            rows.append(f'<li class="end"><b>{esc(label)}</b><span>{esc(text)}</span></li>')
+        elif state == "available":
+            rows.append(f'<li><b>{esc(label)}</b><span>구독으로 읽기 가능</span></li>')
+    if not rows:
+        rows.append('<li class="muted"><b>구독 가용성</b><span>확인된 정보 없음 · 제보로 확인 중</span></li>')
+    return "".join(rows)
+
+
+def book_page_html(book: dict, av: dict, notices: list[dict], base: str = BASE) -> str:
+    bid = str(book["id"])
+    canon = f"{base}/book/{quote(bid, safe='')}"
+    title = f"{book.get('title')} — {book.get('author') or '저자 미상'} · 서가록"
+    desc = _desc(book)
+    cover = book.get("cover_url") or ""
+    price = book.get("price")
+    price_txt = f"{int(price):,}원" if price else ""
+    facts = [book.get("publisher"), (book.get("pubdate") or "")[:10], f"{book['pages']}쪽" if book.get("pages") else None, f"ISBN {book['isbn13']}" if book.get("isbn13") else None]
+    fact_html = " · ".join(esc(f) for f in facts if f)
+    notice_txt = ""
+    if notices:
+        parts = [f"{SUB_LABEL.get(n.get('platform'), n.get('platform'))} {(n.get('ends_at') or '')[:10]} 종료" for n in notices[:3]]
+        notice_txt = f'<p class="notice">종료 공지 · {esc(" / ".join(parts))}</p>'
+    app_url = f"/#book={quote(bid, safe='')}"
+    return f"""<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>{esc(title)}</title>
+<meta name="description" content="{esc(desc)}" />
+<link rel="canonical" href="{esc(canon)}" />
+<meta property="og:type" content="book" />
+<meta property="og:title" content="{esc(book.get('title') or '')}" />
+<meta property="og:description" content="{esc(desc)}" />
+<meta property="og:url" content="{esc(canon)}" />
+<meta property="og:image" content="{esc(cover)}" />
+<meta property="og:site_name" content="서가록" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="{esc(book.get('title') or '')}" />
+<meta name="twitter:description" content="{esc(desc)}" />
+<meta name="twitter:image" content="{esc(cover)}" />
+<link rel="stylesheet" href="/styles.css" />
+{book_jsonld(book, av, base)}
+<style>
+.book-page{{max-width:920px;margin:0 auto;padding:32px 20px 72px}}
+.book-page .back{{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-3);margin-bottom:20px}}
+.book-hero{{display:grid;grid-template-columns:200px minmax(0,1fr);gap:28px;align-items:start}}
+.book-hero img{{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--surface)}}
+.book-hero h1{{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1.28;margin-bottom:8px}}
+.book-hero .author{{font-size:15px;color:var(--text-2);margin-bottom:6px}}
+.book-hero .facts{{font-size:12.5px;color:var(--text-3);margin-bottom:16px}}
+.book-hero .price{{font-size:18px;font-weight:800;color:var(--accent);margin-bottom:16px}}
+.book-hero .summary{{font-size:15px;line-height:1.7;color:var(--text-2)}}
+.av-list{{list-style:none;padding:0;margin:24px 0;display:grid;gap:8px}}
+.av-list li{{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface);border-radius:10px;font-size:14px}}
+.av-list li b{{font-weight:700}}
+.av-list li span{{color:var(--text-2)}}
+.av-list li.end{{background:var(--danger-soft)}}
+.av-list li.end b,.av-list li.end span{{color:var(--danger)}}
+.av-list li.muted b,.av-list li.muted span{{color:var(--text-3)}}
+.notice{{font-size:13px;color:var(--danger);margin:8px 0 0}}
+.cta{{display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:13px 22px;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:15px}}
+.cta:hover{{background:#a02f19}}
+.book-foot{{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-3);line-height:1.7}}
+@media (max-width:640px){{.book-hero{{grid-template-columns:120px minmax(0,1fr);gap:16px}}.book-hero h1{{font-size:22px}}}}
+</style>
+</head>
+<body>
+<main class="book-page">
+  <a class="back" href="/">← 서가록 홈</a>
+  <div class="book-hero">
+    <img src="{esc(cover)}" alt="{esc(book.get('title') or '')} 표지" />
+    <div>
+      <h1>{esc(book.get('title') or '')}</h1>
+      <p class="author">{esc(book.get('author') or '저자 미상')}</p>
+      <p class="facts">{fact_html}</p>
+      {f'<p class="price">{esc(price_txt)}</p>' if price_txt else ''}
+      <p class="summary">{esc(desc)}</p>
+      {notice_txt}
+      <a class="cta" href="{esc(app_url)}">서가록에서 가용성 보기 →</a>
+    </div>
+  </div>
+  <h2 style="margin:28px 0 4px;font-size:18px;font-weight:800">어디서 읽을 수 있나요</h2>
+  <ul class="av-list">{av_rows(av)}</ul>
+  <p class="book-foot">
+    서가록은 밀리·리디셀렉트·교보 sam·윌라의 제공 여부와 종료 예정 공지를 매일 확인합니다.
+    확인되지 않은 정보는 “미확인”으로 표시하며, 제보를 통해 보강합니다.
+    구매 가격은 예스24 기준입니다.
+  </p>
+</main>
+</body>
+</html>"""
+
+
+def sitemap_books_xml(rows: list[dict], base: str = BASE) -> str:
+    parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for r in rows:
+        bid = str(r["id"])
+        loc = f"{base}/book/{quote(bid, safe='')}"
+        last = (r.get("pubdate") or "")[:10]
+        parts.append(f"<url><loc>{esc(loc)}</loc>" + (f"<lastmod>{esc(last)}</lastmod>" if last else "") + "<changefreq>weekly</changefreq><priority>0.6</priority></url>")
+    parts.append("</urlset>")
+    return "\n".join(parts)

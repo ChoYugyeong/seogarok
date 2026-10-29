@@ -1,0 +1,43 @@
+name: push-digest
+
+# 매일 종료 임박 웹푸시 발송: /api/push/cron 호출
+# - 인증: X-Cron-Secret = YES24_API_KEY (서버도 같은 값으로 검증)
+# - 수동 실행 시 dry-run 옵션 사용 가능
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "dry-run (발송 없이 대상만 확인)"
+        required: false
+        default: "0"
+  schedule:
+    - cron: "0 0 * * *" # 매일 09:00 KST
+
+permissions:
+  contents: read
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call push cron
+        env:
+          CRON_SECRET: ${{ secrets.YES24_API_KEY }}
+          DRY: ${{ github.event.inputs.dry || '0' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::YES24_API_KEY 시크릿이 없습니다."
+            exit 1
+          fi
+          URL="https://seogarok.com/api/push/cron?dry=${DRY}"
+          echo "POST $URL (dry=${DRY})"
+          code=$(curl -sS -o /tmp/push.json -w "%{http_code}" -X POST "$URL" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" -H "Content-Type: application/json" --max-time 60)
+          cat /tmp/push.json; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::push cron failed (HTTP $code)"
+            exit 1
+          fi

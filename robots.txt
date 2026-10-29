@@ -4,3 +4,5 @@ Disallow: /api/
 Disallow: /metrics
 
 Sitemap: https://seogarok.com/sitemap.xml
+
+Sitemap: https://seogarok.com/sitemap-books.xml

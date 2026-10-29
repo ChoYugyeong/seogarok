@@ -125,6 +125,7 @@ const DEFAULT_STATE = {
   subs: { millie: true, ridiselect: false, sam: true, willa: false },
   shelf: { want: ['hailmary', 'samche', 'mulgogi'], reading: ['chae'], done: ['pyeonuijeom'] },
   alerts: {},
+  pushOn: false,
 };
 
 const state = {
@@ -230,10 +231,129 @@ function lookupBook(id) {
   return bookById(id) || state.cache[id] || null;
 }
 
+/* ---------------- 웹푸시 종료 알림 ---------------- */
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+function pushWatches() {
+  const ids = new Set([...state.shelf.want, ...state.shelf.reading]);
+  Object.keys(state.alerts || {}).forEach((key) => {
+    if (state.alerts[key]) ids.add(String(key).split(':')[0]);
+  });
+  return Array.from(ids).slice(0, 200);
+}
+
+let pushSyncTimer = null;
+function schedulePushSync() {
+  if (!state.pushOn) return;
+  clearTimeout(pushSyncTimer);
+  pushSyncTimer = setTimeout(() => { subscribePush({ silent: true }).catch(() => {}); }, 1200);
+}
+
+async function subscribePush(opts = {}) {
+  const { silent = false } = opts;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    toast('이 브라우저는 알림을 지원하지 않아요');
+    return false;
+  }
+  try {
+    if (Notification.permission !== 'granted') {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') {
+        toast('알림 권한을 허용해야 종료 알림을 받을 수 있어요');
+        return false;
+      }
+    }
+    const reg = await navigator.serviceWorker.ready;
+    const keyRes = await fetch('/api/push/key').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (!keyRes || !keyRes.public_key) {
+      toast('알림 서버를 준비 중이에요. 잠시 후 다시 시도해 주세요');
+      return false;
+    }
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(keyRes.public_key),
+      });
+    }
+    const res = await fetch('/api/push/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subscription: sub.toJSON(), watches: pushWatches(), platforms: subsOn() }),
+    });
+    if (!res.ok) throw new Error('subscribe failed');
+    state.pushOn = true;
+    save();
+    render();
+    if (!silent) toast('종료 임박 알림을 켰어요. 내 서재의 책이 3일 내 종료되면 알려드릴게요');
+    return true;
+  } catch (e) {
+    if (!silent) toast('알림 설정에 실패했어요. 잠시 후 다시 시도해 주세요');
+    return false;
+  }
+}
+
+function pushBlockHTML() {
+  const count = pushWatches().length;
+  if (state.pushOn) {
+    return `<section class="section" style="margin-top:28px">
+      <div class="push-card on">
+        <div>
+          <b>종료 임박 알림이 켜져 있어요</b>
+          <p>내 서재 ${count}권을 추적 중 · 종료 3일 전에 알려드려요.</p>
+        </div>
+        <button class="btn-primary" data-act="push-refresh">대상 새로고침</button>
+      </div>
+    </section>`;
+  }
+  return `<section class="section" style="margin-top:28px">
+    <div class="push-card">
+      <div>
+        <b>“이 책, 3일 뒤 사라져요” 알림 받기</b>
+        <p>내 구독에서 곧 종료되는 책을 놓치지 마세요. 웹 알림으로 알려드려요.</p>
+      </div>
+      <button class="btn-primary" data-act="push-enable">종료 알림 켜기</button>
+    </div>
+  </section>`;
+}
+
+/* 개인화 홈: 내 서재 기반 이어 읽기 (최상단) */
+function renderPersonalHome() {
+  const reading = state.shelf.reading.map(lookupBook).filter(Boolean);
+  const want = state.shelf.want.map(lookupBook).filter(Boolean);
+  const recent = (state.recentBooks || []).map((id) => lookupBook(id)).filter(Boolean);
+  const pool = (reading.length ? reading : want.length ? want : recent).filter(Boolean).slice(0, 6);
+  if (!pool.length) return '';
+  const label = reading.length ? '이어 읽기' : want.length ? '내 서재에서 볼 책' : '최근 본 책';
+  const desc = reading.length
+    ? '읽던 책부터 이어가세요'
+    : want.length
+      ? `내 서재 ${shelfCount()}권 · 관심 책부터`
+      : '최근에 살펴본 책이에요';
+  const subs = subsOn();
+  return `<section class="section personal-section">
+    <div class="sec-head">
+      <div>
+        <h2 class="sec-title">${label}</h2>
+        <p class="sec-desc">${desc}${subs.length ? ` · 내 구독 ${subs.length}곳` : ''}</p>
+      </div>
+      <button class="sec-more" data-tab="shelf">내 서재 ›</button>
+    </div>
+    <div class="rail-grid">${pool.map(bookCardHTML).join('')}</div>
+  </section>`;
+}
+
 /* ---------------- persistence ---------------- */
 function save() {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify({ subs: state.subs, shelf: state.shelf, alerts: state.alerts }));
+    localStorage.setItem(LS_KEY, JSON.stringify({ subs: state.subs, shelf: state.shelf, alerts: state.alerts, pushOn: state.pushOn }));
   } catch (e) { /* ignore */ }
 }
 function load() {
@@ -249,6 +369,7 @@ function load() {
     if (d.subs) state.subs = { ...DEFAULT_STATE.subs, ...d.subs };
     if (d.shelf) state.shelf = { ...DEFAULT_STATE.shelf, ...d.shelf };
     if (d.alerts) state.alerts = d.alerts;
+    if (typeof d.pushOn === 'boolean') state.pushOn = d.pushOn;
   } catch (e) { /* ignore */ }
 }
 
@@ -430,6 +551,7 @@ function toggleShelf(id, list) {
   refreshDrawer();
 }
 function toggleAlert(key, days) {
+  setTimeout(() => schedulePushSync(), 100);
   if (state.alerts[key]) {
     delete state.alerts[key];
     toast('종료 알림을 껐어요');
@@ -1039,6 +1161,7 @@ function renderExploreApi() {
       <span class="col-n">검색 · ${esc(COLLECTION_QUERY[c.id] || '')}</span>
     </button>`).join('');
   return `
+  ${renderPersonalHome()}
   ${renderDailyPick()}
   ${renderRanking()}
   ${noticesSection()}
@@ -1479,6 +1602,8 @@ function renderShelf() {
     </div>
     ${alertPanelHTML(mineEnd, true)}
   </section>` : ''}
+
+  ${pushBlockHTML()}
 
   <div class="shelf-tabs">${tabs}</div>
   ${body}`;
@@ -2055,6 +2180,8 @@ document.addEventListener('click', (e) => {
     if (a === 'clear-query') { setQuery(''); const h = $('#heroSearch'); if (h) h.value = ''; return; }
     if (a === 'clear-collection') { state.collection = null; render(); return; }
     if (a === 'close-drawer') { closeDrawer(); return; }
+  if (a === 'push-enable') { subscribePush(); return; }
+  if (a === 'push-refresh') { subscribePush({ silent: true }); toast('알림 대상을 새로고침했어요'); return; }
   if (a === 'share-book') {
     const b = lookupBook(state.openId);
     if (!b) return;

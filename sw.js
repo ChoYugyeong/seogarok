@@ -4,7 +4,7 @@
  * (cache-first 로 두면 배포 후에도 옛 app.js 가 계속 서빙됨)
  * 오프라인일 때만 캐시로 폴백한다.
  */
-const CACHE = 'seogarok-v2';
+const CACHE = 'seogarok-v3';
 const SHELL = [
   '/', '/styles.css', '/app.js', '/data.js', '/legal.html',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png',
@@ -66,4 +66,44 @@ self.addEventListener('fetch', (e) => {
       throw err;
     }
   })());
+});
+
+/* ---------------- 웹푸시 종료 알림 ---------------- */
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: '서가록 종료 알림', body: event.data ? event.data.text() : '' };
+  }
+  const title = data.title || '서가록 알림';
+  const body = data.body || '곧 종료되는 책이 있어요';
+  const url = data.url || '/';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url },
+      tag: 'seogarok-ending',
+      renotify: false,
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const c of all) {
+        if ('focus' in c) {
+          c.navigate(url);
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })(),
+  );
 });

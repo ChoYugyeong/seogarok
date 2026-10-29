@@ -1,0 +1,43 @@
+name: qa-gate
+
+# 라이브 QA 게이트: API 스모크 · 보안 헤더 · SEO · PWA · 부하
+# 배포 후/주기적으로 실행하며 실패 시 워크플로가 실패한다.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 21 * * *" # 매일 06:00 KST
+  push:
+    branches: [main]
+    paths:
+      - "server/**"
+      - "app.js"
+      - "styles.css"
+      - "index.html"
+      - "_qa/**"
+
+permissions:
+  contents: read
+
+jobs:
+  live-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Live QA (API·SEO·헤더·PWA·부하)
+        run: |
+          set -o pipefail
+          python _qa/qa_suite.py https://seogarok.com | tee qa-output.txt
+      - name: Upload QA report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: |
+            _qa/qa_report.json
+            qa-output.txt
+          retention-days: 14

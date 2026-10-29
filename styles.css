@@ -1270,3 +1270,19 @@ body.is-wide .cat-bar { display: none; }
 }
 .dw-fact { font-size: 12px; }
 
+/* 웹푸시 종료 알림 카드 + 개인화 홈 */
+.push-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 22px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.push-card.on { background: var(--teal-soft); border-color: transparent; }
+.push-card b { font-size: 15.5px; font-weight: 800; letter-spacing: -0.02em; }
+.push-card p { margin-top: 4px; font-size: 13px; color: var(--text-2); }
+.personal-section .rail-grid > * { flex-basis: 132px; }

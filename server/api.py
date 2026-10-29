@@ -283,6 +283,12 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_chaos(method, parsed)
         if parsed.path == "/api/report":
             return self.handle_report(method, parsed)
+        if parsed.path.startswith("/book/"):
+            return self.handle_book_page(parsed)
+        if parsed.path == "/sitemap-books.xml":
+            return self.handle_sitemap_books(parsed)
+        if parsed.path.startswith("/api/push"):
+            return self.handle_push(method, parsed, parse_qs(parsed.query))
         if parsed.path.startswith("/api/"):
             return self.route_api(parsed.path, parse_qs(parsed.query))
         if parsed.path in ("/healthz", "/livez", "/readyz", "/metrics"):
@@ -303,6 +309,122 @@ class Handler(BaseHTTPRequestHandler):
                 log_event(level="warn", msg="metrics_gauge_refresh_failed", error=str(exc))
             body = METRICS.render().encode("utf-8")
             return self._send(200, body, "text/plain; version=0.0.4; charset=utf-8")
+
+    def handle_book_page(self, parsed):
+        """SEO 랜딩: /book/{yes24:ID} — 서버 렌더 HTML + JSON-LD."""
+        from urllib.parse import unquote
+
+        from .availability import build_availability
+        from .search import fetch_availability, fetch_books, fetch_notices
+        from .seo import book_page_html
+
+        bid = unquote(parsed.path[len("/book/"):]).strip("/")
+        if not bid or len(bid) > 200:
+            return self._send(404, b"not found", "text/html; charset=utf-8")
+        app = get_app()
+        conn, _ = app.ctx()
+        rows = fetch_books(conn, [bid])
+        if rows:
+            row = rows[0]
+            avs = fetch_availability(conn, [bid])
+            nts = fetch_notices(conn, [bid])
+            av, _origins = build_availability(row, avs.get(bid, []), nts.get(bid, []))
+            html = book_page_html(row, av, nts.get(bid, []))
+            return self._send(200, html.encode("utf-8"), "text/html; charset=utf-8", "public, max-age=300")
+        # 카탈로그 미수록 → 예스24 온디맨드 최소 페이지
+        try:
+            from .on_demand import fetch_book
+
+            payload = fetch_book(bid)
+        except Exception:
+            payload = None
+        if not payload:
+            return self._send(404, b"not found", "text/html; charset=utf-8")
+        html = book_page_html(payload, {}, [])
+        return self._send(200, html.encode("utf-8"), "text/html; charset=utf-8", "public, max-age=300")
+
+    def handle_sitemap_books(self, parsed):
+        """책 사이트맵: 상위 5,000권."""
+        from .seo import sitemap_books_xml
+
+        app = get_app()
+        conn, _ = app.ctx()
+        rows = conn.execute(
+            "SELECT id, pubdate FROM books WHERE cover_url IS NOT NULL ORDER BY id LIMIT 5000"
+        ).fetchall()
+        xml = sitemap_books_xml([dict(r) for r in rows])
+        return self._send(200, xml.encode("utf-8"), "application/xml; charset=utf-8", "public, max-age=3600")
+
+    def _read_json_body(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length) if length else b"{}"
+        try:
+            body = json.loads(raw or b"{}")
+        except json.JSONDecodeError:
+            return None
+        return body if isinstance(body, dict) else None
+
+    def handle_push(self, method: str, parsed, qs):
+        """웹푸시 종료 알림 API.
+
+        GET  /api/push/key          → VAPID 공개키
+        POST /api/push/subscribe    → 구독 저장 {subscription, watches, platforms}
+        POST /api/push/unsubscribe  → 구독 삭제 {endpoint}
+        GET|POST /api/push/cron     → 다이제스트 발송(X-Cron-Secret 필요, ?dry=1 지원)
+        """
+        import hmac
+        import os
+
+        from . import push as pushlib
+
+        path = parsed.path
+        if path == "/api/push/key":
+            keys = pushlib.vapid_keys()
+            if not keys:
+                return self._json({"error": "push_unavailable"}, 503)
+            return self._json({"public_key": keys["public_key"]})
+        if path == "/api/push/subscribe":
+            if method != "POST":
+                return self._json({"error": "method_not_allowed"}, 405)
+            body = self._read_json_body()
+            if not body:
+                return self._json({"error": "invalid_json"}, 400)
+            sub = body.get("subscription") or {}
+            endpoint = str(sub.get("endpoint") or "").strip()
+            keys = sub.get("keys") or {}
+            if not endpoint or not keys.get("p256dh") or not keys.get("auth"):
+                return self._json({"error": "invalid_subscription"}, 400)
+            from .availability import SUB_PLATFORMS
+
+            watches = [str(w)[:120] for w in (body.get("watches") or []) if w][:200]
+            platforms = [p for p in (body.get("platforms") or []) if p in SUB_PLATFORMS][:4]
+            record = {
+                "subscription": {"endpoint": endpoint, "keys": {"p256dh": keys.get("p256dh"), "auth": keys.get("auth")}},
+                "watches": watches,
+                "platforms": platforms,
+                "ua": (self.headers.get("User-Agent") or "")[:120],
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            }
+            ok = pushlib.save_subscription(record)
+            return self._json({"ok": ok, "watches": len(watches), "platforms": platforms}, 200 if ok else 500)
+        if path == "/api/push/unsubscribe":
+            if method != "POST":
+                return self._json({"error": "method_not_allowed"}, 405)
+            body = self._read_json_body() or {}
+            endpoint = str(body.get("endpoint") or "").strip()
+            if not endpoint:
+                return self._json({"error": "invalid_endpoint"}, 400)
+            return self._json({"ok": pushlib.delete_subscription(endpoint)})
+        if path == "/api/push/cron":
+            expected = (os.getenv("PUSH_CRON_KEY") or os.getenv("YES24_API_KEY") or "").strip()
+            provided = (self.headers.get("X-Cron-Secret") or (qs.get("key") or [""])[0] or "").strip()
+            if not expected or not provided or not hmac.compare_digest(expected, provided):
+                return self._json({"error": "forbidden"}, 403)
+            dry = (qs.get("dry") or [""])[0] == "1"
+            app = get_app()
+            conn, _ = app.ctx()
+            return self._json(pushlib.run_cron(conn, dry=dry))
+        return self._json({"error": "not_found"}, 404)
 
     def handle_report(self, method: str, parsed):
         """가용성 제보: POST /api/report {book_id, platform, note?}
