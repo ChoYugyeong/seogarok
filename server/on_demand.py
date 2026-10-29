@@ -138,6 +138,117 @@ def search(query: str, limit: int = 12) -> list[dict]:
     return out
 
 
+def fetch_detail(goods: str) -> dict | None:
+    """상품 상세 API(itemDetail, detail=Y)로 풍부한 단건 정보 조회 (캐시 10분)."""
+    if not goods or not enabled():
+        return None
+    ck = f"detail:{goods}"
+    hit = _cache_get(ck)
+    if hit is not None:
+        return hit  # type: ignore[return-value]
+    try:
+        data = _get("/v1/goods/itemDetail", {
+            "searchType": "ItemId", "query": str(goods), "detail": "Y",
+        })
+    except Exception:
+        return None
+    items = data.get("items") or []
+    if not items:
+        return None
+    item = items[0]
+    payload = to_payload(item)
+    if not payload:
+        # 예약판매·절판 등 '판매중'이 아닌 상태도 상세는 열리게 최소 페이로드 구성
+        goods2 = str(item.get("itemId") or "").strip()
+        title2 = str(item.get("title") or "").strip()
+        if not goods2 or not title2:
+            return None
+        payload = {
+            "id": f"yes24:{goods2}",
+            "title": title2,
+            "subtitle": None,
+            "author": (item.get("author") or "").strip() or "저자 미상",
+            "publisher": (item.get("publisher") or "").strip() or None,
+            "pubdate": _date(item.get("publishDate")),
+            "isbn13": item.get("isbn13") or None,
+            "item_code": goods2,
+            "price": _int(item.get("salePrice")),
+            "price_list": _int(item.get("shopPrice")),
+            "rating": None,
+            "cover_url": item.get("cover") or f"https://image.yes24.com/goods/{goods2}/L",
+            "link": item.get("link") or f"https://www.yes24.com/Product/Goods/{goods2}",
+            "category": (item.get("goodsSortNm") or "").replace("-", ">") or None,
+            "description": _desc(item),
+            "av": {},
+            "av_origin": {},
+            "notices": [],
+            "real": True,
+            "live": True,
+        }
+    payload["item_status"] = (item.get("itemStatus") or "").strip() or None
+    # 확장 필드
+    try:
+        payload["rating"] = float(item["starScore"]) if item.get("starScore") is not None else None
+    except (TypeError, ValueError):
+        payload["rating"] = None
+    payload["subtitle"] = (item.get("subTitle") or "").strip() or None
+    payload["pages"] = _int(item.get("pages"))
+    payload["sale_point"] = _int(item.get("salePoint"))
+    payload["weight"] = _int(item.get("weight"))
+    payload["size"] = (
+        f"{item['width']}×{item['length']}mm"
+        if item.get("width") and item.get("length")
+        else None
+    )
+    series = item.get("series") or []
+    payload["series"] = [
+        {"id": x.get("seriesId"), "name": x.get("seriesName")}
+        for x in series
+        if isinstance(x, dict) and x.get("seriesName")
+    ][:5]
+    summary = ((item.get("contentDetail") or {}).get("bookSummary") or "").strip()
+    payload["summary"] = " ".join(summary.split())[:600] or None
+    _cache_put(ck, payload)
+    return payload
+
+
+def fetch_extras(book: dict) -> dict:
+    """DB 책 상세에 붙일 예스24 확장 정보(평점·쪽수 등) — ISBN13 기준, 실패 시 빈 dict."""
+    if not enabled():
+        return {}
+    isbn = (book.get("isbn13") or "").strip()
+    goods = ""
+    if isbn:
+        ck = f"extras-isbn:{isbn}"
+        hit = _cache_get(ck)
+        if hit is not None:
+            return hit  # type: ignore[return-value]
+        try:
+            data = _get("/v1/goods/itemDetail", {"searchType": "ISBN13", "query": isbn, "detail": "Y"})
+            items = data.get("items") or []
+            if not items:
+                return {}
+            item = items[0]
+            goods = str(item.get("itemId") or "")
+            out = {
+                "rating": float(item["starScore"]) if item.get("starScore") is not None else None,
+                "pages": _int(item.get("pages")),
+                "sale_point": _int(item.get("salePoint")),
+                "size": (
+                    f"{item['width']}×{item['length']}mm"
+                    if item.get("width") and item.get("length")
+                    else None
+                ),
+                "weight": _int(item.get("weight")),
+                "item_code": goods or None,
+            }
+            _cache_put(ck, out)
+            return out
+        except Exception:
+            return {}
+    return {}
+
+
 def fetch_book(book_id: str) -> dict | None:
     """온디맨드 상세: id가 yes24:XXXX 형태일 때 검색으로 찾아 반환."""
     if not book_id.startswith("yes24:") or not enabled():
@@ -153,7 +264,12 @@ def fetch_book(book_id: str) -> dict | None:
     hit = _cache_get(ck)
     if hit is not None:
         return hit  # type: ignore[return-value]
-    # goods 번호로는 단건 API가 없어 검색 결과에서 매칭 (없으면 링크 기반 최소 정보)
+    # 1) 단건 상세 API 우선 (평점·쪽수 등 풍부)
+    detail = fetch_detail(goods)
+    if detail:
+        _cache_put(ck, detail)
+        return detail
+    # 2) 검색 결과에서 매칭
     data = _get("/v1/goods/itemList", {"query": goods, "page": 1, "pageSize": 10})
     items = data.get("items") or []
     found = None

@@ -199,7 +199,13 @@ function mapApiBook(r) {
     author: r.author || '저자 미상',
     publisher: r.publisher || '',
     year: (r.pubdate || '').slice(0, 4),
-    pages: null,
+    pages: r.pages || null,
+    subtitle: r.subtitle || null,
+    isbn13: r.isbn13 || null,
+    size: r.size || null,
+    item_status: r.item_status || null,
+    sale_point: r.sale_point || null,
+    series: r.series || [],
     tags: cat.slice(1, 3).length ? cat.slice(1, 3) : cat.slice(0, 2),
     moods: [],
     blurb: r.description || null,
@@ -815,6 +821,17 @@ function renderRecentRail() {
   </section>`;
 }
 
+function subsBadges(it) {
+  const subs = it.subs || [];
+  if (!subs.length) return '';
+  const short = { millie: '밀리', ridiselect: '리디', sam: '교보', willa: '윌라' };
+  return `<span class="rank-subs">${subs.map((x) => {
+    const label = short[x.p] || x.p;
+    if (x.s === 'end') return `<span class="rank-sub end">${esc(label)}${x.d != null ? ` D-${x.d}` : ' 종료예정'}</span>`;
+    return `<span class="rank-sub">${esc(label)}</span>`;
+  }).join('')}</span>`;
+}
+
 function deltaBadge(it) {
   if (!it.is_new && (it.delta === null || it.delta === undefined)) return '';
   if (it.is_new) return '<span class="rank-delta new">NEW</span>';
@@ -877,12 +894,13 @@ function renderRanking() {
         <b>${esc(b.title)}</b>
         <span class="rank-author">${esc(b.author)}</span>
         <span class="rank-foot">${b.price ? `<span class="rank-price">${Number(b.price).toLocaleString()}원</span>` : ''}${starBadge(b)}</span>
+        ${subsBadges(b)}
       </span>
     </button>`).join('');
   const small = rest.map((b) => `<button class="rank-row-sm" data-book="${esc(b.id)}">
       <span class="rank-cell"><span class="rank-no">${b.rank}</span>${deltaBadge(b)}</span>
       <span class="rank-cover"><img src="${esc(b.cover_url || '')}" alt="" loading="lazy"></span>
-      <span class="rank-meta"><b>${esc(b.title)}</b><span>${esc(b.author)}</span></span>
+      <span class="rank-meta"><b>${esc(b.title)}</b><span>${esc(b.author)}</span>${subsBadges(b)}</span>
     </button>`).join('');
 
   return `<section class="section rank-section">
@@ -1725,6 +1743,9 @@ function drawerHTML(book) {
   ].join('');
 
   return `<div class="drawer-top">
+      <button class="drawer-share" data-act="share-book" aria-label="이 책 공유하기">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg>
+      </button>
       <button class="drawer-close" data-act="close-drawer" aria-label="닫기">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
       </button>
@@ -1735,7 +1756,16 @@ function drawerHTML(book) {
         <h2>${esc(book.title)}</h2>
         <p class="dw-author">${esc(book.author)}</p>
         <p class="dw-sub">${esc(metaParts.join(' · '))}</p>
-        ${book.real && (book.price || book.rating) ? `<p class="dw-price">${book.price ? `${Number(book.price).toLocaleString()}원` : ''}${book.price && book.rating ? ' · ' : ''}${book.rating ? `★ ${book.rating}` : ''}${book.link ? ` · <a href="${esc(book.link)}" target="_blank" rel="noopener">원본 보기</a>` : ''}</p>` : ''}
+        ${book.real && (book.price || book.rating) ? `<p class="dw-price">${book.price ? `${Number(book.price).toLocaleString()}원` : ''}${book.price && book.rating ? ' · ' : ''}${book.rating ? `<b class="dw-star">★ ${book.rating}</b>` : ''}${book.link ? ` · <a href="${esc(book.link)}" target="_blank" rel="noopener">원본 보기</a>` : ''}</p>` : ''}
+        <div class="dw-facts">
+          ${book.item_status && book.item_status !== '판매중' ? `<span class="dw-fact dw-fact-status">${esc(book.item_status)}</span>` : ''}
+          ${book.rating ? `<span class="dw-fact">★ ${book.rating}</span>` : ''}
+          ${book.pages ? `<span class="dw-fact">${book.pages}쪽</span>` : ''}
+          ${book.size ? `<span class="dw-fact">${esc(book.size)}</span>` : ''}
+          ${book.isbn13 ? `<span class="dw-fact">ISBN ${esc(book.isbn13)}</span>` : ''}
+          ${book.sale_point ? `<span class="dw-fact">판매지수 ${Number(book.sale_point).toLocaleString()}</span>` : ''}
+        </div>
+        ${(book.series || []).length ? `<div class="dw-tags">${book.series.map((x) => `<span class="tag">${esc(x.name)}</span>`).join('')}</div>` : ''}
         <div class="dw-tags">${tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>
       </div>
     </div>
@@ -2025,6 +2055,26 @@ document.addEventListener('click', (e) => {
     if (a === 'clear-query') { setQuery(''); const h = $('#heroSearch'); if (h) h.value = ''; return; }
     if (a === 'clear-collection') { state.collection = null; render(); return; }
     if (a === 'close-drawer') { closeDrawer(); return; }
+  if (a === 'share-book') {
+    const b = lookupBook(state.openId);
+    if (!b) return;
+    const url = `${location.origin}/#book=${encodeURIComponent(b.id)}`;
+    const text = `${b.title} · ${b.author}`;
+    const fallback = () => {
+      try {
+        navigator.clipboard.writeText(`${text}\n${url}`);
+        toast('링크를 복사했어요');
+      } catch (e) {
+        window.prompt('링크를 복사하세요', `${text}\n${url}`);
+      }
+    };
+    if (navigator.share) {
+      navigator.share({ title: b.title, text, url }).catch(() => {});
+    } else {
+      fallback();
+    }
+    return;
+  }
     if (a === 'open-subs') { toggleSubsPopover(true); return; }
     if (a === 'find-all') { setQuery(''); state.filter = 'all'; render(); window.scrollTo({ top: 0 }); return; }
     if (a === 'go') { toast(`${act.dataset.plat}로 이동합니다 (데모)`); return; }

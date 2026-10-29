@@ -153,6 +153,10 @@ def serialize_book(row: dict, av: dict, origins: dict, notices: list[dict], scor
         "category": row.get("category"),
         "description": row.get("description"),
         "source": row.get("source"),
+        "pages": row.get("pages"),
+        "sale_point": row.get("sale_point"),
+        "size": row.get("size"),
+        "series": row.get("series") or [],
         "av": av,
         "av_origin": origins,
         "notices": [
@@ -179,6 +183,12 @@ class Handler(BaseHTTPRequestHandler):
     # ---------------- utils ----------------
     _COMPRESSIBLE = ("application/json", "text/", "application/manifest+json", "image/svg")
 
+    def _security_headers(self) -> None:
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.send_header("X-Frame-Options", "SAMEORIGIN")
+        self.send_header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
     def _send(self, code: int, body: bytes, ctype: str = "application/json; charset=utf-8", cache: str = "no-store"):
         self._status = code
         # gzip (JSON/텍스트가 512B 이상일 때) — 공지 126KB → ~15KB
@@ -197,12 +207,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", ctype)
                 self.send_header("Content-Encoding", "gzip")
                 self.send_header("Vary", "Accept-Encoding")
+                self._security_headers()
             except Exception:
                 self.send_response(code)
                 self.send_header("Content-Type", ctype)
+                self._security_headers()
         else:
             self.send_response(code)
             self.send_header("Content-Type", ctype)
+            self._security_headers()
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", cache)
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -691,6 +704,16 @@ class Handler(BaseHTTPRequestHandler):
             nts = fetch_notices(conn, [bid])
             av, origins = build_availability(row, avs.get(bid, []), nts.get(bid, []))
             payload = serialize_book(row, av, origins, nts.get(bid, []))
+            # ⓪ 예스24 상세 확장(평점·쪽수·판형·판매지수) — 캐시 10분, 실패 시 무시
+            try:
+                from .on_demand import fetch_extras
+
+                extras = fetch_extras(row) or {}
+                for k in ("rating", "pages", "sale_point", "size", "weight"):
+                    if payload.get(k) is None and extras.get(k) is not None:
+                        payload[k] = extras[k]
+            except Exception:
+                pass
             # ① 이 책과 비슷한 책: 같은 임베딩 공간에서 최근접 6권 (자기 제외)
             try:
                 vec = store.get(bid)
@@ -800,6 +823,7 @@ class Handler(BaseHTTPRequestHandler):
                     "star": float(it["starScore"]) if it.get("starScore") is not None else None,
                     "sale_point": _num(it.get("salePoint")),
                     "category": it.get("goodsSortNm") or "",
+                    "isbn13": (it.get("isbn13") or "").strip() or None,
                 })
 
             day_key = time.strftime("%Y-%m-%d", time.gmtime())
@@ -818,6 +842,48 @@ class Handler(BaseHTTPRequestHandler):
                 from .rank_store import attach_deltas
 
                 attach_deltas(items, kind, cat)
+            except Exception:
+                pass
+
+            # 서가 가용성 조인: 랭킹 책이 구독 서비스에 있는지 (경쟁사 대비 차별점)
+            try:
+                from .availability import SUB_PLATFORMS as _SUB_PLATFORMS
+                from .availability import build_availability as _build_availability
+                from .search import fetch_availability as _fetch_avail
+                from .search import fetch_books as _fetch_books2
+                from .search import fetch_notices as _fetch_notices
+
+                isbns = [x["isbn13"] for x in items if x.get("isbn13")]
+                by_isbn: dict = {}
+                if isbns:
+                    conn, _ = app.ctx()
+                    qmarks = ",".join("?" for _ in isbns)
+                    rows = conn.execute(
+                        f"SELECT id, title, author, isbn13, publisher, pubdate, price, cover_url FROM books "
+                        f"WHERE isbn13 IN ({qmarks})",
+                        isbns,
+                    ).fetchall()
+                    if rows:
+                        ids = [r["id"] for r in rows]
+                        avs = _fetch_avail(conn, ids)
+                        nts = _fetch_notices(conn, ids)
+                        for r in rows:
+                            rd = dict(r)
+                            av_row, _orig = _build_availability(rd, avs.get(rd["id"], []), nts.get(rd["id"], []))
+                            subs = []
+                            for plat in _SUB_PLATFORMS:
+                                v = av_row.get(plat) or {}
+                                st = v.get("s")
+                                if st == "available":
+                                    subs.append({"p": plat, "s": "ok"})
+                                elif st == "ending":
+                                    subs.append({"p": plat, "s": "end", "d": v.get("d"), "ends_at": v.get("ends_at")})
+                            by_isbn[str(rd.get("isbn13"))] = {"book_id": rd["id"], "subs": subs}
+                for item in items:
+                    hit = by_isbn.get(str(item.get("isbn13")))
+                    if hit:
+                        item["book_id"] = hit["book_id"]
+                        item["subs"] = hit["subs"]
             except Exception:
                 pass
 
