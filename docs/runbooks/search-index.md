@@ -30,13 +30,18 @@
 ## 2) 네이버 서치어드바이저
 
 1. https://searchadvisor.naver.com 접속 → 사이트 등록: `https://seogarok.com`
-2. 소유 확인(HTML 메타 태그 또는 파일 업로드)
-   - 메타 태그 방식을 쓰면 `index.html`의 `<head>`에 아래를 추가:
+2. 소유 확인 — **메타 태그 방식 적용 완료** (2026-10-30)
+   - `index.html`의 `<head>`에 아래 태그가 배포되어 있음:
      ```html
-     <meta name="naver-site-verification" content="발급받은_토큰" />
+     <meta name="naver-site-verification" content="7fe8db8cfa5f40625e81bf44d500c8260039c837" />
      ```
-   - 파일 방식이면 `seogarok-xxxx.html`을 저장소 루트에 추가(정적 서빙됨)
-3. **요청 > 사이트맵 제출**에서 `sitemap.xml`, `sitemap-books.xml` 제출
+   - 서치어드바이저에서 **확인(소유 확인)** 버튼만 누르면 됨
+   - (이전 방식) 파일 업로드가 필요하면 `seogarok-xxxx.html`을 루트에 추가하면 정적 서빙됨
+3. **요청 > 사이트맵 제출**에서 아래 제출 (권장 순서)
+   - `https://seogarok.com/sitemap-index.xml` (인덱스)
+   - 인덱스가 거부되면 개별로: `https://seogarok.com/sitemap.xml`, `https://seogarok.com/sitemap-books.xml`
+   - 제출 후 **요청 > 웹페이지 수집**에 `https://seogarok.com/`, `https://seogarok.com/books?page=1`,
+     `https://seogarok.com/book/yes24%3A197068949` 3개를 넣어 초기 수집을 요청
 4. **보고서 > 색인**에서 색인 반영 수 확인
 
 ## 3) 1~2주 추이 확인 (체크리스트)
