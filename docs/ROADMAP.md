@@ -86,3 +86,10 @@
 | break-ui 최악값 점검 | ✅ (over-flow 0) |
 | 실기기(iOS/Android) 테스트 | ⏳ 사용자 기기 필요 |
 
+## 2026-10-30 발견 — 데이터 파이프라인 이슈
+
+| 항목 | 상태 |
+| --- | --- |
+| 운영 DB `description` 전부 비어 있음 (로컬은 16,073건) | ⚠️ **보강 필요** — 배포 시 fallback 스냅샷 기반 DB 사용 추정 |
+| 영향 | 책 랜딩 JSON-LD description이 속성 기반 fallback으로 대체(색인엔 문제 없음) |
+| 후속 | YES24 itemDetail로 설명 일괄 수집 → `catalog_fallback`에 포함 or 상세 온디맨드 보강 |
