@@ -23,7 +23,7 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SA }}
           token_format: access_token
-          access_token_scopes: "https://www.googleapis.com/auth/webmasters.readonly,https://www.googleapis.com/auth/cloud-platform"
+          access_token_scopes: "https://www.googleapis.com/auth/webmasters,https://www.googleapis.com/auth/cloud-platform"
 
       - uses: actions/setup-python@v5
         with:
