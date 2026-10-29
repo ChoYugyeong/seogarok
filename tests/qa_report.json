@@ -1,0 +1,309 @@
+{
+  "api_smoke": [
+    {
+      "path": "/livez",
+      "status": 200,
+      "ms_p50": 266.5,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/readyz",
+      "status": 200,
+      "ms_p50": 265.4,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/health",
+      "status": 200,
+      "ms_p50": 260.0,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/metrics",
+      "status": 200,
+      "ms_p50": 271.8,
+      "ok": true,
+      "ctype": "text/plain; version=0.0.4; charset=utf-8"
+    },
+    {
+      "path": "/api/search?q=%ED%95%9C%EA%B0%95&mode=hybrid&limit=5",
+      "status": 200,
+      "ms_p50": 262.5,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/search?q=%E3%85%8E%E3%84%B1&mode=hybrid&limit=5",
+      "status": 200,
+      "ms_p50": 294.6,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/suggest?q=%EA%B9%80%EC%B4%88",
+      "status": 200,
+      "ms_p50": 255.2,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/overview",
+      "status": 200,
+      "ms_p50": 338.9,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/pick",
+      "status": 200,
+      "ms_p50": 285.9,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/stats",
+      "status": 200,
+      "ms_p50": 253.8,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/notices?limit=5",
+      "status": 200,
+      "ms_p50": 249.0,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/collections",
+      "status": 200,
+      "ms_p50": 256.8,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/collection?slug=snu-100&limit=5",
+      "status": 200,
+      "ms_p50": 303.7,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/rank?cat=%EC%A2%85%ED%95%A9&kind=best&limit=10",
+      "status": 200,
+      "ms_p50": 259.7,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/rank?cat=%EC%86%8C%EC%84%A4&kind=steady&limit=10",
+      "status": 200,
+      "ms_p50": 280.8,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/book?id=yes24%3A197068949",
+      "status": 200,
+      "ms_p50": 536.3,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/book?id=yes24%3A199519618",
+      "status": 200,
+      "ms_p50": 273.9,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/book/yes24%3A197068949",
+      "status": 200,
+      "ms_p50": 304.9,
+      "ok": true,
+      "ctype": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/book/yes24%3A197068949.md",
+      "status": 200,
+      "ms_p50": 261.6,
+      "ok": true,
+      "ctype": "text/markdown; charset=utf-8"
+    },
+    {
+      "path": "/sitemap-books.xml",
+      "status": 200,
+      "ms_p50": 553.0,
+      "ok": true,
+      "ctype": "application/xml; charset=utf-8"
+    },
+    {
+      "path": "/sitemap-index.xml",
+      "status": 200,
+      "ms_p50": 253.6,
+      "ok": true,
+      "ctype": "application/xml; charset=utf-8"
+    },
+    {
+      "path": "/llms.txt",
+      "status": 200,
+      "ms_p50": 247.3,
+      "ok": true,
+      "ctype": "text/markdown; charset=utf-8"
+    },
+    {
+      "path": "/llms-full.txt",
+      "status": 200,
+      "ms_p50": 264.0,
+      "ok": true,
+      "ctype": "text/markdown; charset=utf-8"
+    },
+    {
+      "path": "/index.md",
+      "status": 200,
+      "ms_p50": 254.2,
+      "ok": true,
+      "ctype": "text/markdown; charset=utf-8"
+    },
+    {
+      "path": "/api/push/key",
+      "status": 200,
+      "ms_p50": 538.6,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    },
+    {
+      "path": "/api/nope",
+      "status": 404,
+      "ms_p50": 251.4,
+      "ok": true,
+      "ctype": "application/json; charset=utf-8"
+    }
+  ],
+  "security_headers": {
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "x-frame-options": "SAMEORIGIN",
+    "permissions-policy": "geolocation=(), microphone=(), camera=()",
+    "content-encoding": null,
+    "cache_control_html": "no-store",
+    "server": "Google Frontend"
+  },
+  "seo": {
+    "title": true,
+    "description": true,
+    "canonical": true,
+    "og_title": true,
+    "og_image": true,
+    "og_url": true,
+    "twitter": true,
+    "jsonld": true,
+    "og_site": true,
+    "h1_count": 1,
+    "html_bytes": 11980
+  },
+  "robots": {
+    "status": 200,
+    "bytes": 725,
+    "content_signal": true,
+    "ai_groups": true,
+    "sitemap_index": true
+  },
+  "sitemap": {
+    "status": 200,
+    "urls": 17,
+    "valid_xml": true,
+    "book_urls": 5000
+  },
+  "assets": [
+    {
+      "path": "/styles.css",
+      "status": 200,
+      "bytes": 61043,
+      "ctype": "text/css; charset=utf-8"
+    },
+    {
+      "path": "/app.js",
+      "status": 200,
+      "bytes": 107208,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    {
+      "path": "/data.js",
+      "status": 200,
+      "bytes": 20795,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    {
+      "path": "/manifest.webmanifest",
+      "status": 200,
+      "bytes": 711,
+      "ctype": "application/manifest+json"
+    },
+    {
+      "path": "/sw.js",
+      "status": 200,
+      "bytes": 3903,
+      "ctype": "text/javascript; charset=utf-8"
+    },
+    {
+      "path": "/icons/icon-192.png",
+      "status": 200,
+      "bytes": 1089,
+      "ctype": "image/png"
+    },
+    {
+      "path": "/icons/icon-512.png",
+      "status": 200,
+      "bytes": 3344,
+      "ctype": "image/png"
+    },
+    {
+      "path": "/404.html",
+      "status": 200,
+      "bytes": 946,
+      "ctype": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/about.html",
+      "status": 200,
+      "bytes": 5689,
+      "ctype": "text/html; charset=utf-8"
+    },
+    {
+      "path": "/legal.html",
+      "status": 200,
+      "bytes": 6470,
+      "ctype": "text/html; charset=utf-8"
+    }
+  ],
+  "llms_txt": {
+    "status": 200,
+    "bytes": 1552,
+    "valid": true
+  },
+  "pwa": {
+    "name": "서가록",
+    "display": "standalone",
+    "start_url": "/",
+    "icons": 3,
+    "theme": "#f7f2e8",
+    "bg": "#f7f2e8",
+    "sw_cached": true
+  },
+  "load": {
+    "requests": 48,
+    "workers": 12,
+    "seconds": 2.16,
+    "rps": 22.3,
+    "p50_ms": 451.0,
+    "p95_ms": 712.8,
+    "max_ms": 750.0,
+    "errors": 0
+  },
+  "fails": [],
+  "warns": []
+}

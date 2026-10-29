@@ -14,7 +14,7 @@ on:
       - "app.js"
       - "styles.css"
       - "index.html"
-      - "_qa/**"
+      - "tests/**"
 
 permissions:
   contents: read
@@ -31,18 +31,18 @@ jobs:
       - name: Live QA (API·SEO·헤더·PWA·부하)
         run: |
           set -o pipefail
-          python _qa/qa_suite.py https://seogarok.com | tee qa-output.txt
+          python tests/qa_suite.py https://seogarok.com | tee qa-output.txt
       - name: API 회귀 테스트 (57 케이스)
         run: |
-          python _qa/feature_api_test.py https://seogarok.com | tee api-regression.txt
+          python tests/feature_api_test.py https://seogarok.com | tee api-regression.txt
       - name: Upload QA report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: qa-report
           path: |
-            _qa/qa_report.json
-            _qa/feature_api_results.json
+            tests/qa_report.json
+            tests/feature_api_results.json
             qa-output.txt
             api-regression.txt
           retention-days: 14

@@ -1,0 +1,291 @@
+{
+  "base": "http://127.0.0.1:8104",
+  "results": [
+    {
+      "name": "livez 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "readyz ready",
+      "pass": true,
+      "detail": "books=18917 notices=None"
+    },
+    {
+      "name": "health books",
+      "pass": true,
+      "detail": "books=18917 backend=model2vec"
+    },
+    {
+      "name": "metrics text",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "unknown api 404 json",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "search 한강 results>0",
+      "pass": true,
+      "detail": "n=10 meta=[]"
+    },
+    {
+      "name": "search result fields",
+      "pass": true,
+      "detail": "{\"id\": \"yes24:176969335\", \"title\": \"소년이 온다\", \"av\": {\"yes24\": {\"buy\": 12000}}}"
+    },
+    {
+      "name": "search relevance (title/author match)",
+      "pass": true,
+      "detail": "top=['소년이 온다', '흰', '빛과 실', '검은 사슴', '소년이 온다']"
+    },
+    {
+      "name": "chosung ㅎㄱ results>0",
+      "pass": true,
+      "detail": "n=5"
+    },
+    {
+      "name": "mode=keyword",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "mode=vector",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "no-result search",
+      "pass": true,
+      "detail": "n=0"
+    },
+    {
+      "name": "limit clamp",
+      "pass": true,
+      "detail": "n=27"
+    },
+    {
+      "name": "long query handled",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "injection string safe",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "suggest 김초 non-empty",
+      "pass": true,
+      "detail": "n=7"
+    },
+    {
+      "name": "suggest empty q handled",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "name": "book detail 200",
+      "pass": true,
+      "detail": "title=소년이 온다"
+    },
+    {
+      "name": "book detail av/similar",
+      "pass": true,
+      "detail": "similar=6"
+    },
+    {
+      "name": "book on-demand(예약판매) 200",
+      "pass": true,
+      "detail": "status=200 title=일일 반출록"
+    },
+    {
+      "name": "book invalid 404",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "collections list 4",
+      "pass": true,
+      "detail": "n=4 slugs=['snu-100', 'harvard-classics', 'sejong-2025-culture', 'sejong-2025-academic']"
+    },
+    {
+      "name": "collection detail",
+      "pass": true,
+      "detail": "slug=snu-100 keys=['collection', 'books', 'unmatched']"
+    },
+    {
+      "name": "collection invalid 404",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "rank best 10 items",
+      "pass": true,
+      "detail": "n=10 source=예스24 베스트셀러 status=200"
+    },
+    {
+      "name": "rank steady 10 items",
+      "pass": true,
+      "detail": "n=10 source=예스24 스테디셀러 status=200"
+    },
+    {
+      "name": "rank daily upstream",
+      "pass": true,
+      "detail": "upstream 503 graceful"
+    },
+    {
+      "name": "rank monthly 10 items",
+      "pass": true,
+      "detail": "n=10 source=예스24 월간 베스트 status=200"
+    },
+    {
+      "name": "rank category 소설",
+      "pass": true,
+      "detail": "first=가호"
+    },
+    {
+      "name": "rank invalid cat fallback",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "/api/overview 200",
+      "pass": true,
+      "detail": "keys=['books', 'notices', 'vectors', 'synced_at', 'ending_today', 'ending_3d']"
+    },
+    {
+      "name": "/api/pick 200",
+      "pass": true,
+      "detail": "keys=['date', 'book']"
+    },
+    {
+      "name": "/api/stats 200",
+      "pass": true,
+      "detail": "keys=['books', 'notices', 'meta', 'vector_count', 'db', 'db_bytes']"
+    },
+    {
+      "name": "overview genres/platforms",
+      "pass": true,
+      "detail": "genres=8"
+    },
+    {
+      "name": "pick has book+similar",
+      "pass": true,
+      "detail": "similar=4"
+    },
+    {
+      "name": "book landing SSR",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "book landing answer/related",
+      "pass": true,
+      "detail": "rel=10"
+    },
+    {
+      "name": "book markdown",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "books index",
+      "pass": true,
+      "detail": "links=60"
+    },
+    {
+      "name": "books page clamp",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "/sitemap-index.xml 200",
+      "pass": true,
+      "detail": "bytes=312"
+    },
+    {
+      "name": "/sitemap-books.xml 200",
+      "pass": true,
+      "detail": "bytes=604731"
+    },
+    {
+      "name": "/sitemap.xml 200",
+      "pass": true,
+      "detail": "bytes=2159"
+    },
+    {
+      "name": "/llms.txt 200",
+      "pass": true,
+      "detail": "bytes=2454"
+    },
+    {
+      "name": "/llms-full.txt 200",
+      "pass": true,
+      "detail": "bytes=1924"
+    },
+    {
+      "name": "/index.md 200",
+      "pass": true,
+      "detail": "bytes=405"
+    },
+    {
+      "name": "/robots.txt 200",
+      "pass": true,
+      "detail": "bytes=725"
+    },
+    {
+      "name": "404 page html",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "push key",
+      "pass": true,
+      "detail": "len=87"
+    },
+    {
+      "name": "push subscribe invalid 400",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "push stats 403",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "push cron 403",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "event invalid name dropped",
+      "pass": true,
+      "detail": "accepted=0"
+    },
+    {
+      "name": "event valid accepted",
+      "pass": true,
+      "detail": "accepted=1"
+    },
+    {
+      "name": "kpi 403",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "event invalid json 400",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "report invalid 400",
+      "pass": true,
+      "detail": ""
+    }
+  ],
+  "failed": []
+}
