@@ -90,6 +90,11 @@
 
 | 항목 | 상태 |
 | --- | --- |
-| 운영 DB `description` 전부 비어 있음 (로컬은 16,073건) | ⚠️ **보강 필요** — 배포 시 fallback 스냅샷 기반 DB 사용 추정 |
+| 운영 DB `description` | ✅ **보강 완료** — 수집 `detail=Y` + fallback 재생성(16,140권) + 런타임 SSR/상세 보강 |
 | 영향 | 책 랜딩 JSON-LD description이 속성 기반 fallback으로 대체(색인엔 문제 없음) |
 | 후속 | YES24 itemDetail로 설명 일괄 수집 → `catalog_fallback`에 포함 or 상세 온디맨드 보강 |
+
+### CI 회귀 게이트
+
+- `qa-gate` 워크플로: 라이브 QA 스위트 + **API 기능 57케이스** (`tests/feature_api_test.py`) 매 push/스케줄 실행
+- 2026-10-30: `_qa/`(gitignore) → `tests/` 이동 후 **PASS** 확인

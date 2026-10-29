@@ -60,3 +60,18 @@ python _qa/feature_api_test.py https://seogarok.com
 ego-browser nodejs -e "await import('file:///C:/Dev/seoga/_qa/browser_core_test_live.mjs')"
 ego-browser nodejs -e "await import('file:///C:/Dev/seoga/_qa/browser_features_test_live.mjs')"
 ```
+
+---
+
+## 6. 후속 개선 완료 (2026-10-30)
+
+| 개선 | 내용 | 검증 |
+| --- | --- | --- |
+| **필터 0건 UX** | "선택한 조건에 맞는 책이 없어요" + 전체 N권 안내 + **필터 해제** 버튼(`reset-filters`) | 라이브: 필터 0건 → 안내/버튼 → 해제 시 24권 복귀 |
+| **설명 데이터 파이프라인** | ① 수집 목록 API에 `detail=Y`(contentDetail 포함) ② fallback 스냅샷 재생성(18,917권 중 **16,140권 설명**, 6.7MB) ③ 런타임 `fetch_extras`에 description 추가 → `/api/book`·`/book` SSR 보강 | 라이브 SSR/JSON-LD 설명 **280자 실제 소개** (fallback 문구 제거), `/api/book` 471자 |
+| **API 회귀 CI** | 원인: `_qa/`가 gitignore라 CI에 스크립트 없음 → **`tests/`로 이동해 커밋**, qa-gate에 57케이스 실행 | **qa-gate PASS** (run 40926141005) |
+
+### 남은 것
+- 일부 책(예: 소년이 온다) DB 설명 공백 → 상세/SSR 런타임 보강으로 커버, 배치 보강은 후속
+- 랭킹 일간 upstream 간헐 503 (폴백 동작)
+- GSC/네이버 색인 추이 확인
