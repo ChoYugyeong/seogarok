@@ -1387,3 +1387,8 @@ html, body { overscroll-behavior-y: none; }
   .drawer, .drawer-scrim, .suggest-pop, .toast { animation: none !important; }
   .reveal { transition: opacity 200ms ease !important; transform: none !important; }
 }
+
+/* 이어 읽기 로딩 스켈레톤 */
+.personal-skel .card-cover { border: 0; }
+.personal-skel .skel-line { display: block; }
+

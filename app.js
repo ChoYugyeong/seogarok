@@ -126,6 +126,7 @@ const DEFAULT_STATE = {
   shelf: { want: ['hailmary', 'samche', 'mulgogi'], reading: ['chae'], done: ['pyeonuijeom'] },
   alerts: {},
   pushOn: false,
+  personalLoading: false,
   pushLeads: [7, 3, 1, 0],
 };
 
@@ -332,12 +333,69 @@ function pushBlockHTML() {
 }
 
 /* 개인화 홈: 내 서재 기반 이어 읽기 (최상단) */
+let personalLoadSeq = 0;
+
+function personalIds() {
+  const recent = (state.recentBooks || []).map((x) => (typeof x === 'string' ? x : x && x.id)).filter(Boolean);
+  return [...new Set([...state.shelf.reading, ...state.shelf.want, ...recent])].filter(Boolean);
+}
+
+async function loadPersonalBooks() {
+  if (!state.api.on) return;
+  const ids = personalIds().slice(0, 10);
+  const missing = ids.filter((id) => !lookupBook(id));
+  if (!missing.length) {
+    state.personalLoading = false;
+    return;
+  }
+  state.personalLoading = true;
+  render();
+  const seq = ++personalLoadSeq;
+  await Promise.all(missing.map(async (id) => {
+    try {
+      const r = await API.book(id);
+      const b = mapApiBook(r);
+      state.cache[id] = b;
+    } catch (e) { /* skip */ }
+  }));
+  if (seq !== personalLoadSeq) return;
+  state.personalLoading = false;
+  render();
+}
+
 function renderPersonalHome() {
   const reading = state.shelf.reading.map(lookupBook).filter(Boolean);
   const want = state.shelf.want.map(lookupBook).filter(Boolean);
-  const recent = (state.recentBooks || []).map((id) => lookupBook(id)).filter(Boolean);
-  const pool = (reading.length ? reading : want.length ? want : recent).filter(Boolean).slice(0, 6);
-  if (!pool.length) return '';
+  const recent = (state.recentBooks || []).map((x) => lookupBook(typeof x === 'string' ? x : x && x.id)).filter(Boolean);
+  const shelfPool = [...reading, ...want];
+  const base = shelfPool.length ? shelfPool : recent;
+  const seen = new Set();
+  const pool = base.filter((b) => {
+    if (!b || seen.has(b.id)) return false;
+    seen.add(b.id);
+    return true;
+  }).slice(0, 6);
+
+  if (!pool.length) {
+    if (state.personalLoading) {
+      const skel = [0, 1, 2].map(() => `<div class="card personal-skel" aria-hidden="true">
+        <div class="card-cover skel"></div>
+        <span class="skel-line" style="height:14px;width:82%"></span>
+        <span class="skel-line" style="height:11px;width:52%"></span>
+      </div>`).join('');
+      return `<section class="section personal-section">
+        <div class="sec-head">
+          <div>
+            <h2 class="sec-title">이어 읽기</h2>
+            <p class="sec-desc">내 서재를 불러오는 중…</p>
+          </div>
+        </div>
+        <div class="rail-grid">${skel}</div>
+      </section>`;
+    }
+    return '';
+  }
+
   const label = reading.length ? '이어 읽기' : want.length ? '내 서재에서 볼 책' : '최근 본 책';
   const desc = reading.length
     ? '읽던 책부터 이어가세요'
@@ -1619,12 +1677,12 @@ async function hydrateShelf() {
   const ids = [...state.shelf.want, ...state.shelf.reading, ...state.shelf.done];
   const missing = ids.filter((id) => !lookupBook(id));
   if (!missing.length) return;
-  for (const id of missing.slice(0, 12)) {
+  await Promise.all(missing.slice(0, 12).map(async (id) => {
     try {
       const r = await API.book(id);
       state.cache[id] = mapApiBook(r);
     } catch (e) { /* skip */ }
-  }
+  }));
   render();
 }
 
@@ -2574,6 +2632,7 @@ async function initApi() {
       loadPick();
       loadRecentBooks();
       renderRecent();
+      loadPersonalBooks();
       if (state.query.trim()) {
         scheduleApiSearch();
         render();
