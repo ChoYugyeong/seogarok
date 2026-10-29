@@ -293,6 +293,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_book_page(parsed)
         if parsed.path == "/sitemap-books.xml":
             return self.handle_sitemap_books(parsed)
+        if parsed.path == "/api/event":
+            return self.handle_event(method, parsed)
         if parsed.path.startswith("/api/push"):
             return self.handle_push(method, parsed, parse_qs(parsed.query))
         if parsed.path.startswith("/api/"):
@@ -481,6 +483,37 @@ class Handler(BaseHTTPRequestHandler):
         except json.JSONDecodeError:
             return None
         return body if isinstance(body, dict) else None
+
+    _event_windows: dict = {}
+
+    def _event_rate_ok(self, ip_hash: str) -> bool:
+        import time as _t
+
+        now = _t.time()
+        arr = self._event_windows.get(ip_hash) or []
+        arr = [t for t in arr if now - t < 60]
+        if len(arr) >= 120:
+            self._event_windows[ip_hash] = arr
+            return False
+        arr.append(now)
+        self._event_windows[ip_hash] = arr
+        return True
+
+    def handle_event(self, method: str, parsed):
+        """익명 이벤트 수집: POST /api/event {session, events:[{name, props, ts}]}."""
+        from . import analytics
+
+        if method != "POST":
+            return self._json({"error": "method_not_allowed"}, 405)
+        ip = (self.headers.get("X-Forwarded-For") or self.client_address[0] or "").split(",")[0].strip()
+        ip_hash = hashlib.sha256((ip or "unknown").encode("utf-8")).hexdigest()[:16]
+        if not self._event_rate_ok(ip_hash):
+            return self._json({"error": "rate_limited"}, 429)
+        body = self._read_json_body()
+        if not body:
+            return self._json({"error": "invalid_json"}, 400)
+        stored = analytics.record_events(body, ip_hash=ip_hash, ua=self.headers.get("User-Agent") or "")
+        return self._json({"ok": True, "accepted": stored})
 
     def handle_push(self, method: str, parsed, qs):
         """웹푸시 종료 알림 API.
@@ -838,6 +871,24 @@ class Handler(BaseHTTPRequestHandler):
                 payload["similar"] = []
             return self._json({"date": day.isoformat(), "book": payload})
 
+        if path == "/api/kpi":
+            import hmac as _hmac
+            import os as _os
+
+            expected = (_os.getenv("PUSH_CRON_KEY") or _os.getenv("YES24_API_KEY") or "").strip()
+            provided = (self.headers.get("X-Cron-Secret") or (qs.get("key") or [""])[0] or "").strip()
+            if not expected or not provided or not _hmac.compare_digest(expected, provided):
+                return self._json({"error": "forbidden"}, 403)
+            from . import analytics
+
+            try:
+                days = int((qs.get("days") or ["7"])[0])
+            except (TypeError, ValueError):
+                days = 7
+            try:
+                return self._json(analytics.summarize(days=days))
+            except Exception as exc:
+                return self._json({"error": "kpi_failed", "message": str(exc)[:160]}, 500)
         if path == "/api/stats":
             conn, store = app.ctx()
             return self._json(

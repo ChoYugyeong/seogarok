@@ -1,0 +1,64 @@
+name: analytics-report
+
+# 주간 KPI: 익명 이벤트 집계(/api/kpi)를 Actions Summary 로 출력
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 1" # 매주 월요일 09:00 KST
+
+permissions:
+  contents: read
+
+jobs:
+  kpi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch KPI (7d)
+        env:
+          CRON_SECRET: ${{ secrets.YES24_API_KEY }}
+        run: |
+          set -euo pipefail
+          URL="https://seogarok.com/api/kpi?days=7"
+          code=$(curl -sS -o /tmp/kpi.json -w "%{http_code}" "$URL" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" --max-time 30)
+          if [ "$code" != "200" ]; then
+            cat /tmp/kpi.json; echo
+            echo "::error::KPI API failed (HTTP $code)"
+            exit 1
+          fi
+          cat /tmp/kpi.json | head -c 4000; echo
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/kpi.json'))
+          f = d.get('funnel', {})
+          s = d.get('search', {})
+          lines = [
+              "## 서가록 KPI 주간 리포트 (최근 %s일)" % d.get('period_days', 7),
+              "",
+              "| 지표 | 값 |",
+              "| --- | --- |",
+              "| 세션 | %s |" % d.get('sessions', 0),
+              "| 검색 | %s (성공률 %s) |" % (s.get('total', 0), f"{float(s.get('success_rate',0))*100:.1f}%"),
+              "| 검색→클릭 | %s (%s) |" % (f.get('result_click_sessions', 0), f"{float(f.get('search_to_click_rate',0))*100:.1f}%"),
+              "| 클릭→외부(예스24·구독) | %s (%s) |" % (f.get('outbound_sessions', 0), f"{float(f.get('click_to_outbound_rate',0))*100:.1f}%"),
+              "",
+              "### 인기 검색어",
+          ]
+          for row in d.get('top_queries', [])[:10]:
+              lines.append("- `%s` × %s" % (row.get('q'), row.get('n')))
+          lines += ["", "### 많이 열린 책"]
+          for row in d.get('top_books', [])[:10]:
+              lines.append("- %s × %s" % (row.get('book'), row.get('n')))
+          lines += ["", "### 일별"]
+          lines.append("| 날짜 | 세션 | 검색 | 클릭 | 드로어 | 외부 | 알림 |")
+          lines.append("| --- | --- | --- | --- | --- | --- | --- |")
+          for date, row in sorted((d.get('daily') or {}).items()):
+              lines.append("| %s | %s | %s | %s | %s | %s | %s |" % (
+                  date, row.get('sessions', 0), row.get('searches', 0), row.get('clicks', 0),
+                  row.get('drawer', 0), row.get('outbound', 0), row.get('alerts', 0)))
+          summary = "\n".join(lines)
+          print(summary)
+          open('/tmp/summary.md', 'w').write(summary + "\n")
+          PY
+          cat /tmp/summary.md >> "$GITHUB_STEP_SUMMARY"

@@ -290,6 +290,7 @@ async function subscribePush(opts = {}) {
       body: JSON.stringify({ subscription: sub.toJSON(), watches: pushWatches(), platforms: subsOn(), lead_days: state.pushLeads }),
     });
     if (!res.ok) throw new Error('subscribe failed');
+    try { ANALYTICS.track('alert_enable', { leads: state.pushLeads.join(','), watches: pushWatches().length }); } catch (e) {}
     state.pushOn = true;
     save();
     render();
@@ -355,6 +356,50 @@ function renderPersonalHome() {
     <div class="rail-grid">${pool.map(bookCardHTML).join('')}</div>
   </section>`;
 }
+
+/* ---------------- 익명 이벤트 계측 (1st-party, 개인정보 없음) ---------------- */
+const ANALYTICS = (() => {
+  const LS_SID = 'seogarok.sid';
+  let sid = '';
+  try {
+    sid = localStorage.getItem(LS_SID) || '';
+    if (!sid) {
+      sid = Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem(LS_SID, sid);
+    }
+  } catch (e) { sid = 'anon'; }
+
+  let enabled = true;
+  try { enabled = navigator.doNotTrack !== '1'; } catch (e) { /* ignore */ }
+
+  const queue = [];
+  let timer = null;
+
+  function flush() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (!queue.length) return;
+    const batch = queue.splice(0, 20);
+    const body = JSON.stringify({ session: sid, events: batch });
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon('/api/event', new Blob([body], { type: 'application/json' }));
+      } else {
+        fetch('/api/event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true }).catch(() => {});
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function track(name, props = {}) {
+    if (!enabled) return;
+    try { queue.push({ name, props, ts: Date.now() }); } catch (e) { return; }
+    if (queue.length >= 10) flush();
+    else if (!timer) timer = setTimeout(flush, 5000);
+  }
+
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
+  window.addEventListener('pagehide', flush);
+  return { track, flush };
+})();
 
 /* ---------------- persistence ---------------- */
 function save() {
@@ -564,6 +609,7 @@ function toggleAlert(key, days) {
     toast('종료 알림을 껐어요');
   } else {
     state.alerts[key] = true;
+    try { ANALYTICS.track('alert_toggle', { book: String(key).split(':')[0], platform: String(key).split(':')[1] || '' }); } catch (e) {}
     const n = Number(days);
     const lead = Number.isFinite(n) && n > 0 ? Math.max(1, Math.min(30, n - 3)) : 3;
     toast(`이 책이 내려가기 ${lead}일 전에 알려드릴게요`);
@@ -1084,6 +1130,7 @@ async function openCollection(slug, opts = {}) {
   try {
     const r = await API.collection(slug);
     state.collection = r;
+    try { ANALYTICS.track('collection_open', { slug }); } catch (e) {}
     if (push) writeUrlForState();
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1550,6 +1597,10 @@ async function runApiSearch() {
     cacheBooks(state.api.hits);
     state.api.meta = r;
     state.api.error = null;
+    try {
+      ANALYTICS.track('search', { q: q.slice(0, 60), n: state.api.hits.length, mode: state.searchMode });
+      if (!state.api.hits.length) ANALYTICS.track('search_zero', { q: q.slice(0, 60) });
+    } catch (e) { /* ignore */ }
   } catch (e) {
     if (seq !== state.api.seq) return;
     state.api.error = String(e.message || e);
@@ -2021,6 +2072,15 @@ async function loadSameAuthor(book) {
 }
 
 function showDrawer(b, opts = {}) {
+  try {
+    const info = avInfo(b);
+    ANALYTICS.track('drawer_open', {
+      book: b.id,
+      title: (b.title || '').slice(0, 60),
+      subs: (info.subs || []).filter((x) => x.status !== 'none').length,
+      real: Boolean(b.real),
+    });
+  } catch (e) { /* ignore */ }
   const { push = false } = opts;
   const changed = state.openId !== b.id;
   state.openId = b.id;
@@ -2174,6 +2234,27 @@ function setQuery(q, opts = {}) {
 document.addEventListener('click', (e) => {
   const t = e.target;
 
+  try {
+    const outLink = t.closest('a[href^="http"]');
+    if (outLink) {
+      ANALYTICS.track('outbound_click', { to: outLink.href.slice(0, 120), inDrawer: Boolean(t.closest('.drawer')) });
+    }
+    const bookEl = t.closest('[data-book]');
+    const actionParent = t.closest('[data-act], [data-push-lead], [data-alert], [data-shelf-set], [data-report], [data-rankcat], [data-rankkind], [data-genre], [data-qopt], [data-tab]');
+    if (bookEl && !actionParent) {
+      const src = bookEl.closest('.rank-big') ? 'rank'
+        : bookEl.closest('.rank-row-sm') ? 'rank_list'
+        : bookEl.closest('.rail-row') ? 'rail_list'
+        : bookEl.closest('.sug-row') ? 'suggest'
+        : bookEl.closest('.alert-row') ? 'alert'
+        : bookEl.closest('.sim-card') ? 'similar'
+        : bookEl.closest('.pick-card') ? 'pick'
+        : bookEl.closest('.personal-section') ? 'personal'
+        : 'card';
+      ANALYTICS.track('result_click', { book: bookEl.getAttribute('data-book'), src });
+    }
+  } catch (err) { /* ignore */ }
+
   const act = t.closest('[data-act]');
   if (act) {
     const a = act.dataset.act;
@@ -2193,6 +2274,7 @@ document.addEventListener('click', (e) => {
   if (leadBtn) {
     const n = Number(leadBtn.dataset.pushLead);
     const has = state.pushLeads.includes(n);
+    ANALYTICS.track('alert_lead', { day: n, on: !has });
     state.pushLeads = has ? state.pushLeads.filter((x) => x !== n) : [...state.pushLeads, n].sort((a, b) => b - a);
     if (!state.pushLeads.length) state.pushLeads = [3];
     save();
@@ -2205,6 +2287,7 @@ document.addEventListener('click', (e) => {
   if (a === 'share-book') {
     const b = lookupBook(state.openId);
     if (!b) return;
+    ANALYTICS.track('share', { book: b.id });
     const url = `${location.origin}/#book=${encodeURIComponent(b.id)}`;
     const text = `${b.title} · ${b.author}`;
     const fallback = () => {
@@ -2272,6 +2355,7 @@ document.addEventListener('click', (e) => {
   const rankTab = t.closest('[data-rankcat]');
   if (rankTab) {
     const cat = rankTab.dataset.rankcat;
+    ANALYTICS.track('rank_cat', { cat });
     if (cat !== state.rank.cat) {
       state.rank.items = null;
       loadRank(cat, state.rank.kind);
@@ -2281,6 +2365,7 @@ document.addEventListener('click', (e) => {
   const rankKind = t.closest('[data-rankkind]');
   if (rankKind) {
     const kind = rankKind.dataset.rankkind;
+    ANALYTICS.track('rank_kind', { kind });
     if (kind !== state.rank.kind) {
       state.rank.items = null;
       loadRank(state.rank.cat, kind);
@@ -2298,6 +2383,7 @@ document.addEventListener('click', (e) => {
       state.rank.items = null;
       loadRank(map[g], state.rank.kind);
     }
+    ANALYTICS.track('genre_click', { genre: g || 'all' });
     // 상단 카테고리 필 활성 상태 동기화
     $$('.cat-pill').forEach((p) => p.classList.toggle('is-on', (p.dataset.genre || '') === (g || '')));
   }
@@ -2458,6 +2544,7 @@ load();
 $('#quickChips').innerHTML = heroChips();
 $('#subsBtn').addEventListener('click', () => toggleSubsPopover());
 render();
+ANALYTICS.track('view', { path: location.pathname.slice(0, 80) });
 if (!localStorage.getItem(LS_KEY)) save();
 
 /** 백엔드가 살아있으면 실검색 모드로 전환 (없으면 로컬 데모 유지) */
