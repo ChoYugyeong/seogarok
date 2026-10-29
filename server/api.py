@@ -184,6 +184,7 @@ class Handler(BaseHTTPRequestHandler):
     _COMPRESSIBLE = ("application/json", "text/", "application/manifest+json", "image/svg")
 
     def _security_headers(self) -> None:
+        self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("X-Frame-Options", "SAMEORIGIN")

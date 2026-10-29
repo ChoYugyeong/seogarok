@@ -498,7 +498,7 @@ function collectionGrid(filterId) {
   return `<div class="section" id="collectionResult">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title">${esc(c.title)}</h3>
+        <h2 class="sec-title">${esc(c.title)}</h2>
         <p class="sec-desc">${esc(c.desc)} · ${list.length}권</p>
       </div>
       <button class="sec-more" data-act="clear-collection">닫기 ✕</button>
@@ -759,7 +759,7 @@ function renderDailyPick() {
       <button class="pick-cover" data-book="${esc(b.id)}" aria-label="${esc(b.title)} 상세 보기">${b.cover_url ? `<img src="${esc(b.cover_url)}" alt="${esc(b.title)}" loading="eager" />` : `<span class="pick-cover-fallback">${esc(b.title)}</span>`}</button>
       <div class="pick-body">
         <p class="pick-eyebrow">오늘의 책 · ${new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}</p>
-        <h3 class="pick-title"><button class="link-like" data-book="${esc(b.id)}">${esc(b.title)}</button></h3>
+        <h2 class="pick-title"><button class="link-like" data-book="${esc(b.id)}">${esc(b.title)}</button></h2>
         <p class="pick-author">${esc(b.author)}${b.publisher ? ` · ${esc(b.publisher)}` : ''}</p>
         ${b.blurb ? `<p class="pick-blurb">${esc(String(b.blurb).slice(0, 160))}${String(b.blurb).length > 160 ? '…' : ''}</p>` : ''}
         <div class="pick-chips">${chips || '<span class="pick-chip">확인 중</span>'}${hasNotice ? '<span class="pick-chip warn">종료 예정</span>' : ''}</div>
@@ -794,7 +794,7 @@ function renderOverview() {
   return `<section class="section ov-section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title">서가 현황</h3>
+        <h2 class="sec-title">서가 현황</h2>
         <p class="sec-desc">매일 갱신되는 데이터 스냅샷${o.synced_at ? ` · ${esc(String(o.synced_at).slice(0, 10))}` : ''}</p>
       </div>
     </div>
@@ -815,7 +815,7 @@ function renderRecentRail() {
   cacheBooks(books);
   return `<section class="section">
     <div class="sec-head">
-      <div><h3 class="sec-title">최근 본 책</h3><p class="sec-desc">이 기기에만 저장돼요.</p></div>
+      <div><h2 class="sec-title">최근 본 책</h2><p class="sec-desc">이 기기에만 저장돼요.</p></div>
     </div>
     <div class="grid">${books.map(bookCardHTML).join('')}</div>
   </section>`;
@@ -858,7 +858,7 @@ function renderRanking() {
     .join('');
   const head = `<div class="sec-head">
       <div>
-        <h3 class="sec-title">서가 랭킹</h3>
+        <h2 class="sec-title">서가 랭킹</h2>
         <p class="sec-desc">${r.items ? `${esc(r.source)} · ${esc(String(r.fetchedAt || '').slice(0, 10))} · 어제 대비` : '예스24 실시간 베스트셀러 순위예요.'}</p>
       </div>
       <button class="sec-more" data-genre="${esc(r.cat === '종합' ? '베스트셀러' : r.cat)}">더 보기 ›</button>
@@ -917,7 +917,7 @@ function renderDiscoverRails() {
   const rails = (state.discover || []).map((r) => `<section class="section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title">${esc(r.label)}</h3>
+        <h2 class="sec-title">${esc(r.label)}</h2>
         <p class="sec-desc">${esc(r.desc || `‘${r.q}’ 검색`)} · ${r.books.length}권</p>
       </div>
       <button class="sec-more" data-genre="${esc(r.q)}">더 보기 →</button>
@@ -932,7 +932,7 @@ function renderGenreChips() {
   return `<section class="section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title">장르로 둘러보기</h3>
+        <h2 class="sec-title">장르로 둘러보기</h2>
         <p class="sec-desc">지금 서가에 있는 책을 장르로 바로 찾아보세요.</p>
       </div>
     </div>
@@ -980,7 +980,7 @@ function renderCollections() {
   return `<section class="section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title">공개 추천 목록</h3>
+        <h2 class="sec-title">공개 추천 목록</h2>
         <p class="sec-desc">서울대·하버드 같은 공개된 큐레이션을 서가의 실제 책과 매칭했어요. 출처와 원문 링크를 함께 표시합니다.</p>
       </div>
     </div>
@@ -1050,7 +1050,7 @@ function renderExploreApi() {
   <section class="section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title">상황으로 찾기</h3>
+        <h2 class="sec-title">상황으로 찾기</h2>
         <p class="sec-desc">장르보다 '지금 내 상황'이 먼저일 때. 실제 서가에서 바로 찾아드려요.</p>
       </div>
     </div>
@@ -1081,7 +1081,7 @@ function renderExplore() {
   const alertSection = `<section class="section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title"><span class="ico">!</span>${entries.length ? alertTitle : '종료 임박 추적'}</h3>
+        <h2 class="sec-title"><span class="ico">!</span>${entries.length ? alertTitle : '종료 임박 추적'}</h2>
         <p class="sec-desc">${entries.length ? alertDesc : (on.length ? '지금은 30일 안에 종료되는 책이 없어요.' : '쓰는 구독을 켜면 종료 예정인 책을 여기서 추적해드려요.')}</p>
       </div>
     </div>
@@ -1114,7 +1114,7 @@ function renderExplore() {
   <section class="section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title">내 구독으로 바로 읽는 책</h3>
+        <h2 class="sec-title">내 구독으로 바로 읽는 책</h2>
         <p class="sec-desc">${on.length ? `${on.map((k) => PLATFORMS[k].name).join(' · ')} 기준` : '구독을 선택해 주세요'}</p>
       </div>
       <button class="sec-more" data-act="open-subs">구독 설정 →</button>
@@ -1128,7 +1128,7 @@ function renderExplore() {
   <section class="section">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title">상황으로 찾기</h3>
+        <h2 class="sec-title">상황으로 찾기</h2>
         <p class="sec-desc">장르보다 '지금 내 상황'이 먼저일 때.</p>
       </div>
     </div>
@@ -1245,7 +1245,7 @@ function noticesSection() {
   return `<section class="section" id="timeline">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title"><span class="ico">↓</span>종료 예정 타임라인</h3>
+        <h2 class="sec-title"><span class="ico">↓</span>종료 예정 타임라인</h2>
         <p class="sec-desc">${esc(label)} 공지 <b style="color:var(--text-2)">${realCount}건</b> · 이번 주 예정 <b style="color:var(--accent)">${totalUpcoming}권</b> · 매일 갱신</p>
       </div>
       ${state.tlDate ? `<button class="sec-more" data-tl-clear>전체 보기 →</button>` : ''}
@@ -1309,7 +1309,7 @@ function renderApiSearch() {
 
   return `
   <div class="result-head">
-    <h2>‘${esc(q)}’</h2>
+    <h1>‘${esc(q)}’</h1>
     <span>${view.length}권${view.length !== api.hits.length ? ` <small style="color:var(--muted)">/ 전체 ${api.hits.length}권</small>` : ''}</span>
     <span class="spacer"></span>
     <button class="sec-more" data-act="clear-query">검색 지우기 ✕</button>
@@ -1473,7 +1473,7 @@ function renderShelf() {
   ${mineEnd.length ? `<section class="section" style="margin-top:34px">
     <div class="sec-head">
       <div>
-        <h3 class="sec-title"><span class="ico">!</span>서재에서 곧 사라져요</h3>
+        <h2 class="sec-title"><span class="ico">!</span>서재에서 곧 사라져요</h2>
         <p class="sec-desc">30일 안에 종료되는 책 ${mineEnd.length}권</p>
       </div>
     </div>

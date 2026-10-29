@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://seogarok.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
-  <url><loc>https://seogarok.com/legal.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://seogarok.com/about.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://seogarok.com/legal.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://seogarok.com/?col=snu-100</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://seogarok.com/?col=harvard-classics</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://seogarok.com/?col=sejong-2025-culture</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://seogarok.com/?col=sejong-2025-academic</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://seogarok.com/?q=%EC%86%8C%EC%84%A4</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=%EC%97%90%EC%84%B8%EC%9D%B4</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=%EC%9D%B8%EB%AC%B8</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=%EA%B3%BC%ED%95%99</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=SF</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=%EC%97%AD%EC%82%AC</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=%EC%9E%90%EA%B8%B0%EA%B3%84%EB%B0%9C</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=%EA%B2%BD%EC%A0%9C</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=%EC%97%AC%ED%96%89</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://seogarok.com/?q=%EC%96%B4%EB%A6%B0%EC%9D%B4</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
 </urlset>

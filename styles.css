@@ -16,8 +16,8 @@
   --ink: #17120e;
   --ink-2: #2a241e;
   --text-2: #4a423a;
-  --text-3: #867a6a;
-  --muted: #867a6a;
+  --text-3: #63584b;
+  --muted: #63584b;
 
   --accent: #b8371f;
   --accent-ink: #ffffff;
@@ -1190,8 +1190,8 @@ body.is-wide .cat-bar { display: none; }
 
 .rank-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: none; }
 .rank-delta { font-size: 10.5px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; white-space: nowrap; }
-.rank-delta.up { color: #e03131; }
-.rank-delta.down { color: #3182f6; }
+.rank-delta.up { color: #b42318; font-size: 11px; }
+.rank-delta.down { color: #1d4ed8; font-size: 11px; }
 .rank-delta.same { color: var(--text-3); font-weight: 600; }
 .rank-delta.new {
   color: #fff; background: var(--accent);
@@ -1200,7 +1200,7 @@ body.is-wide .cat-bar { display: none; }
 .rank-big { grid-template-columns: 40px 84px minmax(0, 1fr); }
 .rank-row-sm { grid-template-columns: 30px 38px minmax(0, 1fr); }
 .rank-foot { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
-.rank-star { font-size: 12px; font-weight: 700; color: #c98a00; }
+.rank-star { font-size: 12px; font-weight: 700; color: #7a4f00; }
 .rank-big .rank-cell { align-self: center; }
 .rank-row-sm .rank-cell { align-self: center; }
 
@@ -1231,7 +1231,7 @@ body.is-wide .cat-bar { display: none; }
   color: var(--text-2);
   letter-spacing: -0.01em;
 }
-.dw-star { color: #c98a00; }
+.dw-star { color: #7a4f00; }
 
 .rank-subs { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
 .rank-sub {
@@ -1239,9 +1239,34 @@ body.is-wide .cat-bar { display: none; }
   border-radius: 4px;
   background: var(--teal-soft);
   color: var(--teal);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 .rank-sub.end { background: var(--danger-soft); color: var(--danger); }
+
+/* QA: 가독성/타깃 최소 크기 (WCAG 2.2 target 24px) */
+.pick-eyebrow { font-size: 12px; }
+.tl-dow, .tl-n { font-size: 12px; }
+.pill { font-size: 12px; height: 22px; }
+.rank-sub { font-size: 11.5px; }
+.recent-clear, .link-like, .link, .sec-more, .notice-src {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+.notice-src { min-width: 24px; justify-content: center; }
+.result-head h1, .result-head h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; margin: 0; }
+@media (max-width: 560px) {
+  .pill { font-size: 11.5px; }
+  .recent-clear, .link-like, .link, .sec-more { min-height: 26px; }
+}
+
+/* QA 2차: 푸터/인라인 링크 최소 타깃 24px */
+.foot-meta a, .foot-meta button, .foot-links a, .foot-links button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+.dw-fact { font-size: 12px; }
 
