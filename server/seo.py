@@ -122,6 +122,10 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
         parts = [f"{SUB_LABEL.get(n.get('platform'), n.get('platform'))} {(n.get('ends_at') or '')[:10]} 종료" for n in notices[:3]]
         notice_txt = f'<p class="notice">종료 공지 · {esc(" / ".join(parts))}</p>'
     app_url = f"/#book={quote(bid, safe='')}"
+    # 설명·공지·평점 등 고유 정보가 전혀 없는 페이지만 색인 제외 (thin content 보호)
+    _raw_desc = (book.get("description") or "").strip()
+    _has_signal = bool(_raw_desc) or bool(notices) or bool(book.get("rating")) or bool(book.get("pages"))
+    robots_meta = "" if _has_signal else '<meta name="robots" content="noindex,follow" />' 
     avail_bits = []
     for _k, _label in SUB_LABEL.items():
         _v = (av or {}).get(_k) or {}
@@ -162,6 +166,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
 <meta name="twitter:title" content="{esc(book.get('title') or '')}" />
 <meta name="twitter:description" content="{esc(desc)}" />
 <meta name="twitter:image" content="{esc(cover)}" />
+{robots_meta}
 <link rel="stylesheet" href="/styles.css" />
 <link rel="alternate" type="text/markdown" href="/book/{esc(quote(bid, safe=''))}.md" />
 {book_jsonld(book, av, base)}

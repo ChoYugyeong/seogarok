@@ -928,9 +928,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json({"error": "kpi_failed", "message": str(exc)[:160]}, 500)
         if path == "/api/stats":
             conn, store = app.ctx()
+            try:
+                _desc_count = int(
+                    conn.execute(
+                        "SELECT count(*) FROM books WHERE description IS NOT NULL AND length(trim(description)) > 20"
+                    ).fetchone()[0]
+                )
+            except Exception:
+                _desc_count = 0
             return self._json(
                 {
                     "books": app.book_count,
+                    "description_count": _desc_count,
                     "notices": app.notice_count,
                     "meta": app.meta,
                     "vector_count": store.count(),

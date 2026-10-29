@@ -105,6 +105,12 @@ jobs:
           echo "catalog=$CAT notices=$NOT"
           [ "$CAT" -ge 8000 ] || { echo "::error::카탈로그 부족 ($CAT rows) — 배포 중단"; exit 1; }
 
+          # 설명 빈 책 배치 보강 (best-effort, 실패해도 배포 진행)
+          timeout 240 python -m ingest.books.enrich_descriptions --limit 1200 --workers 8 --timeout 180 \
+            || echo "::warning::설명 보강 시간초과/실패 (기존 데이터로 진행)"
+          DESC=$(python -m ingest.books.desc_coverage)
+          echo "description coverage=$DESC"
+
       - name: image tag
         id: meta
         run: |
