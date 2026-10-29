@@ -141,3 +141,22 @@ QA PASS (warn 0건)
 2. **종료 3일 내 공지 부재 시 알림 없음**: 현재 데이터 기준 3일 내 종료 공지가 없어 cron 발송 0건(정상). 메시지 생성 로직은 16일 뒤 종료 건으로 별도 검증.
 3. **cron 인증**: 별도 시크릿 대신 `YES24_API_KEY`를 `X-Cron-Secret`으로 사용(GitHub Secrets에 이미 존재). 추후 전용 시크릿 회전 권장.
 4. **SEO 색인**: sitemap-books는 Google Search Console에 제출 권장.
+
+---
+
+# 3차 라운드 — 알림 세분화/푸시 통계/내부 링크 (2026-10-29 밤)
+
+| 항목 | 결과 |
+| --- | --- |
+| 알림 세분화 | 구독 lead_days(7/3/1/0일) opt-in · 서재 칩 토글 · 동일 날짜 중복발송 방지(sent_log) · 플랫폼 필터 유지 |
+| 푸시 통계 | POST /api/push/opened(SW 열람 추적) · GET /api/push/stats(주간, cron secret) · GCS push/stats.json |
+| 내부 링크 | /books?page=N(60권/쪽·페이지네이션) · /book 관련 책 6링크 · 드로어 웹페이지 링크 · 푸터 ‘모든 책’ |
+| CI | push-stats(월 09:00 KST 주간 리포트) · seo-health(사이트맵·책랜딩·내부링크 주간 점검) — Actions active |
+| 런북 | docs/runbooks/search-index.md (GSC·네이버 등록 및 D+2/7/14 추이 체크리스트) |
+
+라이브 검증
+- /books?page=1 200 · 내부 링크 60 · canonical ✓
+- /book/yes24:197068949 관련 책 6 · JSON-LD 2블록 ✓
+- /api/push/cron?dry=1 → leads:[7,3,1,0] · /api/push/opened 200 · /api/push/stats 200(무키 403) ✓
+- 서재 알림칩 라이브: 7일 전 ON·3일 전 OFF·1일 전 ON·당일 ON, 문구 동기화 ✓
+- 최종 QA **PASS (warn 0)** · p95 478ms · 21 엔드포인트
