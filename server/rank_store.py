@@ -14,9 +14,25 @@ _MAX_LOOKBACK_DAYS = 7
 
 
 def _local_dir() -> str:
-    d = os.getenv("RANK_CACHE_DIR") or os.path.join(os.getcwd(), ".rank-cache")
-    os.makedirs(d, exist_ok=True)
-    return d
+    """쓰기 가능한 로컬 디렉터리. Cloud Run(/app read-only)에서는 /tmp 사용."""
+    d = os.getenv("RANK_CACHE_DIR")
+    if d:
+        try:
+            os.makedirs(d, exist_ok=True)
+            return d
+        except Exception:
+            pass
+    for cand in (os.path.join(os.getcwd(), ".rank-cache"), "/tmp/seogarok-rank"):
+        try:
+            os.makedirs(cand, exist_ok=True)
+            probe = os.path.join(cand, ".write-test")
+            with open(probe, "w") as f:
+                f.write("ok")
+            os.remove(probe)
+            return cand
+        except Exception:
+            continue
+    return "/tmp"
 
 
 def _today_utc() -> str:
@@ -91,9 +107,13 @@ def load_previous(kind: str, cat: str) -> dict[str, int]:
         except Exception:
             pass
         if raw is None:
-            local = os.path.join(_local_dir(), f"{date}__{kind}__{cat}.json")
-            tmp = f"/tmp/seogarok-rank-{date}-{kind}-{cat}.json"
-            for path in (local, tmp):
+            paths = []
+            try:
+                paths.append(os.path.join(_local_dir(), f"{date}__{kind}__{cat}.json"))
+            except Exception:
+                pass
+            paths.append(f"/tmp/seogarok-rank-{date}-{kind}-{cat}.json")
+            for path in paths:
                 try:
                     with open(path, "rb") as f:
                         raw = f.read()
@@ -121,16 +141,24 @@ def attach_deltas(items: list[dict], kind: str, cat: str) -> list[dict]:
     delta < 0  → 순위 하락
     delta == 0 → 변동 없음
     """
-    prev = load_previous(kind, cat)
+    try:
+        prev = load_previous(kind, cat)
+    except Exception:
+        prev = {}
     for it in items:
-        rid = str(it.get("id"))
-        before = prev.get(rid)
-        if before is None:
-            it["prev_rank"] = None
-            it["delta"] = None
-            it["is_new"] = bool(prev)  # 이전 스냅샷이 있는데 없던 책이면 NEW
-        else:
-            it["prev_rank"] = before
-            it["delta"] = before - int(it.get("rank") or 0)
-            it["is_new"] = False
+        try:
+            rid = str(it.get("id"))
+            before = prev.get(rid)
+            if before is None:
+                it["prev_rank"] = None
+                it["delta"] = None
+                it["is_new"] = bool(prev)  # 이전 스냅샷이 있는데 없던 책이면 NEW
+            else:
+                it["prev_rank"] = before
+                it["delta"] = before - int(it.get("rank") or 0)
+                it["is_new"] = False
+        except Exception:
+            it.setdefault("prev_rank", None)
+            it.setdefault("delta", None)
+            it.setdefault("is_new", False)
     return items

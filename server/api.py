@@ -802,18 +802,22 @@ class Handler(BaseHTTPRequestHandler):
                     "category": it.get("goodsSortNm") or "",
                 })
 
+            day_key = time.strftime("%Y-%m-%d", time.gmtime())
+            saved_key = f"{day_key}:{kind}:{cat}"
+            snapshot_path = ""
+            if saved_key not in _rank_saved:
+                try:
+                    from .rank_store import save_snapshot
+
+                    snapshot_path = save_snapshot(kind, cat, items)
+                    if snapshot_path:
+                        _rank_saved.add(saved_key)
+                except Exception:
+                    snapshot_path = ""
             try:
-                from .rank_store import attach_deltas, save_snapshot
+                from .rank_store import attach_deltas
 
                 attach_deltas(items, kind, cat)
-                day_key = time.strftime("%Y-%m-%d", time.gmtime())
-                saved_key = f"{day_key}:{kind}:{cat}"
-                if saved_key not in _rank_saved:
-                    _rank_saved.add(saved_key)
-                    try:
-                        save_snapshot(kind, cat, items)
-                    except Exception:
-                        pass
             except Exception:
                 pass
 
