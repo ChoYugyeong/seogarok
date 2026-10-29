@@ -90,7 +90,7 @@
 
 | 항목 | 상태 |
 | --- | --- |
-| 운영 DB `description` | ✅ **보강 완료** — 수집 `detail=Y` + fallback 재생성(16,140권) + 런타임 SSR/상세 보강 |
+| 운영 DB `description` | ✅ **86% 보강** (16,332/18,917) — itemDetail+HTML 배치 + fallback 재생성 + 런타임 보강. 남은 14%는 YES24 원본에 소개 없음 → noindex 보호 |
 | 영향 | 책 랜딩 JSON-LD description이 속성 기반 fallback으로 대체(색인엔 문제 없음) |
 | 후속 | YES24 itemDetail로 설명 일괄 수집 → `catalog_fallback`에 포함 or 상세 온디맨드 보강 |
 

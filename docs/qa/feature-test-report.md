@@ -75,3 +75,20 @@ ego-browser nodejs -e "await import('file:///C:/Dev/seoga/_qa/browser_features_t
 - 일부 책(예: 소년이 온다) DB 설명 공백 → 상세/SSR 런타임 보강으로 커버, 배치 보강은 후속
 - 랭킹 일간 upstream 간헐 503 (폴백 동작)
 - GSC/네이버 색인 추이 확인
+
+---
+
+## 7. 설명 전량 배치 보강 (2026-10-30)
+
+| 단계 | 내용 |
+| --- | --- |
+| 수집 보강 | `ingest/books/enrich_descriptions.py` — YES24 itemDetail(소개/목차/페이지/평점) 배치 + HTML 상세 파서(robots 준수) |
+| 결과 | 카탈로그 설명 커버리지 **16,332 / 18,917 (86%)** (API 소개 83 + 목차 기반 요약 179 + HTML 706자 등) |
+| 남은 14% | YES24 API·HTML 어디에도 책소개가 없는 도서(잡지·예약·구판 등) — **추정하지 않고** 속성 기반 fallback + 본문 목차/사실 정보로 구성 |
+| 품질 보호 | 고유 정보(설명·공지·평점·페이지)가 전혀 없는 책 페이지만 `noindex,follow` |
+| 운영 | `deploy.yml`에서 매 배포 시 누락분 1,200권까지 best-effort 보강(실패해도 배포 진행) |
+| 확인 | `/api/stats` → `description_count` 필드 |
+
+### 한계 (정직하게)
+- YES24 원본에 소개가 없는 책은 **전량 채울 수 없음**(공식 소스 한계). 대체 소스(알라딘/도서관)는 API 키·약관 확인 후 확장 필요.
+- HTML 보강은 CI에서 돌리지 않음(러너 IP 차단·예의상 로컬/수동 배치).
