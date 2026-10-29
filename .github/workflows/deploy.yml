@@ -75,6 +75,33 @@ jobs:
         with:
           python-version: "3.12"
 
+      # --- 캐시: GitHub Actions 로컬 캐시 + GCS 아카이브(머신 간 재사용) ---
+      - name: restore enrich cache (GitHub Actions)
+        uses: actions/cache@v4
+        with:
+          path: data/enrich_cache
+          key: enrich-cache-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            enrich-cache-${{ runner.os }}-
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: restore enrich cache (GCS)
+        run: |
+          mkdir -p data/enrich_cache
+          if gsutil -q stat gs://seogarok-reports/enrich-cache/enrich_cache.tar.gz 2>/dev/null; then
+            gsutil -q cp gs://seogarok-reports/enrich-cache/enrich_cache.tar.gz /tmp/enrich_cache.tar.gz
+            tar -xzf /tmp/enrich_cache.tar.gz -C data
+            echo "GCS cache restored: $(find data/enrich_cache -type f | wc -l) files"
+          else
+            echo "GCS cache 없음 — 신규 시작"
+          fi
+
       - name: fetch data (YES24 Open API + Millie 공개 공지)
         env:
           YES24_API_KEY: ${{ secrets.YES24_API_KEY }}
@@ -115,6 +142,21 @@ jobs:
           DESC=$(python -m ingest.books.desc_coverage)
           echo "description coverage=$DESC"
 
+
+      - name: archive enrich cache (GCS)
+        if: always()
+        run: |
+          if [ -d data/enrich_cache ] && [ -n "$(ls -A data/enrich_cache 2>/dev/null)" ]; then
+            tar -czf /tmp/enrich_cache.tar.gz -C data enrich_cache
+            if gsutil -q cp /tmp/enrich_cache.tar.gz gs://seogarok-reports/enrich-cache/enrich_cache.tar.gz; then
+              echo "GCS cache uploaded: $(du -h /tmp/enrich_cache.tar.gz | cut -f1)"
+            else
+              echo "::warning::GCS cache 업로드 실패 (actions/cache는 유지)"
+            fi
+          else
+            echo "cache 없음 — 업로드 생략"
+          fi
+
       - name: image tag
         id: meta
         run: |
@@ -126,12 +168,6 @@ jobs:
           echo "image=${IMAGE_REPO}:${TAG}" >> "$GITHUB_OUTPUT"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-      - uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_DEPLOY_SA }}
-
-      - uses: google-github-actions/setup-gcloud@v2
 
       - name: docker auth (Artifact Registry)
         # 이미지 저장소 리전(서울)과 Cloud Run 리전(도쿄)이 다를 수 있으므로 IMAGE_REPO 호스트 기준으로 인증

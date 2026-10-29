@@ -41,6 +41,9 @@ if (Test-Path .env) {
 if (-not $env:YES24_API_KEY) { throw "YES24_API_KEY 가 없습니다 (.env 또는 환경변수)" }
 $env:PYTHONIOENCODING = 'utf-8'
 
+Write-Host "[weekly] 0/4 GCS 캐시 복원 (없으면 신규)"
+python scripts\enrich_cache_sync.py pull
+
 Write-Host "[weekly] 1/4 YES24 API 설명 보강 (limit=$ApiLimit, workers=$Workers)"
 python -m ingest.books.enrich_descriptions --limit $ApiLimit --workers $Workers
 
@@ -61,6 +64,9 @@ if ($env:GOOGLE_BOOKS_API_KEY) {
 Write-Host "[weekly] 4/4 fallback 스냅샷 재생성 + 커버리지"
 python scripts/rebuild_fallback.py
 python -m ingest.books.desc_coverage
+
+Write-Host "[weekly] GCS 캐시 아카이브 업로드"
+python scripts\enrich_cache_sync.py push
 
 Write-Host "[weekly] 완료. 커밋하려면:"
 Write-Host "  git add data/catalog_fallback.jsonl.gz && git commit -m 'data: 주간 설명 보강' && git push"

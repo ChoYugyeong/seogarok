@@ -95,3 +95,24 @@ curl -s https://seogarok.com/api/stats | python -m json.tool | grep description_
 ### 효과
 - 같은 책을 다시 보강할 때 네트워크 호출 0회 → 주간 배치가 수십 초~수 분으로 단축
 - Google 쿼터 소진 시 **서킷브레이커**(연속 429 3회 → 남은 호출 즉시 스킵)로 배치가 빠르게 종료
+
+---
+
+## 캐시 3중화 (2026-10-30)
+
+| 계층 | 위치 | 키/주기 | 효과 |
+| --- | --- | --- | --- |
+| 결과 아카이브 | `catalog.jsonl` → DB / `catalog_fallback.jsonl.gz` | 배포마다 | 서빙 시 API 호출 0 |
+| GitHub Actions 캐시 | `actions/cache` (`data/enrich_cache`) | run_id + restore prefix | 배포 러너에서 API 재호출 감소 |
+| GCS 아카이브 | `gs://seogarok-reports/enrich-cache/enrich_cache.tar.gz` | 배포 pull/upload + 주간 pull/push | **머신 간 재사용** |
+
+```powershell
+# 로컬에서 GCS 캐시 동기화
+python scripts/enrich_cache_sync.py status
+python scripts/enrich_cache_sync.py pull
+python scripts/enrich_cache_sync.py push
+```
+
+- 배포 `build` 잡이 시작할 때 GCS 캐시를 풀고, 끝나면 갱신본을 업로드한다.
+- 주간 배치(`scripts/enrich_weekly.ps1`)도 시작 시 pull, 종료 시 push를 자동 수행.
+- 원본 응답 캐시는 git에 커밋하지 않는다(`data/enrich_cache/`).
