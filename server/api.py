@@ -37,6 +37,7 @@ from .search import fetch_availability, fetch_books, fetch_notices, search
 
 _lock_encode = threading.Lock()
 _rank_cache: dict = {}  # /api/rank 카테고리별 (ts, payload)
+_rank_saved: set = set()  # 이번 인스턴스에서 저장한 일별 스냅샷 키
 
 VERSION = "0.4.0"
 CHAOS_ENABLED = os.getenv("SEOG_CHAOS", "0") == "1"
@@ -736,33 +737,45 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"count": len(rows), "total": total, "real": real, "notices": [dict(r) for r in rows]})
 
         if path == "/api/rank":
-            # 예스24 실시간 베스트셀러 순위 (카테고리별, 10분 캐시)
+            # 예스24 실시간 랭킹 (베스트/스테디/일간/월간 × 카테고리), 10분 캐시 + 일별 스냅샷
             RANK_CATS = {
                 "종합": "001", "소설": "001001046", "에세이": "001001047",
                 "인문": "001001019", "과학": "001001002", "역사": "001001010",
                 "자기계발": "001001026", "경제": "001001025",
                 "여행": "001001009", "어린이": "001001016",
             }
+            RANK_KINDS = {
+                "best": ("베스트셀러", "/v1/category/bestseller"),
+                "steady": ("스테디셀러", "/v1/category/bestsellerSteady"),
+                "daily": ("일간 베스트", "/v1/category/bestsellerDaily"),
+                "monthly": ("월간 베스트", "/v1/category/bestsellerMonthly"),
+            }
             cat = (qs.get("cat") or ["종합"])[0].strip() or "종합"
             if cat not in RANK_CATS:
                 cat = "종합"
+            kind = (qs.get("kind") or ["best"])[0].strip() or "best"
+            if kind not in RANK_KINDS:
+                kind = "best"
             limit = int((qs.get("limit") or ["10"])[0])
             limit = max(3, min(limit, 20))
+            key = f"{cat}:{kind}"
             now = time.time()
-            hit = _rank_cache.get(cat)
+            hit = _rank_cache.get(key)
             if hit and now - hit[0] < 600:
                 return self._json(hit[1])
+            label, endpoint = RANK_KINDS[kind]
             try:
                 from .on_demand import _get as _od_get
 
-                data = _od_get("/v1/category/bestseller", {
-                    "categoryId": RANK_CATS[cat], "page": 1, "pageSize": limit,
+                data = _od_get(endpoint, {
+                    "categoryId": RANK_CATS[cat], "page": 1, "pageSize": limit, "detail": "Y",
                 })
             except Exception as exc:
                 return self._json({
                     "error": "rank_unavailable",
                     "message": str(exc)[:160],
                     "category": cat,
+                    "kind": kind,
                 }, 503)
             items = []
             for it in (data.get("items") or []):
@@ -770,27 +783,50 @@ class Handler(BaseHTTPRequestHandler):
                 title = str(it.get("title") or "").strip()
                 if not goods or not title:
                     continue
-                try:
-                    price = int(float(it.get("salePrice")))
-                except (TypeError, ValueError):
-                    price = None
+
+                def _num(v):
+                    try:
+                        return int(float(v))
+                    except (TypeError, ValueError):
+                        return None
+
                 items.append({
                     "rank": len(items) + 1,
                     "id": f"yes24:{goods}",
                     "title": title,
                     "author": (it.get("author") or "").strip() or "저자 미상",
                     "cover_url": it.get("cover") or f"https://image.yes24.com/goods/{goods}/L",
-                    "price": price,
+                    "price": _num(it.get("salePrice")),
+                    "star": float(it["starScore"]) if it.get("starScore") is not None else None,
+                    "sale_point": _num(it.get("salePoint")),
                     "category": it.get("goodsSortNm") or "",
                 })
+
+            try:
+                from .rank_store import attach_deltas, save_snapshot
+
+                attach_deltas(items, kind, cat)
+                day_key = time.strftime("%Y-%m-%d", time.gmtime())
+                saved_key = f"{day_key}:{kind}:{cat}"
+                if saved_key not in _rank_saved:
+                    _rank_saved.add(saved_key)
+                    try:
+                        save_snapshot(kind, cat, items)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
             payload = {
                 "category": cat,
                 "category_id": RANK_CATS[cat],
-                "source": "예스24 베스트셀러",
+                "kind": kind,
+                "kind_label": label,
+                "source": f"예스24 {label}",
                 "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                 "items": items,
             }
-            _rank_cache[cat] = (now, payload)
+            _rank_cache[key] = (now, payload)
             return self._json(payload)
 
         if path == "/api/collections":

@@ -151,7 +151,7 @@ const state = {
   pick: null,
   overview: null,
   recentBooks: [],
-  rank: { cat: '종합', items: null, loading: false, error: null, source: '', fetchedAt: '' },
+  rank: { cat: '종합', kind: 'best', items: null, loading: false, error: null, source: '', fetchedAt: '' },
   cache: {}, // id -> api book (검색 결과/상세 캐시)
   notices: [], // 수집된 종료 예정 공지 (실데이터 + fixture)
 };
@@ -186,7 +186,7 @@ const API = {
   report(bookId, platform) { return this.post('/api/report', { book_id: bookId, platform }); },
   collections() { return this.call('/api/collections'); },
   overview() { return this.call('/api/overview'); },
-  rank(cat) { return this.call('/api/rank', { cat, limit: 10 }); },
+  rank(cat, kind) { return this.call('/api/rank', { cat, kind: kind || 'best', limit: 10 }); },
   dailyPick() { return this.call('/api/pick'); },
   collection(slug) { return this.call('/api/collection', { slug }); },
 };
@@ -667,19 +667,25 @@ async function loadDiscover() {
   } catch (e) { }
 }
 
-async function loadRank(cat) {
+async function loadRank(cat, kind) {
   if (!state.api.on) return;
-  const target = cat || state.rank.cat || '종합';
-  state.rank.cat = target;
+  const targetCat = cat || state.rank.cat || '종합';
+  const targetKind = kind || state.rank.kind || 'best';
+  state.rank.cat = targetCat;
+  state.rank.kind = targetKind;
   state.rank.loading = true;
   state.rank.error = null;
   render();
   try {
-    const r = await API.rank(target);
-    if (state.rank.cat !== target) return; // 탭 경쟁 방지
+    const r = await API.rank(targetCat, targetKind);
+    if (state.rank.cat !== targetCat || state.rank.kind !== targetKind) return; // 탭 경쟁 방지
     const items = (r.items || []).map((x) => ({
       ...mapApiBook({ id: x.id, title: x.title, author: x.author, cover_url: x.cover_url, price: x.price, av: {}, av_origin: {}, notices: [] }),
       rank: x.rank,
+      delta: x.delta,
+      prev_rank: x.prev_rank,
+      is_new: x.is_new,
+      star: x.star,
     }));
     cacheBooks(items);
     state.rank.items = items;
@@ -809,26 +815,45 @@ function renderRecentRail() {
   </section>`;
 }
 
+function deltaBadge(it) {
+  if (!it.is_new && (it.delta === null || it.delta === undefined)) return '';
+  if (it.is_new) return '<span class="rank-delta new">NEW</span>';
+  if (it.delta > 0) return `<span class="rank-delta up">▲${it.delta}</span>`;
+  if (it.delta < 0) return `<span class="rank-delta down">▼${Math.abs(it.delta)}</span>`;
+  return '<span class="rank-delta same">-</span>';
+}
+
+function starBadge(it) {
+  const v = Number(it.star);
+  if (!v) return '';
+  return `<span class="rank-star">★ ${v.toFixed(1)}</span>`;
+}
+
 function renderRanking() {
   const r = state.rank || {};
   const rankCats = ['종합', '소설', '에세이', '인문', '과학', '자기계발', '경제'];
-  const tabs = rankCats
+  const kinds = [['best', '베스트'], ['steady', '스테디'], ['daily', '일간'], ['monthly', '월간']];
+  const catTabs = rankCats
     .map((c) => `<button class="rank-tab ${r.cat === c ? 'is-on' : ''}" data-rankcat="${c}">${c}</button>`)
+    .join('');
+  const kindTabs = kinds
+    .map(([k, label]) => `<button class="rank-kind ${r.kind === k ? 'is-on' : ''}" data-rankkind="${k}">${label}</button>`)
     .join('');
   const head = `<div class="sec-head">
       <div>
         <h3 class="sec-title">서가 랭킹</h3>
-        <p class="sec-desc">${r.items ? `${esc(r.source)} · ${esc(String(r.fetchedAt || '').slice(0, 10))}` : '예스24 실시간 베스트셀러 순위예요.'}</p>
+        <p class="sec-desc">${r.items ? `${esc(r.source)} · ${esc(String(r.fetchedAt || '').slice(0, 10))} · 어제 대비` : '예스24 실시간 베스트셀러 순위예요.'}</p>
       </div>
       <button class="sec-more" data-genre="${esc(r.cat === '종합' ? '베스트셀러' : r.cat)}">더 보기 ›</button>
     </div>`;
 
   if (!state.api.on) return '';
+  const controls = `<div class="rank-controls"><div class="rank-kinds">${kindTabs}</div></div><div class="rank-tabs">${catTabs}</div>`;
+
   if (r.loading && !r.items) {
-    return `<section class="section rank-section">${head}<div class="rank-grid">${Array.from({ length: 3 }).map(() => '<div class="rank-big skel" style="height:118px"></div>').join('')}</div></section>`;
+    return `<section class="section rank-section">${head}${controls}<div class="rank-grid">${Array.from({ length: 3 }).map(() => '<div class="rank-big skel" style="height:118px"></div>').join('')}</div></section>`;
   }
   if (!r.items || !r.items.length) {
-    // API 실패/연결 전: 서가 추천 폴백
     const rail = (state.discover || [])[0];
     if (!rail || !rail.books.length) return '';
     const fallback = rail.books.slice(0, 6).map((b, i) => `<button class="rank-row-sm" data-book="${esc(b.id)}">
@@ -838,7 +863,7 @@ function renderRanking() {
       </button>`).join('');
     return `<section class="section rank-section">
       ${head.replace('예스24 실시간 베스트셀러 순위예요.', '예스24 연결 전이라 서가 추천 순서로 보여드려요.')}
-      <div class="rank-tabs">${tabs}</div>
+      ${controls}
       <div class="rank-list">${fallback}</div>
     </section>`;
   }
@@ -846,23 +871,23 @@ function renderRanking() {
   const top = r.items.slice(0, 3);
   const rest = r.items.slice(3, 10);
   const big = top.map((b, i) => `<button class="rank-big" data-book="${esc(b.id)}">
-      <span class="rank-no">${i + 1}</span>
+      <span class="rank-cell"><span class="rank-no">${i + 1}</span>${deltaBadge(b)}</span>
       <span class="rank-big-cover"><img src="${esc(b.cover_url || '')}" alt="" loading="lazy"></span>
       <span class="rank-big-meta">
         <b>${esc(b.title)}</b>
         <span class="rank-author">${esc(b.author)}</span>
-        ${b.price ? `<span class="rank-price">${Number(b.price).toLocaleString()}원</span>` : ''}
+        <span class="rank-foot">${b.price ? `<span class="rank-price">${Number(b.price).toLocaleString()}원</span>` : ''}${starBadge(b)}</span>
       </span>
     </button>`).join('');
   const small = rest.map((b) => `<button class="rank-row-sm" data-book="${esc(b.id)}">
-      <span class="rank-no">${b.rank}</span>
+      <span class="rank-cell"><span class="rank-no">${b.rank}</span>${deltaBadge(b)}</span>
       <span class="rank-cover"><img src="${esc(b.cover_url || '')}" alt="" loading="lazy"></span>
       <span class="rank-meta"><b>${esc(b.title)}</b><span>${esc(b.author)}</span></span>
     </button>`).join('');
 
   return `<section class="section rank-section">
     ${head}
-    <div class="rank-tabs">${tabs}</div>
+    ${controls}
     <div class="rank-cols">
       <div class="rank-top">${big}</div>
       <div class="rank-rest">${small}</div>
@@ -2052,12 +2077,33 @@ document.addEventListener('click', (e) => {
     const cat = rankTab.dataset.rankcat;
     if (cat !== state.rank.cat) {
       state.rank.items = null;
-      loadRank(cat);
+      loadRank(cat, state.rank.kind);
+    }
+    return;
+  }
+  const rankKind = t.closest('[data-rankkind]');
+  if (rankKind) {
+    const kind = rankKind.dataset.rankkind;
+    if (kind !== state.rank.kind) {
+      state.rank.items = null;
+      loadRank(state.rank.cat, kind);
     }
     return;
   }
 
   const genreEl = t.closest('[data-genre]');
+  if (genreEl) {
+    const g = (genreEl.dataset.genre || '').trim();
+    const map = { '소설': '소설', '에세이': '에세이', '인문': '인문', '과학': '과학', 'SF': '소설',
+      '역사': '역사', '자기계발': '자기계발', '경제': '경제', '여행': '여행', '어린이': '어린이' };
+    if (map[g] && map[g] !== state.rank.cat) {
+      state.rank.cat = map[g];
+      state.rank.items = null;
+      loadRank(map[g], state.rank.kind);
+    }
+    // 상단 카테고리 필 활성 상태 동기화
+    $$('.cat-pill').forEach((p) => p.classList.toggle('is-on', (p.dataset.genre || '') === (g || '')));
+  }
   if (genreEl) {
     const q = genreEl.dataset.genre;
     const h = $('#heroSearch'); if (h) h.value = q;
@@ -2240,7 +2286,7 @@ async function initApi() {
       loadDiscover();
       loadCollections();
       loadOverview();
-      loadRank('종합');
+      loadRank('종합', 'best');
       loadPick();
       loadRecentBooks();
       renderRecent();

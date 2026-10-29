@@ -1175,3 +1175,39 @@ body.is-wide .cat-bar { display: none; }
   .rank-big-meta b { font-size: 14px; }
 }
 
+/* 랭킹 종류 탭 + 등락/평점 */
+.rank-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 2px 0 10px; }
+.rank-kinds { display: inline-flex; gap: 2px; padding: 3px; background: var(--surface); border-radius: 999px; }
+.rank-kind {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.rank-kind:hover { color: var(--ink); }
+.rank-kind.is-on { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+
+.rank-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: none; }
+.rank-delta { font-size: 10.5px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; white-space: nowrap; }
+.rank-delta.up { color: #e03131; }
+.rank-delta.down { color: #3182f6; }
+.rank-delta.same { color: var(--text-3); font-weight: 600; }
+.rank-delta.new {
+  color: #fff; background: var(--accent);
+  border-radius: 4px; padding: 0 4px; font-size: 9.5px;
+}
+.rank-big { grid-template-columns: 40px 84px minmax(0, 1fr); }
+.rank-row-sm { grid-template-columns: 30px 38px minmax(0, 1fr); }
+.rank-foot { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.rank-star { font-size: 12px; font-weight: 700; color: #c98a00; }
+.rank-big .rank-cell { align-self: center; }
+.rank-row-sm .rank-cell { align-self: center; }
+
+@media (max-width: 860px) {
+  .rank-big { grid-template-columns: 34px 72px minmax(0, 1fr); }
+  .rank-row-sm { grid-template-columns: 26px 34px minmax(0, 1fr); }
+  .rank-kind { padding: 5px 11px; font-size: 12.5px; }
+  .rank-controls { flex-wrap: wrap; }
+}
+
