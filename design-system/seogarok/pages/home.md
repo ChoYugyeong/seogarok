@@ -82,3 +82,13 @@
 | 카테고리 필 고정 | .cat-bar sticky(상단 내비 아래), 검색/컬렉션 화면(ody.is-wide)에서는 숨김 |
 | 오늘의 책 히어로화 | 큰 배너 카드(좌: 문구·CTA / 우: 176px 표지) |
 
+## 2026-10-29 추가 2 (랭킹 고도화 3건)
+
+| 항목 | 처리 |
+| --- | --- |
+| 베스트/스테디/일간/월간 4축 | /api/rank?cat=&kind=best|steady|daily|monthly, 예스24 공식 엔드포인트 사용. UI에 종류 탭 |
+| 어제 대비 순위 변동 | server/rank_store.py — 일별 스냅샷 
+ank/{YYYY-MM-DD}/{kind}-{cat}.json를 GCS(gs://seogarok-reports)에 저장, 다음날 조회해 delta 계산(▲빨강/▼파랑/NEW). Cloud Run read-only FS 대응(/tmp 폴백) |
+| 카테고리 필 → 랭킹 연동 | 상단 카테고리 필 클릭 시 검색 + 랭킹 카테고리 동시 전환, 필 활성 상태 동기화 |
+| 평점 표시 | 예스24 detail=Y의 starScore를 랭킹 카드에 ★ 표시 |
+
