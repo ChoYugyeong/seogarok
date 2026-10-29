@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import html
+import time
 from urllib.parse import quote
 
 BASE = "https://seogarok.com"
@@ -15,11 +16,32 @@ def esc(v) -> str:
     return html.escape(str(v if v is not None else ""), quote=True)
 
 
+def _fallback_desc(book: dict) -> str:
+    """설명이 없는 책용 고유 요약(속성 기반)."""
+    bits = [
+        f"『{book.get('title') or ''}』은(는) {book.get('author') or '저자 미상'}의 책으로",
+        f"{book.get('publisher') or ''}에서 {(book.get('pubdate') or '')[:4]}년에 출간되었습니다."
+        if book.get("publisher")
+        else "출간 정보가 제한적입니다.",
+    ]
+    cat = " ".join((book.get("category") or "").replace(">", " ").split())
+    if cat:
+        bits.append(f"분야는 {cat}입니다.")
+    if book.get("pages"):
+        bits.append(f"분량은 {book['pages']}쪽입니다.")
+    price = book.get("price")
+    if price:
+        bits.append(f"예스24 판매가는 {int(price):,}원입니다.")
+    if book.get("isbn13"):
+        bits.append(f"ISBN은 {book['isbn13']}입니다.")
+    return " ".join(bits)
+
+
 def _desc(book: dict) -> str:
     text = (book.get("description") or "").strip()
     if text:
         return " ".join(text.split())[:280]
-    return f"{book.get('title') or ''} — 구독 서비스 가용성과 종료 예정일을 서가록에서 한 번에 확인하세요."
+    return _fallback_desc(book)
 
 
 def book_jsonld(book: dict, av: dict, base: str = BASE) -> str:
@@ -39,6 +61,12 @@ def book_jsonld(book: dict, av: dict, base: str = BASE) -> str:
         "image": book.get("cover_url") or None,
         "description": _desc(book),
         "inLanguage": "ko",
+        "numberOfPages": book.get("pages") or None,
+        "publisher": {
+            "@type": "Organization",
+            "name": book.get("publisher") or "서가록",
+        },
+        "mainEntityOfPage": canon,
     }
     price = book.get("price")
     if price:
@@ -94,6 +122,18 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
         parts = [f"{SUB_LABEL.get(n.get('platform'), n.get('platform'))} {(n.get('ends_at') or '')[:10]} 종료" for n in notices[:3]]
         notice_txt = f'<p class="notice">종료 공지 · {esc(" / ".join(parts))}</p>'
     app_url = f"/#book={quote(bid, safe='')}"
+    avail_bits = []
+    for _k, _label in SUB_LABEL.items():
+        _v = (av or {}).get(_k) or {}
+        if _v.get("s") == "ending":
+            _d = _v.get("d")
+            avail_bits.append(f"{_label} {'D-' + str(_d) if isinstance(_d, int) and _d >= 0 else ''} 종료 예정".replace("  ", " "))
+        elif _v.get("s") == "available":
+            avail_bits.append(f"{_label} 구독 가능")
+    if avail_bits:
+        answer_line = f"{book.get('title')}은(는) " + ", ".join(avail_bits) + f" ({time.strftime('%Y-%m-%d')} 확인)"
+    else:
+        answer_line = f"{book.get('title')}의 구독 가용성은 확인된 정보가 없습니다. 제보로 확인 중입니다."
     related = related or []
     related_html = ""
     if related:
@@ -123,6 +163,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
 <meta name="twitter:description" content="{esc(desc)}" />
 <meta name="twitter:image" content="{esc(cover)}" />
 <link rel="stylesheet" href="/styles.css" />
+<link rel="alternate" type="text/markdown" href="/book/{esc(quote(bid, safe=''))}.md" />
 {book_jsonld(book, av, base)}
 <style>
 .book-page{{max-width:920px;margin:0 auto;padding:32px 20px 72px}}
@@ -152,6 +193,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
 .rel-card b{{font-size:12.5px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
 .rel-card span{{font-size:11.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
 @media (max-width:640px){{.rel-grid{{grid-template-columns:repeat(3,minmax(0,1fr))}}}}
+.answer{{font-size:13.5px;line-height:1.6;background:var(--accent-soft);padding:10px 12px;border-radius:8px;margin:12px 0 0}} .answer b{{color:var(--accent)}}
 .book-foot{{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-3);line-height:1.7}}
 @media (max-width:640px){{.book-hero{{grid-template-columns:120px minmax(0,1fr);gap:16px}}.book-hero h1{{font-size:22px}}}}
 </style>
@@ -167,6 +209,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
       <p class="facts">{fact_html}</p>
       {f'<p class="price">{esc(price_txt)}</p>' if price_txt else ''}
       <p class="summary">{esc(desc)}</p>
+      <p class="answer"><b>한 줄 요약</b> · {esc(answer_line)}</p>
       {notice_txt}
       <a class="cta" href="{esc(app_url)}">서가록에서 가용성 보기 →</a>
     </div>
@@ -190,8 +233,7 @@ def sitemap_books_xml(rows: list[dict], base: str = BASE) -> str:
     for r in rows:
         bid = str(r["id"])
         loc = f"{base}/book/{quote(bid, safe='')}"
-        last = (r.get("pubdate") or "")[:10]
-        parts.append(f"<url><loc>{esc(loc)}</loc>" + (f"<lastmod>{esc(last)}</lastmod>" if last else "") + "<changefreq>weekly</changefreq><priority>0.6</priority></url>")
+        parts.append(f"<url><loc>{esc(loc)}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>")
     parts.append("</urlset>")
     return "\n".join(parts)
 

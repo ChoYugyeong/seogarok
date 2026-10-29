@@ -2,7 +2,26 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /metrics
+Content-Signal: search=yes, ai-input=yes, ai-train=no
 
+# ---- AI agents (검색·인용 허용, 학습은 Content-Signal로 통제) ----
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: Bingbot
+User-agent: Yeti
+Allow: /
+Disallow: /api/
+Content-Signal: search=yes, ai-input=yes, ai-train=no
+
+Sitemap: https://seogarok.com/sitemap-index.xml
 Sitemap: https://seogarok.com/sitemap.xml
-
 Sitemap: https://seogarok.com/sitemap-books.xml

@@ -283,6 +283,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_chaos(method, parsed)
         if parsed.path == "/api/report":
             return self.handle_report(method, parsed)
+        if parsed.path in ("/llms.txt", "/llms-full.txt", "/index.md", "/sitemap-index.xml"):
+            return self.handle_agent_files(parsed)
+        if parsed.path.startswith("/book/") and parsed.path.endswith(".md"):
+            return self.handle_agent_files(parsed)
         if parsed.path == "/books":
             return self.handle_books_index(parsed)
         if parsed.path.startswith("/book/"):
@@ -311,6 +315,53 @@ class Handler(BaseHTTPRequestHandler):
                 log_event(level="warn", msg="metrics_gauge_refresh_failed", error=str(exc))
             body = METRICS.render().encode("utf-8")
             return self._send(200, body, "text/plain; version=0.0.4; charset=utf-8")
+
+    def handle_agent_files(self, parsed):
+        """AI 에이전트 발견 파일: llms.txt · llms-full.txt · Markdown · 사이트맵 인덱스."""
+        from urllib.parse import unquote
+
+        from . import llms as llmslib
+
+        app = get_app()
+        path = parsed.path
+        books = app.book_count
+        notices = app.notice_count
+        if path == "/llms.txt":
+            body = llmslib.llms_txt(books, notices)
+            return self._send(200, body.encode("utf-8"), "text/markdown; charset=utf-8", "public, max-age=3600")
+        if path == "/llms-full.txt":
+            body = llmslib.llms_full_txt(books, notices)
+            return self._send(200, body.encode("utf-8"), "text/markdown; charset=utf-8", "public, max-age=3600")
+        if path == "/index.md":
+            body = llmslib.index_markdown(books, notices)
+            return self._send(200, body.encode("utf-8"), "text/markdown; charset=utf-8", "public, max-age=3600")
+        if path == "/sitemap-index.xml":
+            import time as _t
+
+            today = _t.strftime("%Y-%m-%d", _t.gmtime())
+            xml = (
+                '<?xml version="1.0" encoding="UTF-8"?>\n'
+                '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+                f"<sitemap><loc>https://seogarok.com/sitemap.xml</loc><lastmod>{today}</lastmod></sitemap>\n"
+                f"<sitemap><loc>https://seogarok.com/sitemap-books.xml</loc><lastmod>{today}</lastmod></sitemap>\n"
+                "</sitemapindex>\n"
+            )
+            return self._send(200, xml.encode("utf-8"), "application/xml; charset=utf-8", "public, max-age=3600")
+        # /book/{id}.md
+        from .availability import build_availability
+        from .search import fetch_availability, fetch_books, fetch_notices
+
+        bid = unquote(path[len("/book/"):])[:-3].strip("/")
+        conn, _ = app.ctx()
+        rows = fetch_books(conn, [bid])
+        if not rows:
+            return self._send(404, b"not found", "text/plain; charset=utf-8")
+        row = rows[0]
+        avs = fetch_availability(conn, [bid])
+        nts = fetch_notices(conn, [bid])
+        av, _origins = build_availability(row, avs.get(bid, []), nts.get(bid, []))
+        body = llmslib.book_markdown(row, av, nts.get(bid, []))
+        return self._send(200, body.encode("utf-8"), "text/markdown; charset=utf-8", "public, max-age=300")
 
     def handle_book_page(self, parsed):
         """SEO 랜딩: /book/{yes24:ID} — 서버 렌더 HTML + JSON-LD."""
@@ -401,7 +452,9 @@ class Handler(BaseHTTPRequestHandler):
         app = get_app()
         conn, _ = app.ctx()
         rows = conn.execute(
-            "SELECT id, pubdate FROM books WHERE cover_url IS NOT NULL ORDER BY id LIMIT 5000"
+            "SELECT id, pubdate FROM books "
+            "WHERE cover_url IS NOT NULL AND description IS NOT NULL AND length(trim(description)) > 20 "
+            "ORDER BY id LIMIT 5000"
         ).fetchall()
         xml = sitemap_books_xml([dict(r) for r in rows])
         return self._send(200, xml.encode("utf-8"), "application/xml; charset=utf-8", "public, max-age=3600")

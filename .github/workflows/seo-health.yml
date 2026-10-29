@@ -29,6 +29,11 @@ jobs:
           check "$BASE/sitemap-books.xml" "sitemap-books"
           check "$BASE/books?page=1" "books-index"
           check "$BASE/book/yes24%3A197068949" "book-landing"
+          check "$BASE/book/yes24%3A197068949.md" "book-markdown"
+          check "$BASE/llms.txt" "llms-txt"
+          check "$BASE/llms-full.txt" "llms-full"
+          check "$BASE/index.md" "index-markdown"
+          check "$BASE/sitemap-index.xml" "sitemap-index"
 
           cat > /tmp/last.html <<'EOF'
           EOF
@@ -38,6 +43,13 @@ jobs:
           echo "related-links: $rel / jsonld-blocks: $jsonld"
           [ "$rel" -ge 3 ] || fail=1
           [ "$jsonld" -ge 2 ] || fail=1
+
+          curl -sS --max-time 30 "$BASE/robots.txt" -o /tmp/robots.txt
+          cs=$(grep -c 'Content-Signal' /tmp/robots.txt || true)
+          ai=$(grep -cE 'GPTBot|ClaudeBot|PerplexityBot' /tmp/robots.txt || true)
+          echo "robots-content-signal: $cs / ai-groups: $ai"
+          [ "$cs" -ge 1 ] || fail=1
+          [ "$ai" -ge 1 ] || fail=1
 
           curl -sS --max-time 30 "$BASE/books?page=1" -o /tmp/books.html
           links=$(grep -c 'href="/book/' /tmp/books.html || true)
@@ -51,6 +63,7 @@ jobs:
             echo "- 관련 책 링크: $rel"
             echo "- JSON-LD 블록: $jsonld"
             echo "- /books 내부 링크: $links"
+            echo "- robots Content-Signal: $cs / AI 그룹: $ai"
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$fail" = "1" ]; then
