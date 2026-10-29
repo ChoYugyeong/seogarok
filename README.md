@@ -3,11 +3,13 @@
 > **이 책, 지금 어느 서가에 있나** — 책의 가용성 레이어
 
 **🟢 라이브:** https://seogarok.com (GCP Cloud Run · asia-northeast3 · scale-to-zero)
-· 4,865권 실시간 인덱스 · 하이브리드 검색 p50 ~3ms · [약관/개인정보/출처](legal.html)
+· 18,917권 인덱스 · 하이브리드 검색 · 책 랜딩 16k+ 색인 대응 · [약관/개인정보/출처](legal.html)
 
 왓챠피디아의 책 버전. 단, 포지셔닝은 "추천 서비스"가 아니라 **"가용성(어디서 읽을 수 있나) + 종료 추적"**.
 
 ![서가록 홈](docs/assets/seogarok-home.png)
+
+> 검색엔진: [sitemap-index.xml](https://seogarok.com/sitemap-index.xml) · [llms.txt](https://seogarok.com/llms.txt)
 
 이 저장소는 두 층으로 구성됩니다.
 

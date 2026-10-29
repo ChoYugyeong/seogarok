@@ -84,3 +84,22 @@ python scripts/submit_indexnow.py --limit 200
 | 첫 색인(홈/대표 페이지) | 2~7일 |
 | 책 랜딩 대량 색인 | 1~4주 |
 | 주요 키워드 노출 | 2~8주 (콘텐츠·링크에 따라) |
+
+---
+
+## 색인 모니터링 (자동, 2026-10-30 추가)
+
+### 1) GSC URL Inspection API (`seo-index` 워크플로)
+- 매주 월요일 09:10 KST: 홈·책 표본 30개의 **색인 verdict / 마지막 크롤**을 확인해 Actions Summary에 기록
+- 준비(1회): GSC → 설정 → 사용자 및 권한 → `seogarok-api-deploy@seoga-prod.iam.gserviceaccount.com` 추가 (**전체/소유자 권한**)
+- 수동 실행: `gh workflow run seo-index.yml`
+- Search Console API는 활성화 완료(`searchconsole.googleapis.com`)
+
+### 2) 사이트맵 확대
+- `sitemap-books.xml`: **5,000 → 16,073+ URL** (설명 보유 책 전체)
+- GSC/네이버 서치어드바이저에서 사이트맵을 다시 제출하면 새 URL까지 크롤 대상이 됨
+
+### 3) 색인 확인
+- GSC → 색인 → 페이지: 색인됨/발견됨-현재 색인 안 됨 추이
+- `site:seogarok.com` (구글/네이버)
+- `python scripts/gsc_index_status.py --limit 20` (로컬은 OAuth webmasters 스코프 필요, CI는 자동)

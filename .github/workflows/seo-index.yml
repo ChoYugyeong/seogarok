@@ -1,0 +1,44 @@
+name: seo-index
+
+# GSC URL Inspection API로 색인 상태를 주간 점검 (서비스계정이 GSC 속성 사용자여야 함)
+on:
+  schedule:
+    - cron: "10 0 * * 1" # 월요일 09:10 KST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        id: auth
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+          token_format: access_token
+          access_token_scopes: "https://www.googleapis.com/auth/webmasters.readonly,https://www.googleapis.com/auth/cloud-platform"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: GSC URL Inspection
+        env:
+          GSC_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: |
+          python scripts/gsc_index_status.py --limit 30
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gsc-index-status
+          path: gsc_index_status.json
+          if-no-files-found: ignore

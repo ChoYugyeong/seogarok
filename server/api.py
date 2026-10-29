@@ -506,12 +506,12 @@ class Handler(BaseHTTPRequestHandler):
         rows = conn.execute(
             "SELECT id, pubdate FROM books "
             "WHERE cover_url IS NOT NULL AND description IS NOT NULL AND length(trim(description)) > 20 "
-            "ORDER BY id LIMIT 5000"
+            "ORDER BY id LIMIT 20000"
         ).fetchall()
         if not rows:
             # 데이터 파이프라인에 설명이 없는 경우(운영 스냅샷) — 커버 보유 책으로 폴백
             rows = conn.execute(
-                "SELECT id, pubdate FROM books WHERE cover_url IS NOT NULL ORDER BY id LIMIT 5000"
+                "SELECT id, pubdate FROM books WHERE cover_url IS NOT NULL ORDER BY id LIMIT 20000"
             ).fetchall()
         xml = sitemap_books_xml([dict(r) for r in rows])
         return self._send(200, xml.encode("utf-8"), "application/xml; charset=utf-8", "public, max-age=3600")
