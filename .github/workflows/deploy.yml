@@ -78,6 +78,7 @@ jobs:
       - name: fetch data (YES24 Open API + Millie 공개 공지)
         env:
           YES24_API_KEY: ${{ secrets.YES24_API_KEY }}
+          GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
         run: |
           set -euo pipefail
           if [ -z "${YES24_API_KEY}" ]; then
@@ -108,6 +109,9 @@ jobs:
           # 설명 빈 책 배치 보강 (best-effort, 실패해도 배포 진행)
           timeout 240 python -m ingest.books.enrich_descriptions --limit 1200 --workers 8 --timeout 180 \
             || echo "::warning::설명 보강 시간초과/실패 (기존 데이터로 진행)"
+          # Google Books 제목 보강 (분당 100회/일일 1,000회 한도 → 소량만)
+          timeout 120 python -m ingest.books.enrich_descriptions --google-title --limit 200 --workers 2 --timeout 90 \
+            || echo "::warning::Google 보강 스킵 (쿼터/키 확인)"
           DESC=$(python -m ingest.books.desc_coverage)
           echo "description coverage=$DESC"
 

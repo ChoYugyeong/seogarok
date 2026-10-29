@@ -16,6 +16,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import urllib.parse
 import urllib.request
@@ -23,6 +24,57 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 API_BASE = "https://apis.yes24.com"
+
+# Google Books 무료 한도: 분당 100회 → 안전하게 80/min 으로 제한
+_GOOGLE_LOCK = threading.Lock()
+_GOOGLE_LAST = 0.0
+_GOOGLE_INTERVAL = 0.75
+
+
+def _google_get(url: str, timeout: int = 15) -> dict:
+    """레이트 리밋 + 429 재시도 포함 GET."""
+    global _GOOGLE_LAST
+    for attempt in range(3):
+        with _GOOGLE_LOCK:
+            wait = _GOOGLE_INTERVAL - (time.monotonic() - _GOOGLE_LAST)
+            if wait > 0:
+                time.sleep(wait)
+            _GOOGLE_LAST = time.monotonic()
+        try:
+            with urllib.request.urlopen(
+                urllib.request.Request(url, headers={"User-Agent": "seogarok-enrich/1"}), timeout=timeout
+            ) as resp:
+                return json.loads(resp.read().decode())
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < 2:
+                time.sleep(3.0 + attempt * 3.0)
+                continue
+            return {}
+        except Exception:
+            if attempt < 2:
+                time.sleep(1.0)
+                continue
+            return {}
+    return {}
+
+
+
+def _load_dotenv() -> None:
+    """로컬 실행 편의: 프로젝트 .env의 키를 환경변수로 로드(이미 있으면 유지)."""
+    env_path = Path(__file__).resolve().parents[2] / ".env"
+    try:
+        text = env_path.read_text(encoding="utf-8-sig")
+    except Exception:
+        return
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and value and key not in os.environ:
+            os.environ[key] = value
 
 
 def _key() -> str:
@@ -73,13 +125,7 @@ def _google_books(isbn: str) -> dict:
     url = "https://www.googleapis.com/books/v1/volumes?" + urllib.parse.urlencode(
         {"q": f"isbn:{isbn}", "key": api_key}
     )
-    try:
-        with urllib.request.urlopen(
-            urllib.request.Request(url, headers={"User-Agent": "seogarok-enrich/1"}), timeout=15
-        ) as resp:
-            data = json.loads(resp.read().decode())
-    except Exception:
-        return {}
+    data = _google_get(url)
     items = data.get("items") or []
     if not items:
         return {}
@@ -121,6 +167,50 @@ def _naver_book(isbn: str, title: str = "") -> dict:
         desc = _clean_text(it.get("description"))[:2000]
         if desc:
             return {"description": desc, "source": "naver_book"}
+    return {}
+
+
+def _norm_title(text: str) -> str:
+    import unicodedata
+
+    t = unicodedata.normalize("NFKC", str(text or "")).lower()
+    t = re.sub(r"\[[^\]]*\]|\([^)]*\)|<[^>]*>", "", t)
+    t = re.sub(r"[\s\-_·:：,，.。/|'\"]+", "", t)
+    t = re.sub(r"\d+$", "", t)
+    t = re.sub(r"(세트|전집|특별판|한정판|개정판|증보판|양장|합본)$", "", t)
+    return t
+
+
+def _google_title(title: str, author: str = "") -> dict:
+    """Google Books 제목 검색 기반 보강 (GOOGLE_BOOKS_API_KEY 필요).
+
+    ISBN 색인이 없는 한국어 책 대응 — 일반 제목 쿼리 후 제목 정규화 매칭.
+    """
+    api_key = (os.getenv("GOOGLE_BOOKS_API_KEY") or "").strip()
+    title = (title or "").strip()
+    if not api_key or len(title) < 2:
+        return {}
+    url = "https://www.googleapis.com/books/v1/volumes?" + urllib.parse.urlencode(
+        {"q": title, "key": api_key, "maxResults": 10}
+    )
+    data = _google_get(url)
+    want = _norm_title(title)
+    for it in data.get("items") or []:
+        vi = it.get("volumeInfo") or {}
+        cand = _norm_title(vi.get("title") or "")
+        if not want or not cand:
+            continue
+        if cand != want and want not in cand and cand not in want:
+            continue
+        desc = _clean_text(vi.get("description"))[:2000]
+        if len(desc) < 40:
+            continue
+        return {
+            "description": desc,
+            "pages": vi.get("pageCount"),
+            "subtitle": (vi.get("subtitle") or "").strip() or None,
+            "source": "google_books_title",
+        }
     return {}
 
 
@@ -235,7 +325,8 @@ def enrich_html(rows: list[dict], workers: int = 3, timeout: int = 0, min_interv
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="YES24 설명 배치 보강")
+    _load_dotenv()
+    ap = argparse.ArgumentParser(description="YES24/대체소스 설명 배치 보강")
     ap.add_argument("--catalog", default=str(Path(__file__).resolve().parents[2] / "data" / "catalog.jsonl"))
     ap.add_argument("--out", default="")
     ap.add_argument("--limit", type=int, default=0, help="누락분 중 최대 N권 (0=전체)")
@@ -244,12 +335,14 @@ def main(argv=None) -> int:
     ap.add_argument("--min-desc", type=int, default=20, help="이 길이 이하 설명은 누락으로 간주")
     ap.add_argument("--html", action="store_true", help="API로 안 되는 책은 HTML 상세페이지에서 보강")
     ap.add_argument("--skip-api", action="store_true", help="YES24 API 보강 단계 건너뛰기(HTML/대체소스만)")
+    ap.add_argument("--google-only", action="store_true", help="YES24 없이 Google Books만으로 보강(일일 쿼터 주의)")
+    ap.add_argument("--google-title", action="store_true", help="Google Books 제목 검색으로 보강(ISBN 미색인 대응)")
     ap.add_argument("--html-workers", type=int, default=3)
     ap.add_argument("--html-interval", type=float, default=1.1, help="HTML 요청 간 최소 간격(초)")
     args = ap.parse_args(argv)
 
     key = _key()
-    if not key:
+    if not key and not (args.google_only or args.google_title):
         print("[enrich] YES24_API_KEY 없음 — 스킵", file=sys.stderr)
         return 0
 
@@ -317,6 +410,87 @@ def main(argv=None) -> int:
         if d.get("star") not in (None, 0):
             row["rating"] = float(d["star"])
         row["enriched_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+    if args.google_title:
+        if not os.getenv("GOOGLE_BOOKS_API_KEY"):
+            print("[enrich] --google-title: GOOGLE_BOOKS_API_KEY 없음 — 스킵", file=sys.stderr)
+            return 0
+        print(f"[enrich] google-title targets={len(targets)} workers={args.workers}")
+        tfilled = 0
+        tmiss = 0
+
+        def twork(row):
+            nonlocal tfilled, tmiss
+            if args.timeout and time.time() - t0 > args.timeout:
+                return
+            info = _google_title(row.get("title") or "", row.get("author") or "")
+            desc = _clean_text(info.get("description"))
+            if desc:
+                row["description"] = desc[:2000]
+                if info.get("pages"):
+                    row["pages"] = info["pages"]
+                if info.get("subtitle") and not row.get("subtitle"):
+                    row["subtitle"] = info["subtitle"]
+                row["enriched_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+                row["enrich_source"] = info.get("source") or "google_books_title"
+                tfilled += 1
+            else:
+                tmiss += 1
+
+        with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
+            list(ex.map(twork, targets))
+        tmp = out.with_suffix(out.suffix + ".tmp")
+        with tmp.open("w", encoding="utf-8", newline="\n") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        tmp.replace(out)
+        with_desc = sum(1 for r in rows if len(_clean_text(r.get("description"))) > args.min_desc)
+        print(
+            f"[enrich] google-title done in {time.time() - t0:.1f}s · filled={tfilled} miss={tmiss} "
+            f"· coverage {with_desc}/{len(rows)} ({with_desc * 100 // max(1, len(rows))}%)"
+        )
+        return 0
+
+    if args.google_only:
+        if not os.getenv("GOOGLE_BOOKS_API_KEY"):
+            print("[enrich] --google-only: GOOGLE_BOOKS_API_KEY 없음 — 스킵", file=sys.stderr)
+            return 0
+        print(f"[enrich] google-only targets={len(targets)} workers={args.workers}")
+        gfilled = 0
+        gfailed = 0
+
+        def gwork(row):
+            nonlocal gfilled, gfailed
+            if args.timeout and time.time() - t0 > args.timeout:
+                return
+            isbn = (row.get("isbn13") or "").strip()
+            if not isbn:
+                return
+            info = _google_books(isbn)
+            desc = _clean_text(info.get("description"))
+            if desc:
+                row["description"] = desc[:2000]
+                if info.get("pages"):
+                    row["pages"] = info["pages"]
+                row["enriched_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+                row["enrich_source"] = "google_books"
+                gfilled += 1
+            else:
+                gfailed += 1
+
+        with ThreadPoolExecutor(max_workers=max(1, args.workers)) as ex:
+            list(ex.map(gwork, targets))
+        tmp = out.with_suffix(out.suffix + ".tmp")
+        with tmp.open("w", encoding="utf-8", newline="\n") as f:
+            for r in rows:
+                f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        tmp.replace(out)
+        with_desc = sum(1 for r in rows if len(_clean_text(r.get("description"))) > args.min_desc)
+        print(
+            f"[enrich] google done in {time.time() - t0:.1f}s · filled={gfilled} miss={gfailed} "
+            f"· coverage {with_desc}/{len(rows)} ({with_desc * 100 // max(1, len(rows))}%)"
+        )
+        return 0
 
     if args.skip_api:
         print("[enrich] --skip-api: YES24 API 단계 건너뜀")

@@ -16,7 +16,8 @@ param(
   [int]$HtmlLimit = 800,
   [int]$Workers = 6,
   [switch]$SkipHtml,
-  [int]$HtmlTimeout = 900
+  [int]$HtmlTimeout = 900,
+  [int]$GoogleLimit = 600
 )
 
 $ErrorActionPreference = 'Stop'
@@ -40,17 +41,24 @@ if (Test-Path .env) {
 if (-not $env:YES24_API_KEY) { throw "YES24_API_KEY 가 없습니다 (.env 또는 환경변수)" }
 $env:PYTHONIOENCODING = 'utf-8'
 
-Write-Host "[weekly] 1/3 YES24 API 설명 보강 (limit=$ApiLimit, workers=$Workers)"
+Write-Host "[weekly] 1/4 YES24 API 설명 보강 (limit=$ApiLimit, workers=$Workers)"
 python -m ingest.books.enrich_descriptions --limit $ApiLimit --workers $Workers
 
 if (-not $SkipHtml) {
-  Write-Host "[weekly] 2/3 YES24 HTML 상세 보강 (limit=$HtmlLimit, timeout=${HtmlTimeout}s)"
+  Write-Host "[weekly] 2/4 YES24 HTML 상세 보강 (limit=$HtmlLimit, timeout=${HtmlTimeout}s)"
   python -m ingest.books.enrich_descriptions --html --skip-api --limit $HtmlLimit --html-workers 3 --timeout $HtmlTimeout
 } else {
-  Write-Host "[weekly] 2/3 HTML 보강 건너뜀"
+  Write-Host "[weekly] 2/4 HTML 보강 건너뜀"
 }
 
-Write-Host "[weekly] 3/3 fallback 스냅샷 재생성 + 커버리지"
+Write-Host "[weekly] 3/4 Google Books 제목 보강 (limit=$GoogleLimit, 키 필요)"
+if ($env:GOOGLE_BOOKS_API_KEY) {
+  python -m ingest.books.enrich_descriptions --google-title --limit $GoogleLimit --workers 3
+} else {
+  Write-Host "  GOOGLE_BOOKS_API_KEY 없음 — 건너뜀"
+}
+
+Write-Host "[weekly] 4/4 fallback 스냅샷 재생성 + 커버리지"
 python scripts/rebuild_fallback.py
 python -m ingest.books.desc_coverage
 
