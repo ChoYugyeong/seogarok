@@ -1286,3 +1286,19 @@ body.is-wide .cat-bar { display: none; }
 .push-card b { font-size: 15.5px; font-weight: 800; letter-spacing: -0.02em; }
 .push-card p { margin-top: 4px; font-size: 13px; color: var(--text-2); }
 .personal-section .rail-grid > * { flex-basis: 132px; }
+
+/* 알림 세분화 칩 + 드로어 웹 링크 */
+.lead-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.lead-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  color: var(--text-3);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.lead-chip.is-on { background: var(--accent); border-color: var(--accent); color: #fff; }
+.dw-weblink { margin: 14px 0 0; font-size: 12.5px; }
+.dw-weblink a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+

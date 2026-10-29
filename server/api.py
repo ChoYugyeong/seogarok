@@ -283,6 +283,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_chaos(method, parsed)
         if parsed.path == "/api/report":
             return self.handle_report(method, parsed)
+        if parsed.path == "/books":
+            return self.handle_books_index(parsed)
         if parsed.path.startswith("/book/"):
             return self.handle_book_page(parsed)
         if parsed.path == "/sitemap-books.xml":
@@ -329,7 +331,31 @@ class Handler(BaseHTTPRequestHandler):
             avs = fetch_availability(conn, [bid])
             nts = fetch_notices(conn, [bid])
             av, _origins = build_availability(row, avs.get(bid, []), nts.get(bid, []))
-            html = book_page_html(row, av, nts.get(bid, []))
+            related = []
+            try:
+                cat = (row.get("category") or "").split(">")[0].strip()
+                if cat:
+                    related = [
+                        dict(r)
+                        for r in conn.execute(
+                            "SELECT id, title, author, cover_url FROM books "
+                            "WHERE id != ? AND cover_url IS NOT NULL AND category LIKE ? "
+                            "ORDER BY id DESC LIMIT 6",
+                            (bid, cat + "%"),
+                        ).fetchall()
+                    ]
+                if not related:
+                    related = [
+                        dict(r)
+                        for r in conn.execute(
+                            "SELECT id, title, author, cover_url FROM books "
+                            "WHERE id != ? AND cover_url IS NOT NULL ORDER BY id DESC LIMIT 6",
+                            (bid,),
+                        ).fetchall()
+                    ]
+            except Exception:
+                related = []
+            html = book_page_html(row, av, nts.get(bid, []), related=related)
             return self._send(200, html.encode("utf-8"), "text/html; charset=utf-8", "public, max-age=300")
         # 카탈로그 미수록 → 예스24 온디맨드 최소 페이지
         try:
@@ -342,6 +368,31 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, b"not found", "text/html; charset=utf-8")
         html = book_page_html(payload, {}, [])
         return self._send(200, html.encode("utf-8"), "text/html; charset=utf-8", "public, max-age=300")
+
+    def handle_books_index(self, parsed):
+        """크롤 그래프용 책 목록: /books?page=N (60권/쪽)."""
+        from urllib.parse import parse_qs
+
+        from .seo import books_index_html
+
+        qs = parse_qs(parsed.query)
+        try:
+            page = max(1, int((qs.get("page") or ["1"])[0]))
+        except (TypeError, ValueError):
+            page = 1
+        per = 60
+        app = get_app()
+        conn, _ = app.ctx()
+        total = int(conn.execute("SELECT count(*) FROM books WHERE cover_url IS NOT NULL").fetchone()[0] or 0)
+        pages = max(1, (total + per - 1) // per)
+        page = min(page, pages)
+        rows = conn.execute(
+            "SELECT id, title, author, cover_url FROM books WHERE cover_url IS NOT NULL "
+            "ORDER BY id LIMIT ? OFFSET ?",
+            (per, (page - 1) * per),
+        ).fetchall()
+        html = books_index_html([dict(r) for r in rows], page, pages)
+        return self._send(200, html.encode("utf-8"), "text/html; charset=utf-8", "public, max-age=600")
 
     def handle_sitemap_books(self, parsed):
         """책 사이트맵: 상위 5,000권."""
@@ -402,6 +453,7 @@ class Handler(BaseHTTPRequestHandler):
                 "subscription": {"endpoint": endpoint, "keys": {"p256dh": keys.get("p256dh"), "auth": keys.get("auth")}},
                 "watches": watches,
                 "platforms": platforms,
+                "lead_days": body.get("lead_days") or [7, 3, 1, 0],
                 "ua": (self.headers.get("User-Agent") or "")[:120],
                 "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }
@@ -415,6 +467,27 @@ class Handler(BaseHTTPRequestHandler):
             if not endpoint:
                 return self._json({"error": "invalid_endpoint"}, 400)
             return self._json({"ok": pushlib.delete_subscription(endpoint)})
+        if path == "/api/push/opened":
+            if method != "POST":
+                return self._json({"error": "method_not_allowed"}, 405)
+            body = self._read_json_body() or {}
+            try:
+                pushlib.record_open()
+            except Exception:
+                pass
+            return self._json({"ok": True, "book_id": str(body.get("book_id") or "")[:120]})
+        if path == "/api/push/stats":
+            expected = (__import__("os").getenv("PUSH_CRON_KEY") or __import__("os").getenv("YES24_API_KEY") or "").strip()
+            provided = (self.headers.get("X-Cron-Secret") or (qs.get("key") or [""])[0] or "").strip()
+            import hmac as _hmac
+
+            if not expected or not provided or not _hmac.compare_digest(expected, provided):
+                return self._json({"error": "forbidden"}, 403)
+            try:
+                days = int((qs.get("days") or ["7"])[0])
+            except (TypeError, ValueError):
+                days = 7
+            return self._json(pushlib.stats_summary(days))
         if path == "/api/push/cron":
             expected = (os.getenv("PUSH_CRON_KEY") or os.getenv("YES24_API_KEY") or "").strip()
             provided = (self.headers.get("X-Cron-Secret") or (qs.get("key") or [""])[0] or "").strip()

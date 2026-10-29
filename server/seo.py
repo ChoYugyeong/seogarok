@@ -79,7 +79,7 @@ def av_rows(av: dict) -> str:
     return "".join(rows)
 
 
-def book_page_html(book: dict, av: dict, notices: list[dict], base: str = BASE) -> str:
+def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict] | None = None, base: str = BASE) -> str:
     bid = str(book["id"])
     canon = f"{base}/book/{quote(bid, safe='')}"
     title = f"{book.get('title')} — {book.get('author') or '저자 미상'} · 서가록"
@@ -94,6 +94,16 @@ def book_page_html(book: dict, av: dict, notices: list[dict], base: str = BASE) 
         parts = [f"{SUB_LABEL.get(n.get('platform'), n.get('platform'))} {(n.get('ends_at') or '')[:10]} 종료" for n in notices[:3]]
         notice_txt = f'<p class="notice">종료 공지 · {esc(" / ".join(parts))}</p>'
     app_url = f"/#book={quote(bid, safe='')}"
+    related = related or []
+    related_html = ""
+    if related:
+        cards = "".join(
+            f'<a class="rel-card" href="/book/{esc(quote(str(r["id"]), safe=""))}">'
+            + (f'<img src="{esc(r.get("cover_url") or "")}" alt="" loading="lazy" />' if r.get("cover_url") else "")
+            + f'<b>{esc(r.get("title") or "")}</b><span>{esc(r.get("author") or "")}</span></a>'
+            for r in related[:6]
+        )
+        related_html = f'<section class="related"><h2>이 책과 함께 보는 책</h2><div class="rel-grid">{cards}</div></section>' 
     return f"""<!doctype html>
 <html lang="ko">
 <head>
@@ -134,6 +144,14 @@ def book_page_html(book: dict, av: dict, notices: list[dict], base: str = BASE) 
 .notice{{font-size:13px;color:var(--danger);margin:8px 0 0}}
 .cta{{display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:13px 22px;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:15px}}
 .cta:hover{{background:#a02f19}}
+.related{{margin-top:32px}}
+.related h2{{font-size:19px;font-weight:800;letter-spacing:-.02em;margin:0 0 12px}}
+.rel-grid{{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}}
+.rel-card{{display:flex;flex-direction:column;gap:5px;color:inherit}}
+.rel-card img{{width:100%;aspect-ratio:3/4.3;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--surface)}}
+.rel-card b{{font-size:12.5px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+.rel-card span{{font-size:11.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+@media (max-width:640px){{.rel-grid{{grid-template-columns:repeat(3,minmax(0,1fr))}}}}
 .book-foot{{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-3);line-height:1.7}}
 @media (max-width:640px){{.book-hero{{grid-template-columns:120px minmax(0,1fr);gap:16px}}.book-hero h1{{font-size:22px}}}}
 </style>
@@ -155,6 +173,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], base: str = BASE) 
   </div>
   <h2 style="margin:28px 0 4px;font-size:18px;font-weight:800">어디서 읽을 수 있나요</h2>
   <ul class="av-list">{av_rows(av)}</ul>
+  {related_html}
   <p class="book-foot">
     서가록은 밀리·리디셀렉트·교보 sam·윌라의 제공 여부와 종료 예정 공지를 매일 확인합니다.
     확인되지 않은 정보는 “미확인”으로 표시하며, 제보를 통해 보강합니다.
@@ -175,3 +194,42 @@ def sitemap_books_xml(rows: list[dict], base: str = BASE) -> str:
         parts.append(f"<url><loc>{esc(loc)}</loc>" + (f"<lastmod>{esc(last)}</lastmod>" if last else "") + "<changefreq>weekly</changefreq><priority>0.6</priority></url>")
     parts.append("</urlset>")
     return "\n".join(parts)
+
+
+def books_index_html(rows: list[dict], page: int, pages: int, base: str = BASE) -> str:
+    cards = "".join(
+        f'<a class="rel-card" href="/book/{esc(quote(str(r["id"]), safe=""))}">'
+        + (f'<img src="{esc(r.get("cover_url") or "")}" alt="" loading="lazy" />' if r.get("cover_url") else "")
+        + f'<b>{esc(r.get("title") or "")}</b><span>{esc(r.get("author") or "")}</span></a>'
+        for r in rows
+    )
+    prev_link = f'<a class="pg" href="/books?page={page - 1}">← 이전</a>' if page > 1 else "<span></span>"
+    next_link = f'<a class="pg" href="/books?page={page + 1}">다음 →</a>' if page < pages else "<span></span>"
+    return f"""<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>서가록 모든 책 {page}쪽 — 구독 가용성 색인</title>
+<meta name="description" content="서가록에 색인된 책 목록. 밀리·리디셀렉트·교보 sam·윌라 구독 가용성과 종료 예정일을 확인하세요." />
+<link rel="canonical" href="{esc(base)}/books?page={page}" />
+<link rel="stylesheet" href="/styles.css" />
+<style>
+.books-page{{max-width:1080px;margin:0 auto;padding:30px 20px 64px}}
+.books-page h1{{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:6px 0}}
+.books-page .back{{font-size:13px;color:var(--text-3)}}
+.books-page .lead{{font-size:13px;color:var(--text-3);margin-bottom:22px}}
+.pg{{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:10px;background:var(--surface);color:var(--text-2);font-size:13.5px}}
+.pager{{display:flex;justify-content:space-between;margin:22px 0}}
+</style>
+</head>
+<body>
+<main class="books-page">
+  <a class="back" href="/">← 서가록 홈</a>
+  <h1>모든 책</h1>
+  <p class="lead">색인된 책 {pages}쪽 중 {page}쪽 · 구독 가용성은 각 책 페이지에서 확인하세요.</p>
+  <div class="rel-grid">{cards}</div>
+  <div class="pager">{prev_link}{next_link}</div>
+</main>
+</body>
+</html>"""

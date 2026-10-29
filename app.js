@@ -126,6 +126,7 @@ const DEFAULT_STATE = {
   shelf: { want: ['hailmary', 'samche', 'mulgogi'], reading: ['chae'], done: ['pyeonuijeom'] },
   alerts: {},
   pushOn: false,
+  pushLeads: [7, 3, 1, 0],
 };
 
 const state = {
@@ -286,7 +287,7 @@ async function subscribePush(opts = {}) {
     const res = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription: sub.toJSON(), watches: pushWatches(), platforms: subsOn() }),
+      body: JSON.stringify({ subscription: sub.toJSON(), watches: pushWatches(), platforms: subsOn(), lead_days: state.pushLeads }),
     });
     if (!res.ok) throw new Error('subscribe failed');
     state.pushOn = true;
@@ -302,12 +303,17 @@ async function subscribePush(opts = {}) {
 
 function pushBlockHTML() {
   const count = pushWatches().length;
+  const leadLabels = { 7: '7일 전', 3: '3일 전', 1: '1일 전', 0: '당일' };
+  const leadChips = [7, 3, 1, 0]
+    .map((n) => `<button class="lead-chip ${state.pushLeads.includes(n) ? 'is-on' : ''}" data-push-lead="${n}" aria-pressed="${state.pushLeads.includes(n)}">${leadLabels[n]}</button>`)
+    .join('');
   if (state.pushOn) {
     return `<section class="section" style="margin-top:28px">
       <div class="push-card on">
         <div>
           <b>종료 임박 알림이 켜져 있어요</b>
-          <p>내 서재 ${count}권을 추적 중 · 종료 3일 전에 알려드려요.</p>
+          <p>내 서재 ${count}권 · 종료 ${state.pushLeads.map((n) => (n === 0 ? '당일' : n + '일 전')).join(' · ')}에 알려드려요.</p>
+          <div class="lead-row" role="group" aria-label="알림 시점">${leadChips}</div>
         </div>
         <button class="btn-primary" data-act="push-refresh">대상 새로고침</button>
       </div>
@@ -353,7 +359,7 @@ function renderPersonalHome() {
 /* ---------------- persistence ---------------- */
 function save() {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify({ subs: state.subs, shelf: state.shelf, alerts: state.alerts, pushOn: state.pushOn }));
+    localStorage.setItem(LS_KEY, JSON.stringify({ subs: state.subs, shelf: state.shelf, alerts: state.alerts, pushOn: state.pushOn, pushLeads: state.pushLeads }));
   } catch (e) { /* ignore */ }
 }
 function load() {
@@ -370,6 +376,7 @@ function load() {
     if (d.shelf) state.shelf = { ...DEFAULT_STATE.shelf, ...d.shelf };
     if (d.alerts) state.alerts = d.alerts;
     if (typeof d.pushOn === 'boolean') state.pushOn = d.pushOn;
+    if (Array.isArray(d.pushLeads)) state.pushLeads = d.pushLeads.filter((n) => typeof n === 'number').slice(0, 6);
   } catch (e) { /* ignore */ }
 }
 
@@ -1924,6 +1931,8 @@ function drawerHTML(book) {
       <div class="similar-row" data-same-row></div>
     </div>
 
+    <p class="dw-weblink"><a href="/book/${encodeURIComponent(book.id)}" target="_blank" rel="noopener">이 책의 웹 페이지 보기 ↗</a></p>
+
     <div class="dw-actions">
       <button class="act-btn ${cur === 'want' ? 'is-on' : ''}" data-shelf-set="want">관심 ${cur === 'want' ? '✓' : ''}</button>
       <button class="act-btn ${cur === 'reading' ? 'is-on' : ''}" data-shelf-set="reading">읽는 중 ${cur === 'reading' ? '✓' : ''}</button>
@@ -2180,6 +2189,17 @@ document.addEventListener('click', (e) => {
     if (a === 'clear-query') { setQuery(''); const h = $('#heroSearch'); if (h) h.value = ''; return; }
     if (a === 'clear-collection') { state.collection = null; render(); return; }
     if (a === 'close-drawer') { closeDrawer(); return; }
+  const leadBtn = t.closest('[data-push-lead]');
+  if (leadBtn) {
+    const n = Number(leadBtn.dataset.pushLead);
+    const has = state.pushLeads.includes(n);
+    state.pushLeads = has ? state.pushLeads.filter((x) => x !== n) : [...state.pushLeads, n].sort((a, b) => b - a);
+    if (!state.pushLeads.length) state.pushLeads = [3];
+    save();
+    render();
+    subscribePush({ silent: true });
+    return;
+  }
   if (a === 'push-enable') { subscribePush(); return; }
   if (a === 'push-refresh') { subscribePush({ silent: true }); toast('알림 대상을 새로고침했어요'); return; }
   if (a === 'share-book') {

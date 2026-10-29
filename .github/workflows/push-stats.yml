@@ -1,0 +1,47 @@
+name: push-stats
+
+# 주간 푸시 통계 리포트: 구독자 수·발송·열람(오픈) 지표를 Actions Summary 로 출력
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 1" # 매주 월요일 09:00 KST
+
+permissions:
+  contents: read
+
+jobs:
+  stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Fetch push stats
+        env:
+          CRON_SECRET: ${{ secrets.YES24_API_KEY }}
+        run: |
+          set -euo pipefail
+          URL="https://seogarok.com/api/push/stats?days=7"
+          code=$(curl -sS -o /tmp/stats.json -w "%{http_code}" "$URL" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" --max-time 30)
+          cat /tmp/stats.json; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::push stats failed (HTTP $code)"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/stats.json'))
+          lines = [
+              "## 서가록 푸시 주간 리포트 (최근 %s일)" % d.get('period_days', 7),
+              "",
+              "| 지표 | 값 |",
+              "| --- | --- |",
+              "| 구독자 | %s |" % d.get('subscribers', 0),
+              "| 발송 | %s |" % d.get('sent', 0),
+              "| 열람(오픈) | %s |" % d.get('opens', 0),
+              "| 오픈율 | %.1f%% |" % (float(d.get('open_rate', 0)) * 100),
+          ]
+          summary = "\n".join(lines)
+          print(summary)
+          open('/tmp/summary.md', 'w').write(summary + "\n")
+          PY
+          cat /tmp/summary.md >> "$GITHUB_STEP_SUMMARY"

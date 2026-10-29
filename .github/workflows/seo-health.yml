@@ -1,0 +1,59 @@
+name: seo-health
+
+# 주간 SEO 헬스체크: robots/sitemaps/책 랜딩/내부 링크가 살아있는지 확인
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 1" # 매주 월요일 09:00 KST
+
+permissions:
+  contents: read
+
+jobs:
+  seo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check indexable pages
+        run: |
+          set -euo pipefail
+          BASE="https://seogarok.com"
+          fail=0
+          check() {
+            code=$(curl -sS -o /tmp/resp -w "%{http_code}" --max-time 30 "$1" || true)
+            echo "$2: HTTP $code"
+            [ "$code" = "200" ] || fail=1
+          }
+          check "$BASE/robots.txt" "robots"
+          check "$BASE/sitemap.xml" "sitemap"
+          check "$BASE/sitemap-books.xml" "sitemap-books"
+          check "$BASE/books?page=1" "books-index"
+          check "$BASE/book/yes24%3A197068949" "book-landing"
+
+          cat > /tmp/last.html <<'EOF'
+          EOF
+          curl -sS --max-time 30 "$BASE/book/yes24%3A197068949" -o /tmp/last.html
+          rel=$(grep -c 'class="rel-card"' /tmp/last.html || true)
+          jsonld=$(grep -c 'application/ld+json' /tmp/last.html || true)
+          echo "related-links: $rel / jsonld-blocks: $jsonld"
+          [ "$rel" -ge 3 ] || fail=1
+          [ "$jsonld" -ge 2 ] || fail=1
+
+          curl -sS --max-time 30 "$BASE/books?page=1" -o /tmp/books.html
+          links=$(grep -c 'href="/book/' /tmp/books.html || true)
+          echo "books-index-links: $links"
+          [ "$links" -ge 30 ] || fail=1
+
+          {
+            echo "## 서가록 SEO 헬스체크"
+            echo ""
+            echo "- robots/sitemap/sitemap-books/books/book: HTTP 확인"
+            echo "- 관련 책 링크: $rel"
+            echo "- JSON-LD 블록: $jsonld"
+            echo "- /books 내부 링크: $links"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$fail" = "1" ]; then
+            echo "::error::SEO health check failed"
+            exit 1
+          fi

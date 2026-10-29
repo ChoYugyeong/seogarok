@@ -94,6 +94,14 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = (event.notification.data && event.notification.data.url) || '/';
+  // 열람 통계 (실패해도 무시)
+  try {
+    fetch('/api/push/opened', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, book_id: (url.split('#book=')[1] || '') }),
+    }).catch(() => {});
+  } catch (e) {}
   event.waitUntil(
     (async () => {
       const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });

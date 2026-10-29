@@ -16,6 +16,8 @@ from datetime import date
 VAPID_PATH = "push/vapid.json"
 SUB_PREFIX = "push/subs/"
 SUB_LABEL = {"millie": "밀리", "ridiselect": "리디셀렉트", "sam": "교보 sam", "willa": "윌라"}
+STATS_PATH = "push/stats.json"
+DEFAULT_LEADS = [7, 3, 1, 0]
 
 
 def _gcs_bucket():
@@ -110,12 +112,25 @@ def _sub_key(endpoint: str) -> str:
     return hashlib.sha256((endpoint or "").encode("utf-8")).hexdigest()[:24]
 
 
+def normalize_lead_days(value) -> list[int]:
+    out = []
+    for v in value or DEFAULT_LEADS:
+        try:
+            n = int(v)
+        except (TypeError, ValueError):
+            continue
+        if 0 <= n <= 30 and n not in out:
+            out.append(n)
+    return sorted(out or DEFAULT_LEADS, reverse=True)
+
+
 def save_subscription(record: dict) -> bool:
     endpoint = ((record.get("subscription") or {}).get("endpoint") or "").strip()
     if not endpoint:
         return False
     key = _sub_key(endpoint)
     record["key"] = key
+    record["lead_days"] = normalize_lead_days(record.get("lead_days"))
     record["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     return _write_json(SUB_PREFIX + key + ".json", record)
 
@@ -171,7 +186,11 @@ def _days_left(ends_at: str | None) -> int | None:
         return None
 
 
-def build_digest(conn, sub: dict, within_days: int = 3) -> list[dict]:
+def build_digest(conn, sub: dict, within_days: int | None = None, exact_days: int | None = None) -> list[dict]:
+    """구독자의 감시 책 중 종료 예정 공지를 뽑는다.
+
+    within_days=None & exact_days=N 이면 정확히 N일 남은 공지만.
+    """
     watches = [str(w) for w in (sub.get("watches") or []) if w]
     platforms = set(sub.get("platforms") or [])
     if not watches:
@@ -186,7 +205,12 @@ def build_digest(conn, sub: dict, within_days: int = 3) -> list[dict]:
     out = []
     for r in rows:
         d = _days_left(r["ends_at"])
-        if d is None or d < 0 or d > within_days:
+        if d is None or d < 0:
+            continue
+        if exact_days is not None:
+            if d != exact_days:
+                continue
+        elif within_days is not None and d > within_days:
             continue
         plat = r["platform"]
         if platforms and plat not in platforms:
@@ -203,14 +227,16 @@ def build_digest(conn, sub: dict, within_days: int = 3) -> list[dict]:
     return out[:3]
 
 
-def message_for(messages: list[dict]) -> dict | None:
+def message_for(messages: list[dict], lead: int | None = None) -> dict | None:
     if not messages:
         return None
     m = messages[0]
     extra = f" 외 {len(messages) - 1}권" if len(messages) > 1 else ""
-    day = "오늘" if m["days"] == 0 else f"{m['days']}일 뒤"
+    days = m["days"] if lead is None else lead
+    day = "오늘" if days == 0 else f"{days}일 뒤"
     return {
         "title": f"{m['platform_label']} · 『{m['title']}』 {day} 종료",
+        "lead": days,
         "body": f"지금 읽어두세요{extra}",
         "url": f"/#book={m['book_id']}",
         "messages": messages,
@@ -239,33 +265,128 @@ def send_push(sub: dict, payload: dict) -> bool:
         return False
 
 
-def run_cron(conn, dry: bool = False, within_days: int = 3) -> dict:
+# ---------------- 통계 ----------------
+def _today() -> str:
+    return time.strftime("%Y-%m-%d", time.gmtime())
+
+
+def _stats() -> dict:
+    data = _read_json(STATS_PATH) or {}
+    if not isinstance(data.get("days"), dict):
+        data["days"] = {}
+    return data
+
+
+def _save_stats(data: dict) -> None:
+    # 최근 120일만 유지
+    days = data.get("days") or {}
+    if len(days) > 120:
+        for key in sorted(days)[:-120]:
+            days.pop(key, None)
+    _write_json(STATS_PATH, data)
+
+
+def _day_bucket(data: dict) -> dict:
+    return data["days"].setdefault(_today(), {"sent": 0, "subs": 0, "opens": 0})
+
+
+def record_send(sent: int, subs: int) -> None:
+    try:
+        data = _stats()
+        b = _day_bucket(data)
+        b["sent"] = int(b.get("sent", 0)) + max(0, int(sent))
+        b["subs"] = max(int(b.get("subs", 0)), int(subs))
+        _save_stats(data)
+    except Exception:
+        pass
+
+
+def record_open() -> None:
+    try:
+        data = _stats()
+        b = _day_bucket(data)
+        b["opens"] = int(b.get("opens", 0)) + 1
+        _save_stats(data)
+    except Exception:
+        pass
+
+
+def stats_summary(period_days: int = 7) -> dict:
+    data = _stats()
+    days = data.get("days") or {}
+    keys = sorted(days)[-period_days:]
+    sent = sum(int(days[k].get("sent", 0)) for k in keys)
+    opens = sum(int(days[k].get("opens", 0)) for k in keys)
+    subs = max([int(days[k].get("subs", 0)) for k in keys] or [0])
+    return {
+        "period_days": period_days,
+        "subscribers": subs,
+        "sent": sent,
+        "opens": opens,
+        "open_rate": round(opens / sent, 3) if sent else 0.0,
+        "days": {k: days[k] for k in keys},
+    }
+
+
+# ---------------- 발송 ----------------
+def run_cron(conn, dry: bool = False, within_days: int | None = None) -> dict:
     subs = list_subscriptions()
     sent = 0
     skipped = 0
     errors = 0
     samples = []
+    today = time.strftime("%Y-%m-%d", time.gmtime())
     for sub in subs:
-        try:
-            msgs = build_digest(conn, sub, within_days=within_days)
-        except Exception:
-            errors += 1
-            continue
-        payload = message_for(msgs)
-        if not payload:
-            skipped += 1
-            continue
-        samples.append({"key": sub.get("key"), "title": payload["title"], "dry": dry})
-        if dry:
-            continue
-        if send_push(sub, payload):
-            sent += 1
+        leads = normalize_lead_days(sub.get("lead_days"))
+        sent_log = sub.get("sent_log") if isinstance(sub.get("sent_log"), dict) else {}
+        changed = False
+        for lead in leads:
+            mark = f"{today}:{lead}"
+            if mark in sent_log:
+                continue
             try:
-                sub["last_sent_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-                sub["last_sent_title"] = payload["title"]
+                msgs = build_digest(conn, sub, exact_days=lead)
+            except Exception:
+                errors += 1
+                continue
+            payload = message_for(msgs, lead=lead)
+            if not payload:
+                continue
+            samples.append({"key": sub.get("key"), "lead": lead, "title": payload["title"], "dry": dry})
+            if dry:
+                continue
+            if send_push(sub, payload):
+                sent += 1
+                sent_log[mark] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                changed = True
+            else:
+                errors += 1
+        if changed:
+            # 최근 20개 로그만 유지
+            if len(sent_log) > 20:
+                for key in sorted(sent_log)[:-20]:
+                    sent_log.pop(key, None)
+            sub["sent_log"] = sent_log
+            sub["last_sent_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            try:
                 save_subscription(sub)
             except Exception:
                 pass
-        else:
-            errors += 1
-    return {"subscriptions": len(subs), "sent": sent, "skipped": skipped, "errors": errors, "dry": dry, "samples": samples[:10]}
+        if not any(f"{today}:{lead}" in sent_log for lead in leads) and not any(
+            s.get("key") == sub.get("key") for s in samples
+        ):
+            skipped += 1
+    if not dry:
+        try:
+            record_send(sent, len(subs))
+        except Exception:
+            pass
+    return {
+        "subscriptions": len(subs),
+        "sent": sent,
+        "skipped": skipped,
+        "errors": errors,
+        "dry": dry,
+        "samples": samples[:10],
+        "leads": DEFAULT_LEADS,
+    }
