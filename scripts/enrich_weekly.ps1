@@ -20,6 +20,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$env:PYTHONIOENCODING = 'utf-8'
 Set-Location (Split-Path $PSScriptRoot -Parent)
 
 # .env 에서 키 로드 (없으면 환경변수 사용)
