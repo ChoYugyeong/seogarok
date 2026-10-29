@@ -35,6 +35,8 @@ from .embed import get_embedder
 from .metrics import METRICS
 from .search import fetch_availability, fetch_books, fetch_notices, search
 
+INDEXNOW_KEY = os.getenv("INDEXNOW_KEY", "c7f1e2a9b4d64f3e8a05c2b7d19e6f4a")
+
 _lock_encode = threading.Lock()
 _rank_cache: dict = {}  # /api/rank 카테고리별 (ts, payload)
 _rank_saved: set = set()  # 이번 인스턴스에서 저장한 일별 스냅샷 키
@@ -304,6 +306,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_chaos(method, parsed)
         if parsed.path == "/api/report":
             return self.handle_report(method, parsed)
+        if parsed.path == f"/{INDEXNOW_KEY}.txt":
+            return self._send(200, INDEXNOW_KEY.encode("utf-8"), "text/plain; charset=utf-8", "public, max-age=86400")
         if parsed.path in ("/llms.txt", "/llms-full.txt", "/index.md", "/sitemap-index.xml"):
             return self.handle_agent_files(parsed)
         if parsed.path.startswith("/book/") and parsed.path.endswith(".md"):

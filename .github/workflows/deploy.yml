@@ -219,6 +219,10 @@ jobs:
       - name: promote canary to 100%
         run: bash scripts/deploy_canary.sh promote
 
+      - name: submit IndexNow (best-effort)
+        run: |
+          python3 scripts/submit_indexnow.py --limit 100 || echo "::warning::IndexNow 제출 스킵"
+
       - name: smoke test production
         run: |
           URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format 'value(status.url)')"
