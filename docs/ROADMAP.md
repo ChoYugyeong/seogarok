@@ -72,3 +72,17 @@
 | answer-first “한 줄 요약” (GEO citability) | ✅ |
 | WebMCP / ARD ai-catalog / A2A | 해당 없음(선택) |
 
+## 2026-10-30 추가 — 모바일 네이티브/모션 폴리시 (emilkowalski/skills)
+
+| 항목 | 상태 |
+| --- | --- |
+| hover 게이팅(sticky hover 제거) | ✅ 34개 규칙 |
+| iOS 입력 확대 방지(16px) | ✅ |
+| tap highlight 제거 + active scale | ✅ |
+| overscroll/스크롤 체이닝 정리 | ✅ |
+| safe-area(토스트·드로어) | ✅ |
+| drawer/toast/suggest 엔트리 모션(140–240ms ease-out) | ✅ |
+| tabular-nums · 65ch · long-text wrap | ✅ |
+| break-ui 최악값 점검 | ✅ (over-flow 0) |
+| 실기기(iOS/Android) 테스트 | ⏳ 사용자 기기 필요 |
+
