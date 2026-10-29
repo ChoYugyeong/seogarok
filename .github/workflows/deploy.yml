@@ -94,12 +94,12 @@ jobs:
       - name: restore enrich cache (GCS)
         run: |
           mkdir -p data/enrich_cache
-          if gsutil -q stat gs://seogarok-reports/enrich-cache/enrich_cache.tar.gz 2>/dev/null; then
+          if gsutil -q stat gs://seogarok-reports/enrich-cache/enrich_cache.tar.gz 2>/tmp/gcs_err; then
             gsutil -q cp gs://seogarok-reports/enrich-cache/enrich_cache.tar.gz /tmp/enrich_cache.tar.gz
             tar -xzf /tmp/enrich_cache.tar.gz -C data
             echo "GCS cache restored: $(find data/enrich_cache -type f | wc -l) files"
           else
-            echo "GCS cache 없음 — 신규 시작"
+            echo "::warning::GCS cache 복원 실패/없음: $(head -1 /tmp/gcs_err 2>/dev/null)"
           fi
 
       - name: fetch data (YES24 Open API + Millie 공개 공지)
