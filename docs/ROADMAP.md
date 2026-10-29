@@ -59,3 +59,16 @@
 | ~~P1-7~~ ✅ | **푸시 통계** (발송/오픈율, 구독자 수) | 주간 push-stats 워크플로 |
 | ~~P0-4~~ ✅ | **책별 SEO 랜딩 내부 링크 강화** (관련 책·/books 목록) | 완료 |
 | P1-8 | Search Console·네이버 서치어드바이저 등록 | **사용자 계정 필요** · runbook 준비 완료 |
+
+## 2026-10-29 추가 — GEO / Agent readiness (claude-seo 적용)
+
+| 항목 | 상태 |
+| --- | --- |
+| llms.txt / llms-full.txt | ✅ (Lighthouse llms-txt pass) |
+| Markdown alternate (`/index.md`, `/book/{id}.md`) | ✅ |
+| robots AI 그룹 + Content-Signal | ✅ (search=yes, ai-input=yes, ai-train=no) |
+| sitemap-index + 사이트맵 품질 게이트 | ✅ |
+| Organization / AboutPage / Book publisher 스키마 | ✅ |
+| answer-first “한 줄 요약” (GEO citability) | ✅ |
+| WebMCP / ARD ai-catalog / A2A | 해당 없음(선택) |
+
