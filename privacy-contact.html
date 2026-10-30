@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>서가록 — 개인정보 문의 (열람·삭제 요청)</title>
+<meta name="description" content="서가록 개인정보 열람·정정·삭제·처리정지 요청 접수" />
+<meta name="robots" content="noindex,follow" />
+<link rel="canonical" href="https://seogarok.com/privacy-contact.html" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .doc { max-width: 720px; margin: 0 auto; padding: 100px 22px 90px; }
+  .doc h1 { font-size: clamp(24px, 3.2vw, 34px); margin-bottom: 6px; }
+  .doc .meta { color: var(--muted); font-size: 13px; margin-bottom: 26px; }
+  .doc p { font-size: 15px; line-height: 1.7; }
+  .dsr-form { margin-top: 22px; display: grid; gap: 14px; }
+  .dsr-form label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px; }
+  .dsr-form select, .dsr-form input[type="email"], .dsr-form textarea {
+    width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--paper, #fff); color: var(--ink); font: inherit; font-size: 14px;
+  }
+  .dsr-form textarea { min-height: 130px; resize: vertical; }
+  .dsr-form .consent { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; line-height: 1.5; }
+  .dsr-form button {
+    justify-self: start; padding: 11px 20px; border: 0; border-radius: 999px;
+    background: var(--ink); color: var(--paper); font: inherit; font-size: 14px; cursor: pointer;
+  }
+  .dsr-form button[disabled] { opacity: .5; cursor: default; }
+  .dsr-result { margin-top: 18px; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--line); font-size: 14px; line-height: 1.65; }
+  .dsr-result.is-ok { border-color: #2f6b3a; background: rgba(47,107,58,.08); }
+  .dsr-result.is-err { border-color: #b42318; background: rgba(180,35,24,.06); }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .doc .back { display: inline-block; margin-top: 34px; font-size: 14px; }
+</style>
+</head>
+<body>
+<main class="doc">
+  <h1>개인정보 문의 · 열람/삭제 요청</h1>
+  <p class="meta">서가록(SEOGAROK, https://seogarok.com) · 처리 기한 7일 이내</p>
+
+  <p>개인정보 <b>열람·정정·삭제·처리정지</b>를 요청하실 수 있습니다. 아래 양식으로 접수해 주시면 입력하신 이메일로 결과를 회신합니다.</p>
+  <p>로그인한 이용자는 <b>내 서재 → 계정 삭제</b>로 동기화된 정보를 즉시 삭제할 수 있습니다. 자세한 내용은 <a href="privacy.html">개인정보처리방침</a>을 참고하세요.</p>
+
+  <form class="dsr-form" id="dsrForm" novalidate>
+    <div>
+      <label for="dsrType">요청 유형</label>
+      <select id="dsrType" name="type" required>
+        <option value="access">열람</option>
+        <option value="delete">삭제</option>
+        <option value="correct">정정</option>
+        <option value="stop">처리정지</option>
+        <option value="other">기타</option>
+      </select>
+    </div>
+    <div>
+      <label for="dsrEmail">회신받을 이메일</label>
+      <input id="dsrEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+    </div>
+    <div>
+      <label for="dsrMessage">요청 내용</label>
+      <textarea id="dsrMessage" name="message" placeholder="예: 2026-10-xx에 구글 로그인한 계정의 서재 데이터 삭제를 요청합니다." required></textarea>
+    </div>
+    <label class="hp" aria-hidden="true">website<input name="website" tabindex="-1" autocomplete="off" /></label>
+    <label class="consent">
+      <input type="checkbox" id="dsrConsent" required />
+      <span>요청 처리를 위해 이메일과 요청 내용을 수집·이용하는 것에 동의합니다. (처리 완료 후 1년 보관 뒤 파기)</span>
+    </label>
+    <button type="submit" id="dsrSubmit">요청 접수</button>
+    <div class="dsr-result" id="dsrResult" hidden role="status"></div>
+  </form>
+
+  <p style="margin-top:26px;font-size:13px;color:var(--muted)">양식 접수가 어려우면 <a href="https://github.com/ChoYugyeong/seogarok/issues" rel="noopener">GitHub 이슈</a>로도 접수할 수 있습니다.</p>
+  <a class="back" href="/">← 서가록으로</a>
+</main>
+<script>
+(function () {
+  var form = document.getElementById('dsrForm');
+  var result = document.getElementById('dsrResult');
+  var btn = document.getElementById('dsrSubmit');
+  function show(kind, text) {
+    result.hidden = false;
+    result.className = 'dsr-result ' + (kind === 'ok' ? 'is-ok' : 'is-err');
+    result.textContent = text;
+  }
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    if (!document.getElementById('dsrConsent').checked) {
+      show('err', '동의 체크박스를 확인해 주세요.');
+      return;
+    }
+    btn.disabled = true;
+    try {
+      var res = await fetch('/api/privacy-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: document.getElementById('dsrType').value,
+          email: document.getElementById('dsrEmail').value.trim(),
+          message: document.getElementById('dsrMessage').value.trim(),
+          website: form.website ? form.website.value : '',
+        }),
+      });
+      var data = await res.json().catch(function () { return {}; });
+      if (res.ok && data.ok) {
+        show('ok', '접수됐습니다. 접수번호 ' + data.ref + ' · ' + (data.message || '7일 이내 회신'));
+        form.reset();
+      } else {
+        show('err', data.message || '접수에 실패했어요. 입력 내용을 확인하거나 GitHub 이슈로 접수해 주세요.');
+      }
+    } catch (err) {
+      show('err', '네트워크 오류가 났어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

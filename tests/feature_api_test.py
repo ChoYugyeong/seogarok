@@ -260,7 +260,15 @@ r = call_noredirect("/api/auth/google/start")
 cookie = (r["headers"].get("Set-Cookie") or r["headers"].get("set-cookie") or "")
 check("cookie hardened", "__Host-" in cookie and "HttpOnly" in cookie and "Secure" in cookie and "SameSite=Lax" in cookie, cookie[:80])
 
-# ---------- 11) report validation ----------
+# ---------- 11) privacy request validation ----------
+r = call("/api/privacy-request", "POST", {"type": "invalid", "email": "a@b.co", "message": "test message 1234"})
+check("privacy request invalid type", r["status"] == 400)
+r = call("/api/privacy-request", "POST", {"type": "delete", "email": "bad-email", "message": "test message 1234"})
+check("privacy request invalid email", r["status"] == 400)
+r = call("/api/privacy-request", "POST", {"type": "delete", "email": "a@b.co", "message": "short", "website": "spam"})
+check("privacy request honeypot 400", r["status"] == 400)
+
+# ---------- 12) report validation ----------
 r = call("/api/report", "POST", {"book_id": "", "platform": "x"})
 check("report invalid 400", r["status"] == 400)
 

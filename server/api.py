@@ -317,6 +317,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_chaos(method, parsed)
         if parsed.path == "/api/report":
             return self.handle_report(method, parsed)
+        if parsed.path == "/api/privacy-request":
+            from .dsr import handle_privacy_request
+
+            return handle_privacy_request(self, method)
         if parsed.path.startswith("/api/auth") or parsed.path == "/api/shelf":
             from .auth import handle_auth
 
@@ -613,8 +617,21 @@ class Handler(BaseHTTPRequestHandler):
                 "ua": (self.headers.get("User-Agent") or "")[:120],
                 "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             }
+            try:
+                from .auth import current_user
+
+                user = current_user(self.headers.get("Cookie"))
+                if user:
+                    record["user_sub"] = user["sub"]
+            except Exception:
+                pass
             ok = pushlib.save_subscription(record)
-            return self._json({"ok": ok, "watches": len(watches), "platforms": platforms}, 200 if ok else 500)
+            if ok:
+                try:
+                    pushlib.link_user_subscription(record)
+                except Exception:
+                    pass
+            return self._json({"ok": ok, "watches": len(watches), "platforms": platforms, "user": bool(record.get("user_sub"))}, 200 if ok else 500)
         if path == "/api/push/unsubscribe":
             if method != "POST":
                 return self._json({"error": "method_not_allowed"}, 405)

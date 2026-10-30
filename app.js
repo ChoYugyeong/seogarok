@@ -527,7 +527,13 @@ async function loadAuth() {
     const d = await r.json();
     state.user = (d && d.user) || null;
     setAuthUI();
-    if (state.user) await loadServerShelf();
+    if (state.user) {
+      await loadServerShelf();
+      // 이미 알림 권한이 있으면, 이 기기의 푸시 구독을 계정에 연결
+      if ('Notification' in window && Notification.permission === 'granted' && typeof subscribePush === 'function') {
+        try { await subscribePush({ silent: true }); } catch (e) { /* ignore */ }
+      }
+    }
   } catch (e) { /* ignore */ }
 }
 
@@ -538,8 +544,10 @@ async function loadServerShelf() {
     const d = await r.json();
     const s = (d && d.shelf) || {};
     const ids = [...(s.want || []), ...(s.reading || []), ...(s.done || [])];
-    if (ids.length) {
+    if (ids.length || Object.keys(s.alerts || {}).length) {
       state.shelf = { want: s.want || [], reading: s.reading || [], done: s.done || [] };
+      if (s.alerts && typeof s.alerts === 'object') state.alerts = s.alerts;
+      if (Array.isArray(s.pushLeads)) state.pushLeads = s.pushLeads.filter((n) => typeof n === 'number');
       saveLocalOnly();
       render();
     } else if (shelfCount() > 0) {
@@ -559,7 +567,7 @@ async function pushShelfUp() {
   try {
     await authFetch('/api/shelf', {
       method: 'PUT',
-      body: JSON.stringify({ want: state.shelf.want, reading: state.shelf.reading, done: state.shelf.done }),
+      body: JSON.stringify({ want: state.shelf.want, reading: state.shelf.reading, done: state.shelf.done, alerts: state.alerts, pushLeads: state.pushLeads }),
     });
   } catch (e) { /* ignore */ }
 }
@@ -569,12 +577,14 @@ async function mergeLocalShelfOnLogin() {
   try {
     const r = await authFetch('/api/auth/merge', {
       method: 'POST',
-      body: JSON.stringify({ want: state.shelf.want, reading: state.shelf.reading, done: state.shelf.done }),
+      body: JSON.stringify({ want: state.shelf.want, reading: state.shelf.reading, done: state.shelf.done, alerts: state.alerts, pushLeads: state.pushLeads }),
     });
     if (!r.ok) return;
     const d = await r.json();
     const s = (d && d.shelf) || {};
     state.shelf = { want: s.want || [], reading: s.reading || [], done: s.done || [] };
+    if (s.alerts && typeof s.alerts === 'object') state.alerts = s.alerts;
+    if (Array.isArray(s.pushLeads)) state.pushLeads = s.pushLeads.filter((n) => typeof n === 'number');
     saveLocalOnly();
     render();
   } catch (e) { /* ignore */ }

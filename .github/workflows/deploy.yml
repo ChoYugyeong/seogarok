@@ -24,6 +24,7 @@ on:
       - "about.html"
       - "privacy.html"
       - "terms.html"
+      - "privacy-contact.html"
       - "sw.js"
       - "manifest.webmanifest"
       - "icons/**"

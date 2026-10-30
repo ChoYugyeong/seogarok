@@ -212,6 +212,12 @@ def delete_account(user: dict) -> None:
         store.delete(f"auth/sessions/{h}.json")
     store.delete(_user_path(user["sub"]))
     store.delete(f"auth/shelves/{user['sub']}.json")
+    try:
+        from . import push
+
+        push.delete_user_subscriptions(user["sub"])
+    except Exception:
+        pass
 
 
 def get_shelf(sub: str) -> dict:
@@ -220,6 +226,8 @@ def get_shelf(sub: str) -> dict:
         "want": [str(x) for x in (data.get("want") or [])][:SHELF_MAX],
         "reading": [str(x) for x in (data.get("reading") or [])][:SHELF_MAX],
         "done": [str(x) for x in (data.get("done") or [])][:SHELF_MAX],
+        "alerts": data.get("alerts") if isinstance(data.get("alerts"), dict) else {},
+        "pushLeads": [int(x) for x in (data.get("pushLeads") or []) if isinstance(x, int)][:6],
         "updated_at": data.get("updated_at") or 0,
     }
 
@@ -236,10 +244,14 @@ def _clean_ids(items) -> list[str]:
 
 
 def put_shelf(sub: str, shelf: dict) -> dict:
+    alerts = shelf.get("alerts") if isinstance(shelf.get("alerts"), dict) else {}
+    leads = [int(x) for x in (shelf.get("pushLeads") or []) if isinstance(x, (int, float)) and 0 <= int(x) <= 30][:6]
     data = {
         "want": _clean_ids(shelf.get("want")),
         "reading": _clean_ids(shelf.get("reading")),
         "done": _clean_ids(shelf.get("done")),
+        "alerts": {str(k)[:80]: v for k, v in list(alerts.items())[:SHELF_MAX]},
+        "pushLeads": sorted(set(leads), reverse=True) or [7, 3, 1, 0],
         "updated_at": int(time.time()),
     }
     store.write_json(f"auth/shelves/{sub}.json", data)
@@ -254,6 +266,12 @@ def merge_shelf(sub: str, incoming: dict) -> dict:
             if x not in ids:
                 ids.append(x)
         cur[key] = ids[:SHELF_MAX]
+    alerts = dict(cur.get("alerts") or {})
+    for k, v in (incoming.get("alerts") or {}).items():
+        alerts[str(k)[:80]] = v
+    cur["alerts"] = alerts
+    if incoming.get("pushLeads"):
+        cur["pushLeads"] = incoming["pushLeads"]
     cur.pop("updated_at", None)
     return put_shelf(sub, cur)
 

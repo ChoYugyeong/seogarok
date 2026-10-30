@@ -15,6 +15,7 @@ from datetime import date
 
 VAPID_PATH = "push/vapid.json"
 SUB_PREFIX = "push/subs/"
+USER_PREFIX = "push/users/"
 SUB_LABEL = {"millie": "밀리", "ridiselect": "리디셀렉트", "sam": "교보 sam", "willa": "윌라"}
 STATS_PATH = "push/stats.json"
 DEFAULT_LEADS = [7, 3, 1, 0]
@@ -133,6 +134,63 @@ def save_subscription(record: dict) -> bool:
     record["lead_days"] = normalize_lead_days(record.get("lead_days"))
     record["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     return _write_json(SUB_PREFIX + key + ".json", record)
+
+
+def link_user_subscription(record: dict) -> bool:
+    """로그인 사용자와 푸시 구독을 연결(기기별 구독을 계정 아래 인덱싱)."""
+    sub = str(record.get("user_sub") or "").strip()
+    key = str(record.get("key") or "").strip()
+    if not sub or not key:
+        return False
+    path = USER_PREFIX + sub + ".json"
+    data = _read_json(path) or {"keys": []}
+    keys = [k for k in (data.get("keys") or []) if k]
+    if key not in keys:
+        keys.append(key)
+    data["keys"] = keys[-20:]
+    data["updated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    return _write_json(path, data)
+
+
+def list_user_subscriptions(sub: str) -> list[dict]:
+    data = _read_json(USER_PREFIX + str(sub) + ".json") or {}
+    out: list[dict] = []
+    for key in data.get("keys") or []:
+        rec = _read_json(SUB_PREFIX + str(key) + ".json")
+        if rec:
+            out.append(rec)
+    return out
+
+
+def delete_user_subscriptions(sub: str) -> int:
+    data = _read_json(USER_PREFIX + str(sub) + ".json") or {}
+    removed = 0
+    for key in data.get("keys") or []:
+        if delete_subscription_by_key(str(key)):
+            removed += 1
+    try:
+        _gcs_bucket().blob(USER_PREFIX + str(sub) + ".json").delete()
+    except Exception:
+        pass
+    try:
+        os.remove(os.path.join(_local_dir(), ("push" + "__" + "users" + "__" + str(sub) + ".json")))
+    except Exception:
+        pass
+    return removed
+
+
+def delete_subscription_by_key(key: str) -> bool:
+    path = SUB_PREFIX + key + ".json"
+    try:
+        _gcs_bucket().blob(path).delete()
+        return True
+    except Exception:
+        pass
+    try:
+        os.remove(os.path.join(_local_dir(), path.replace("/", "__")))
+        return True
+    except Exception:
+        return False
 
 
 def delete_subscription(endpoint: str) -> bool:

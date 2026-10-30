@@ -50,7 +50,10 @@
 
 ## 4. 정보주체 권리(DSR) 처리
 
-1. **열람/삭제 요청**: GitHub Issues 접수 → 7일 내 처리
+1. **열람/삭제 요청**: **개인정보 문의 양식**(`https://seogarok.com/privacy-contact.html`) 접수
+   - 서버: `POST /api/privacy-request` → GCS `privacy/requests/{ref}.json` (비공개)
+   - 운영 알림: `privacy-alerts` 워크플로(매일 09:00 KST)가 새 요청을 **GitHub Issue(라벨 privacy-request)**로 생성
+   - 처리 후 7일 내 회신 → 이슈 close → 1년 후 파기
 2. **계정 삭제**: 사이트 내 `내 서재 → 계정 삭제` (즉시 GCS 객체 삭제)
 3. **브라우저 데이터**: 이용자가 직접 localStorage/쿠키 삭제
 4. 처리 결과 회신 후 이슈 close
