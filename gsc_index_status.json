@@ -1,0 +1,51 @@
+{
+  "site": "sc-domain:seogarok.com",
+  "counts": {
+    "PASS": 2,
+    "NEUTRAL": 5
+  },
+  "rows": [
+    {
+      "url": "https://seogarok.com/",
+      "verdict": "PASS",
+      "coverage": "Submitted and indexed",
+      "last_crawl": "2026-10-28"
+    },
+    {
+      "url": "https://seogarok.com/books?page=1",
+      "verdict": "NEUTRAL",
+      "coverage": "URL is unknown to Google",
+      "last_crawl": ""
+    },
+    {
+      "url": "https://seogarok.com/book/yes24%3A191890196",
+      "verdict": "NEUTRAL",
+      "coverage": "URL is unknown to Google",
+      "last_crawl": ""
+    },
+    {
+      "url": "https://seogarok.com/book/yes24%3A195820049",
+      "verdict": "NEUTRAL",
+      "coverage": "URL is unknown to Google",
+      "last_crawl": ""
+    },
+    {
+      "url": "https://seogarok.com/book/yes24%3A198007073",
+      "verdict": "NEUTRAL",
+      "coverage": "URL is unknown to Google",
+      "last_crawl": ""
+    },
+    {
+      "url": "https://seogarok.com/book/yes24%3A122896503",
+      "verdict": "PASS",
+      "coverage": "Submitted and indexed",
+      "last_crawl": "2026-10-30"
+    },
+    {
+      "url": "https://seogarok.com/book/yes24%3A198006930",
+      "verdict": "NEUTRAL",
+      "coverage": "URL is unknown to Google",
+      "last_crawl": ""
+    }
+  ]
+}
