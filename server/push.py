@@ -301,14 +301,15 @@ def message_for(messages: list[dict], lead: int | None = None) -> dict | None:
     }
 
 
-def send_push(sub: dict, payload: dict) -> bool:
+def send_push_result(sub: dict, payload: dict) -> tuple[bool, str]:
+    """푸시 발송 결과(성공여부, 오류문자열)."""
     try:
         from pywebpush import webpush
     except Exception:
-        return False
+        return False, "pywebpush_missing"
     keys = vapid_keys()
     if not keys:
-        return False
+        return False, "vapid_missing"
     try:
         # pywebpush는 PEM 문자열을 DER로 해석하므로 Vapid 객체로 변환해 전달
         from py_vapid import Vapid
@@ -322,15 +323,20 @@ def send_push(sub: dict, payload: dict) -> bool:
             ttl=86400,
             timeout=10,
         )
-        return True
+        return True, ""
     except Exception as exc:
+        err = str(exc)[:200]
         try:
             from .api import log_event
 
-            log_event(level="warn", msg="push_send_failed", error=str(exc)[:200])
+            log_event(level="warn", msg="push_send_failed", error=err)
         except Exception:
             pass
-        return False
+        return False, err
+
+
+def send_push(sub: dict, payload: dict) -> bool:
+    return send_push_result(sub, payload)[0]
 
 
 def send_test(sub: dict) -> bool:
@@ -434,12 +440,19 @@ def run_cron(conn, dry: bool = False, within_days: int | None = None) -> dict:
             samples.append({"key": sub.get("key"), "lead": lead, "title": payload["title"], "dry": dry})
             if dry:
                 continue
-            if send_push(sub, payload):
+            ok, err = send_push_result(sub, payload)
+            if ok:
                 sent += 1
                 sent_log[mark] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                 changed = True
             else:
                 errors += 1
+                if "410" in err:
+                    # 만료/해지된 구독은 자동 정리
+                    try:
+                        delete_subscription(str((sub.get("subscription") or {}).get("endpoint") or ""))
+                    except Exception:
+                        pass
         if changed:
             # 최근 20개 로그만 유지
             if len(sent_log) > 20:

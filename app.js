@@ -322,6 +322,7 @@ function pushBlockHTML() {
           <p>내 서재 ${count}권 · 종료 ${state.pushLeads.map((n) => (n === 0 ? '당일' : n + '일 전')).join(' · ')}에 알려드려요.</p>
           <div class="lead-row" role="group" aria-label="알림 시점">${leadChips}</div>
         </div>
+        <button class="btn-primary" data-act="push-test">테스트 알림</button>
         <button class="btn-primary" data-act="push-refresh">대상 새로고침</button>
       </div>
     </section>`;
