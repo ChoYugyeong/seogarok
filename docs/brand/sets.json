@@ -1,0 +1,536 @@
+{
+  "schema": "brand-identity/sets@1",
+  "sets": [
+    {
+      "identity": {
+        "set": {
+          "id": "A",
+          "name": "책등의 결",
+          "recommended": true,
+          "mechanism": "네 권의 책등이 한 줄로 서고 한 권만 주홍으로 표시된다 — 책등의 높이 리듬이 심볼·세리프 타입·종이/먹/주홍 팔레트를 함께 정한다.",
+          "expression_move": "주홍 책등 한 권만 색을 가지며, 나머지 형태와 타입은 조용하다.",
+          "differs_by": "경쟁 서비스들은 화면 중심 산세리프와 앱형 색을 쓴다. 이 세트는 기존의 종이·먹·주홍 자산을 계승한 '서가' 감각으로 차별화한다."
+        },
+        "axes": {
+          "warm_cool": -1,
+          "classic_contemporary": -1,
+          "quiet_loud": 0,
+          "friend_authority": -1
+        },
+        "type": {
+          "pairing_mode": "contrast",
+          "display": {
+            "family": "Hahmlet",
+            "source": "google",
+            "license": "OFL-1.1",
+            "weights": [
+              500
+            ],
+            "location": {
+              "wght": 500
+            },
+            "features": [],
+            "case": "as-is",
+            "tracking": 0,
+            "fallback": "Hahmlet, Noto Serif KR, serif",
+            "file": null
+          },
+          "text": {
+            "family": "IBM Plex Sans KR",
+            "source": "google",
+            "license": "OFL-1.1",
+            "weights": [
+              400,
+              600
+            ],
+            "location": {
+              "wght": 400
+            },
+            "features": [
+              "tnum"
+            ],
+            "case": "as-is",
+            "tracking": 0,
+            "fallback": "IBM Plex Sans KR, system-ui, sans-serif",
+            "file": null
+          },
+          "mono": null
+        },
+        "logo": {
+          "type": "symbol+wordmark",
+          "concept": "네 권의 책등이 같은 선반에 서고, 한 권만 주홍으로 꽂혀 있다.",
+          "symbol": "logo/symbol.svg",
+          "wordmark": {
+            "text": "서가록",
+            "role": "display",
+            "location": {
+              "wght": 500
+            },
+            "tracking": 0,
+            "case": "as-is"
+          },
+          "monogram": null,
+          "lockups": [
+            "horizontal",
+            "stacked"
+          ],
+          "colors": {
+            "spine1": "text",
+            "spine2": "accent",
+            "spine3": "text",
+            "spine4": "text",
+            "wordmark": "text",
+            "shelf": "text"
+          },
+          "tags": [
+            "literal-object"
+          ],
+          "clear_space": {
+            "unit": "cap-height",
+            "multiple": 1,
+            "inferred": true
+          },
+          "min_size": {
+            "px": 20,
+            "mm": 7
+          }
+        },
+        "palette_build": {
+          "strategy": null,
+          "accent": "#B8371F",
+          "light_bg": "#F7F2E8",
+          "dark_bg": "#17120E",
+          "neutral_tint": "#17120E",
+          "neutral_chroma": null,
+          "extra": []
+        },
+        "defaults_used": [
+          {
+            "id": "cream-ground",
+            "why": "기존 사이트의 종이색 배경을 유지하는 refresh — 이미 사용자가 인식하는 자산이고, 경쟁 서비스는 흰/검정/채도 높은 앱 배경을 쓴다."
+          },
+          {
+            "id": "terracotta-clay",
+            "why": "기존 주홍(#b8371f)을 유지하는 refresh. 경쟁 4곳 중 이 색을 쓰는 곳이 없고, 마크에서는 책등 한 권에만 쓴다."
+          },
+          {
+            "id": "logo-literal-object",
+            "why": "기존 마크(책등 네 권)를 계승한 refresh — 새 은유를 만들기보다 이미 쓰인 형태를 다듬는다."
+          }
+        ],
+        "rationale": [
+          {
+            "claim": "세리프 디스플레이는 서가·종이의 물성을 전달하며, 경쟁 4곳의 산세리프 중심 화면과 구분된다.",
+            "evidence": "judgement",
+            "source": "references/type.md"
+          },
+          {
+            "claim": "주홍은 기존 자산에서 유지하되 로고의 한 부분과 작은 면적에만 쓴다.",
+            "evidence": "practice",
+            "source": "references/color.md"
+          }
+        ],
+        "components": {
+          "logo": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          },
+          "type": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          },
+          "palette": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          }
+        }
+      },
+      "palette": {
+        "schema": "brand-identity/palette@1",
+        "name": "종이 · 먹 · 주홍",
+        "direction": "종이 같은 바탕, 먹의 본문, 주홍 한 점. 기존 서비스의 색 자산을 유지하는 진화.",
+        "brand": [
+          {
+            "id": "brand-1",
+            "name": "주홍",
+            "hex": "#B8371F",
+            "source": "chosen",
+            "locked": true,
+            "usage": "로고의 한 책등, 주요 CTA, 강조"
+          },
+          {
+            "id": "brand-2",
+            "name": "먹",
+            "hex": "#17120E",
+            "source": "chosen",
+            "locked": true,
+            "usage": "본문과 로고의 나머지 책등"
+          }
+        ],
+        "feels": [
+          "차분한",
+          "문학적인",
+          "명료한"
+        ]
+      },
+      "symbol_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><g id=\"shelf\" data-color=\"text\"><rect x=\"6\" y=\"87\" width=\"88\" height=\"3\" rx=\"1.5\"/></g><g id=\"spine1\" data-color=\"text\"><rect x=\"8\" y=\"30\" width=\"14\" height=\"57\" rx=\"2\"/></g><g id=\"spine2\" data-color=\"accent\"><rect x=\"28\" y=\"22\" width=\"17\" height=\"65\" rx=\"2\"/></g><g id=\"spine3\" data-color=\"text\"><rect x=\"51\" y=\"34\" width=\"13\" height=\"53\" rx=\"2\"/></g><g id=\"spine4\" data-color=\"text\"><rect x=\"70\" y=\"26\" width=\"16\" height=\"61\" rx=\"2\"/></g></svg>",
+      "symbol_small_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><g id=\"shelf\" data-color=\"text\"><rect x=\"4\" y=\"88\" width=\"92\" height=\"4\" rx=\"2\"/></g><g id=\"spine1\" data-color=\"text\"><rect x=\"10\" y=\"28\" width=\"20\" height=\"60\" rx=\"2\"/></g><g id=\"spine2\" data-color=\"accent\"><rect x=\"38\" y=\"20\" width=\"24\" height=\"68\" rx=\"2\"/></g><g id=\"spine3\" data-color=\"text\"><rect x=\"70\" y=\"32\" width=\"20\" height=\"56\" rx=\"2\"/></g></svg>",
+      "wordmark_detail_svg": null
+    },
+    {
+      "identity": {
+        "set": {
+          "id": "B",
+          "name": "형광펜 색인",
+          "recommended": false,
+          "mechanism": "서가 색인에 형광펜을 한 줄 긋는다 — 굵은 표시선이 책등 심볼·데이터 타입·노랑 액센트를 함께 정한다.",
+          "expression_move": "형광 노랑이 유일한 채도 높은 색이고, 책등은 먹색이다.",
+          "differs_by": "구독 서비스들이 초록/파랑 계열 앱 색을 쓰는 자리에서, 종이 위 형광펜이라는 제품 행동(가용성 표시)을 시각 언어로 쓴다."
+        },
+        "axes": {
+          "warm_cool": 1,
+          "classic_contemporary": 1,
+          "quiet_loud": 0,
+          "friend_authority": -1
+        },
+        "type": {
+          "pairing_mode": "single-family",
+          "display": {
+            "family": "Gothic A1",
+            "source": "google",
+            "license": "OFL-1.1",
+            "weights": [
+              700
+            ],
+            "location": {
+              "wght": 700
+            },
+            "features": [],
+            "case": "as-is",
+            "tracking": -10,
+            "fallback": "Gothic A1, system-ui, sans-serif",
+            "file": null
+          },
+          "text": {
+            "family": "Gothic A1",
+            "source": "google",
+            "license": "OFL-1.1",
+            "weights": [
+              400,
+              600
+            ],
+            "location": {
+              "wght": 400
+            },
+            "features": [
+              "tnum"
+            ],
+            "case": "as-is",
+            "tracking": 0,
+            "fallback": "Gothic A1, system-ui, sans-serif",
+            "file": null
+          },
+          "mono": null
+        },
+        "logo": {
+          "type": "symbol+wordmark",
+          "concept": "세 권의 책등 뒤로 형광펜 한 줄이 비스듬히 지나간다 — 이용 가능한 책에 표시를 긋는 행동.",
+          "symbol": "logo/symbol.svg",
+          "wordmark": {
+            "text": "서가록",
+            "role": "display",
+            "location": {
+              "wght": 700
+            },
+            "tracking": -10,
+            "case": "as-is"
+          },
+          "monogram": null,
+          "lockups": [
+            "horizontal",
+            "stacked"
+          ],
+          "colors": {
+            "highlight": "accent",
+            "book1": "text",
+            "book2": "text",
+            "book3": "text",
+            "wordmark": "text"
+          },
+          "tags": [
+            "literal-object"
+          ],
+          "clear_space": {
+            "unit": "cap-height",
+            "multiple": 1,
+            "inferred": true
+          },
+          "min_size": {
+            "px": 20,
+            "mm": 7
+          }
+        },
+        "palette_build": {
+          "strategy": "family",
+          "accent": "#F5C518",
+          "light_bg": "#FAF7EF",
+          "dark_bg": "#15181B",
+          "neutral_tint": "#23262B",
+          "neutral_chroma": null,
+          "extra": []
+        },
+        "defaults_used": [
+          {
+            "id": "cream-ground",
+            "why": "기존 사이트의 종이색 배경 자산을 유지한다(refresh palette). 다만 표면 대비를 낮추고 데이터 표를 위해 중성을 차갑게 조정."
+          },
+          {
+            "id": "gold-brass-accent",
+            "why": "금색 장식이 아니라 형광펜 노랑 — '이용 가능/종료 임박'이라는 제품 신호에서 온 색이며 경쟁 서비스에 없는 표시."
+          },
+          {
+            "id": "logo-literal-object",
+            "why": "책등 + 형광펜은 제품의 핵심 행동을 그대로 가리키는 의도된 직유."
+          }
+        ],
+        "rationale": [
+          {
+            "claim": "제품이 가격·쪽수·권수를 보여주므로 표 숫자는 tabular figures가 필요하다.",
+            "evidence": "practice",
+            "source": "references/type.md"
+          },
+          {
+            "claim": "형광 노랑은 본문 텍스트가 아니라 큰 표시와 면적에만 쓴다.",
+            "evidence": "practice",
+            "source": "references/color.md"
+          }
+        ],
+        "components": {
+          "logo": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          },
+          "type": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          },
+          "palette": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          }
+        }
+      },
+      "palette": {
+        "schema": "brand-identity/palette@1",
+        "name": "형광펜 색인",
+        "direction": "숯 먹과 종이, 그리고 한 줄의 형광 노랑. 데이터 표가 읽히는 차가운 중성.",
+        "brand": [
+          {
+            "id": "brand-1",
+            "name": "숯",
+            "hex": "#23262B",
+            "source": "chosen",
+            "locked": true,
+            "usage": "본문, 책등 심볼, 헤더"
+          },
+          {
+            "id": "brand-2",
+            "name": "형광 노랑",
+            "hex": "#F5C518",
+            "source": "chosen",
+            "locked": true,
+            "usage": "표시선·강조·작은 면적"
+          }
+        ],
+        "feels": [
+          "명료한",
+          "현대적인",
+          "능동적인"
+        ]
+      },
+      "symbol_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><g id=\"highlight\" data-color=\"accent\"><path d=\"M12 66L88 52L88 68L12 82Z\"/></g><g id=\"book1\" data-color=\"text\"><rect x=\"16\" y=\"22\" width=\"18\" height=\"58\" rx=\"2\"/></g><g id=\"book2\" data-color=\"text\"><rect x=\"41\" y=\"30\" width=\"18\" height=\"50\" rx=\"2\"/></g><g id=\"book3\" data-color=\"text\"><rect x=\"66\" y=\"26\" width=\"18\" height=\"54\" rx=\"2\"/></g></svg>",
+      "symbol_small_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><g id=\"highlight\" data-color=\"accent\"><rect x=\"12\" y=\"62\" width=\"76\" height=\"14\" rx=\"2\"/></g><g id=\"book1\" data-color=\"text\"><rect x=\"18\" y=\"18\" width=\"20\" height=\"62\" rx=\"2\"/></g><g id=\"book2\" data-color=\"text\"><rect x=\"44\" y=\"30\" width=\"20\" height=\"50\" rx=\"2\"/></g><g id=\"book3\" data-color=\"text\"><rect x=\"70\" y=\"24\" width=\"20\" height=\"56\" rx=\"2\"/></g></svg>",
+      "wordmark_detail_svg": null
+    },
+    {
+      "identity": {
+        "set": {
+          "id": "C",
+          "name": "밤의 한 줄",
+          "recommended": false,
+          "mechanism": "밤의 서가에서 한 줄의 수평선이 오른쪽에서 책갈피처럼 접힌다 — 그 한 줄이 심볼·세리프 타입·밤/달빛 팔레트를 함께 정한다.",
+          "expression_move": "짙은 밤 지면 위의 달빛 민트 한 점이 유일한 유채색이다.",
+          "differs_by": "경쟁 서비스의 밝은 앱 화면과 달리, 다크 그라운드에서 책 읽기의 밤 시간을 전면에 둔다."
+        },
+        "axes": {
+          "warm_cool": -1,
+          "classic_contemporary": -1,
+          "quiet_loud": -2,
+          "friend_authority": 1
+        },
+        "type": {
+          "pairing_mode": "contrast",
+          "display": {
+            "family": "Nanum Myeongjo",
+            "source": "google",
+            "license": "OFL-1.1",
+            "weights": [
+              400
+            ],
+            "location": {},
+            "features": [],
+            "case": "as-is",
+            "tracking": 0,
+            "fallback": "Nanum Myeongjo, serif",
+            "file": null
+          },
+          "text": {
+            "family": "Noto Sans KR",
+            "source": "google",
+            "license": "OFL-1.1",
+            "weights": [
+              400,
+              600
+            ],
+            "location": {
+              "wght": 400
+            },
+            "features": [
+              "tnum"
+            ],
+            "case": "as-is",
+            "tracking": 0,
+            "fallback": "Noto Sans KR, system-ui, sans-serif",
+            "file": null
+          },
+          "mono": null
+        },
+        "logo": {
+          "type": "symbol+wordmark",
+          "concept": "선반의 수평선이 오른쪽 끝에서 아래로 접혀 책갈피가 된다.",
+          "symbol": "logo/symbol.svg",
+          "wordmark": {
+            "text": "서가록",
+            "role": "display",
+            "location": {},
+            "tracking": 0,
+            "case": "as-is"
+          },
+          "monogram": null,
+          "lockups": [
+            "horizontal",
+            "stacked"
+          ],
+          "colors": {
+            "shelf": "text",
+            "notch": "accent",
+            "wordmark": "text"
+          },
+          "tags": [],
+          "clear_space": {
+            "unit": "cap-height",
+            "multiple": 1,
+            "inferred": true
+          },
+          "min_size": {
+            "px": 20,
+            "mm": 7
+          }
+        },
+        "palette_build": {
+          "strategy": "analogous",
+          "accent": "#A9C7C2",
+          "light_bg": "white",
+          "dark_bg": "#12211E",
+          "neutral_tint": "primary",
+          "neutral_chroma": 0.018,
+          "extra": []
+        },
+        "defaults_used": [],
+        "rationale": [
+          {
+            "claim": "다크 그라운드는 밤 시간의 독서와 서가의 고요를 배경으로 하고, 밝은 경쟁 앱 화면과 정면으로 구분된다.",
+            "evidence": "judgement",
+            "source": "references/color.md"
+          },
+          {
+            "claim": "명조 계열 디스플레이는 책의 목소리를 내고, 본문은 산세리프로 읽기를 담당한다.",
+            "evidence": "practice",
+            "source": "references/type.md"
+          }
+        ],
+        "components": {
+          "logo": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          },
+          "type": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          },
+          "palette": {
+            "mode": "new",
+            "status": "proposed",
+            "source": null,
+            "sha256": null
+          }
+        }
+      },
+      "palette": {
+        "schema": "brand-identity/palette@1",
+        "name": "밤의 한 줄",
+        "direction": "짙은 밤서가 그린과 양피지, 한 점의 달빛 민트. 어두운 지면이 기본인 조용한 방향.",
+        "brand": [
+          {
+            "id": "brand-1",
+            "name": "밤서가",
+            "hex": "#12211E",
+            "source": "chosen",
+            "locked": true,
+            "usage": "다크 그라운드, 헤더, 표지"
+          },
+          {
+            "id": "brand-2",
+            "name": "달빛 민트",
+            "hex": "#A9C7C2",
+            "source": "chosen",
+            "locked": true,
+            "usage": "책갈피 접힘, 링크, 작은 강조"
+          },
+          {
+            "id": "brand-3",
+            "name": "양피지",
+            "hex": "#F2EAD9",
+            "source": "chosen",
+            "locked": true,
+            "usage": "라이트 모드 지면, 카드 표면"
+          }
+        ],
+        "feels": [
+          "고요한",
+          "문학적인",
+          "몰입적인"
+        ]
+      },
+      "symbol_svg": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 100\"><g id=\"shelf\" data-color=\"text\"><path d=\"M10 44H82V86H70V54H10Z\"/></g><g id=\"notch\" data-color=\"accent\"><path d=\"M70 86L76 72L82 86Z\"/></g></svg>",
+      "symbol_small_svg": null,
+      "wordmark_detail_svg": null
+    }
+  ]
+}
