@@ -222,6 +222,8 @@ d = j(r) or {}
 check("auth me 200", r["status"] == 200 and "user" in d, f"user={d.get('user')}")
 r = call("/api/shelf")
 check("shelf unauth 401", r["status"] == 401)
+r = call("/api/shelf", "PUT", {"want": [], "reading": [], "done": []})
+check("shelf PUT unauth 401", r["status"] == 401, f"status={r['status']}")
 r = call_noredirect("/api/auth/google/start")
 loc = (r["headers"].get("Location") or r["headers"].get("location") or "")
 cookie = (r["headers"].get("Set-Cookie") or r["headers"].get("set-cookie") or "")

@@ -266,6 +266,9 @@ class Handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         self._handle("DELETE")
 
+    def do_PUT(self):
+        self._handle("PUT")
+
     def _handle(self, method: str):
         self.req_id = uuid.uuid4().hex[:12]
         try:
