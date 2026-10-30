@@ -234,7 +234,7 @@ function cacheBooks(list) {
   list.forEach((b) => { state.cache[b.id] = b; });
 }
 function lookupBook(id) {
-  return bookById(id) || state.cache[id] || null;
+  return state.cache[id] || bookById(id) || null;
 }
 
 /* ---------------- 웹푸시 종료 알림 ---------------- */
@@ -349,7 +349,10 @@ function personalIds() {
 async function loadPersonalBooks() {
   if (!state.api.on) return;
   const ids = personalIds().slice(0, 10);
-  const missing = ids.filter((id) => !lookupBook(id));
+  const missing = ids.filter((id) => {
+    const b = lookupBook(id);
+    return !b || !b.cover_url;
+  });
   if (!missing.length) {
     state.personalLoading = false;
     return;
@@ -372,7 +375,14 @@ async function loadPersonalBooks() {
 function renderPersonalHome() {
   const reading = state.shelf.reading.map(lookupBook).filter(Boolean);
   const want = state.shelf.want.map(lookupBook).filter(Boolean);
-  const recent = (state.recentBooks || []).map((x) => lookupBook(typeof x === 'string' ? x : x && x.id)).filter(Boolean);
+  const recent = (state.recentBooks || []).map((x) => {
+    const id = typeof x === 'string' ? x : x && x.id;
+    if (!id) return null;
+    const b = lookupBook(id);
+    if (!b) return null;
+    if (x && typeof x === 'object' && x.cover_url && !b.cover_url) return { ...b, cover_url: x.cover_url };
+    return b;
+  }).filter(Boolean);
   const shelfPool = [...reading, ...want];
   const base = shelfPool.length ? shelfPool : recent;
   const seen = new Set();
