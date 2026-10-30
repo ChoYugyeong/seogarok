@@ -22,7 +22,7 @@ def check(name, cond, detail=""):
 
 
 st = auth.make_state()
-gsc_state = "gsc." + auth.make_state()
+gsc_state = auth.make_gsc_state()
 check("gsc state validation", auth.check_state(gsc_state, gsc_state) and gsc_state.startswith("gsc."))
 check("state validation", auth.check_state(st, st) and not auth.check_state(st, st + "x") and not auth.check_state("a.b", "a.b"))
 

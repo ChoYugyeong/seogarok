@@ -132,6 +132,12 @@ def make_state() -> str:
     return f"{state}.{_sign(state)}"
 
 
+def make_gsc_state() -> str:
+    """GSC 연결용 state — gsc. 접두사를 포함한 값에 서명."""
+    base = "gsc." + secrets.token_urlsafe(24)
+    return f"{base}.{_sign(base)}"
+
+
 def check_state(cookie_value: str | None, state: str | None) -> bool:
     """state 쿼리와 서명 쿠키가 동일한지 검증.
 
@@ -315,7 +321,7 @@ def handle_auth(handler, method: str, parsed, qs: dict):
         exp = int(setup.get("exp") or 0)
         if not token or int(time.time()) > exp or hashlib.sha256(token.encode()).hexdigest() != setup.get("token_hash"):
             return _redirect(handler, "/?gsc=invalid")
-        state = "gsc." + make_state()
+        state = make_gsc_state()
         params = {
             "client_id": cfg["client_id"],
             "redirect_uri": cfg["redirect_uri"],
