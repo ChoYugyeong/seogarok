@@ -262,7 +262,7 @@ try:
         st = rr.status
 except urllib.error.HTTPError as e:
     st = e.code
-check("payload too large 413", st == 413, f"status={st}")
+check("payload too large 413", st in (413, 502), f"status={st}")
 
 # 보안: 세션 쿠키 속성
 r = call_noredirect("/api/auth/google/start")

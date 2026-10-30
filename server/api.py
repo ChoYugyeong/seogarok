@@ -276,6 +276,17 @@ class Handler(BaseHTTPRequestHandler):
         except ValueError:
             _clen = 0
         if _clen > 1_000_000:
+            # 남은 본문을 읽어 버린 뒤 응답한다 (안 읽으면 연결이 깨져 GFE 502가 날 수 있음)
+            try:
+                remaining = min(_clen, 8_000_000)
+                while remaining > 0:
+                    chunk = self.rfile.read(min(65536, remaining))
+                    if not chunk:
+                        break
+                    remaining -= len(chunk)
+            except Exception:
+                pass
+            self.close_connection = True
             return self._json({"error": "payload_too_large"}, 413)
         parsed = urlparse(self.path)
         route = route_of(parsed.path)
