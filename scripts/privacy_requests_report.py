@@ -54,19 +54,18 @@ def main() -> int:
             rec = json.loads(raw)
         except Exception:
             continue
+        # 공개 저장소 이슈에는 개인정보를 넣지 않는다 (ref만).
+        # 내용 확인: gcloud storage cat gs://seogarok-reports/privacy/requests/{ref}.json
         body = "\n".join(
             [
                 f"**접수번호**: `{ref}`",
                 f"**유형**: {rec.get('type_label')} (`{rec.get('type')}`)",
-                f"**이메일**: `{rec.get('email')}`",
                 f"**접수 시각**: {rec.get('created_at')}",
                 "",
-                "**요청 내용**",
-                "```",
-                str(rec.get("message") or ""),
-                "```",
+                "> 개인정보 보호를 위해 이메일·요청 내용은 이슈에 표시하지 않습니다.",
+                f"> 확인: `gcloud storage cat gs://seogarok-reports/privacy/requests/{ref}.json`",
                 "",
-                "처리 후 7일 이내 회신하고 이 이슈를 닫으세요. (개인정보 포함 — 공개 저장 금지)",
+                "처리 후 7일 이내 회신하고 이 이슈를 닫으세요. 상세 내용은 비공개 GCS 객체를 참조하세요.",
             ]
         )
         out = run([GH, "issue", "create", "--title", title, "--body", body, "--label", "privacy-request"], check=False)
