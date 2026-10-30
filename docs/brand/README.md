@@ -36,3 +36,14 @@
 - 파비콘·PWA 아이콘: 브랜드 앱 아이콘으로 교체 (`assets/brand`, `icons`)
 - 링크 밑줄 보완 (A의 link-on-text 대비 경고 완화)
 - 검증: 라이브 폰트 로드·로고·모바일 오버플로 없음, QA 스위트 PASS, API 68/68, axe 사이트 위반 0(브라우저 확장 주입 노드 제외)
+
+## OG 카드 (2026-10-30)
+
+- `assets/og-cover.png` (1200×630) — Hahmlet 헤드라인 + 종이/주홍 + 브랜드 락업
+- `index.html`: `og:image`·`og:image:width/height`·`og:image:alt`·`twitter:image` 갱신
+- OG 카드 HTML 소스: `_qa/og-card.html` (로컬 렌더용, 배포 제외)
+
+## 랜딩 미세조정
+
+- 히어로 Hahmlet 500, 섹션 타이틀 600
+- 헤더 로고 24px (모바일 21px)

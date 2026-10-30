@@ -1,5 +1,5 @@
 {
-  "base": "http://127.0.0.1:8104",
+  "base": "https://seogarok.com",
   "results": [
     {
       "name": "livez 200",
@@ -34,7 +34,7 @@
     {
       "name": "search result fields",
       "pass": true,
-      "detail": "{\"id\": \"yes24:176969335\", \"title\": \"소년이 온다\", \"av\": {\"aladin\": {\"buy\": 12000}}}"
+      "detail": "{\"id\": \"yes24:176969335\", \"title\": \"소년이 온다\", \"av\": {\"yes24\": {\"buy\": 12000}}}"
     },
     {
       "name": "search relevance (title/author match)",
@@ -209,7 +209,7 @@
     {
       "name": "/sitemap-books.xml 200",
       "pass": true,
-      "detail": "bytes=1940581"
+      "detail": "bytes=1990112"
     },
     {
       "name": "/sitemap.xml 200",
@@ -292,6 +292,11 @@
       "detail": ""
     },
     {
+      "name": "shelf PUT unauth 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
       "name": "auth google start 302",
       "pass": true,
       "detail": "https://accounts.google.com/o/oauth2/v2/auth?client_id=660128179060-opllfvfe616imcus60li0g4uokfs81o1.apps.googleusercont"
@@ -314,7 +319,7 @@
     {
       "name": "cookie hardened",
       "pass": true,
-      "detail": "__Host-seogarok_oauth_state=vuDcBL4OnTBIaePUilcysq5xzWvMAesP.e86a0c586ab8eb2f0ed"
+      "detail": "__Host-seogarok_oauth_state=RC9_DWS7FrawNALGeHQk7jtaQaCT4qiO.f8c1a116d60b79d4716"
     },
     {
       "name": "privacy request invalid type",

@@ -320,6 +320,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_chaos(method, parsed)
         if parsed.path == "/api/report":
             return self.handle_report(method, parsed)
+        if parsed.path == "/api/ads/config":
+            return self._json({"client": (os.getenv("ADSENSE_CLIENT") or "").strip()})
+        if parsed.path == "/ads.txt":
+            client = (os.getenv("ADSENSE_CLIENT") or "").strip()
+            if not client:
+                return self._json({"error": "ads_not_configured"}, 404)
+            pub = client[3:] if client.startswith("ca-") else client
+            body = f"google.com, {pub}, DIRECT, f08c47fec0942fa0\n"
+            return self._send(200, body.encode("utf-8"), "text/plain; charset=utf-8", "public, max-age=86400")
         if parsed.path == "/api/privacy-request":
             from .dsr import handle_privacy_request
 

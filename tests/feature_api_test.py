@@ -64,6 +64,13 @@ check("metrics text", r["status"] == 200 and b"seogarok" in r["body"].lower())
 r = call("/api/does-not-exist")
 check("unknown api 404 json", r["status"] == 404)
 
+# ---------- 0-1) ads.txt ----------
+r = call("/ads.txt")
+check("ads.txt unconfigured 404", r["status"] == 404)
+r = call("/api/ads/config")
+d = j(r) or {}
+check("ads config endpoint", r["status"] == 200 and "client" in d, f"client={d.get('client')}")
+
 # ---------- 1) search ----------
 r = call("/api/search?q=" + urllib.parse.quote("한강") + "&mode=hybrid&limit=10")
 d = j(r) or {}

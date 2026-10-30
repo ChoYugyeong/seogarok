@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+import os
+
 import html
 import time
 from urllib.parse import quote
@@ -107,6 +109,20 @@ def av_rows(av: dict) -> str:
     return "".join(rows)
 
 
+
+
+def _ads_head() -> str:
+    """AdSense: 게시자 ID가 설정된 경우에만 동의 게이트 스크립트를 넣는다."""
+    client = (os.getenv("ADSENSE_CLIENT") or "").strip()
+    if not client.startswith("ca-pub-"):
+        return ""
+    return (
+        f'<meta name="seogarok-adsense-client" content="{esc(client)}" />\n'
+        f'<meta name="google-adsense-account" content="{esc(client)}" />\n'
+        '<script src="/ads.js" defer></script>'
+    )
+
+
 def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict] | None = None, base: str = BASE) -> str:
     bid = str(book["id"])
     canon = f"{base}/book/{quote(bid, safe='')}"
@@ -168,6 +184,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
 <meta name="twitter:image" content="{esc(cover)}" />
 {robots_meta}
 <link rel="stylesheet" href="/styles.css" />
+{_ads_head()}
 <link rel="alternate" type="text/markdown" href="/book/{esc(quote(bid, safe=''))}.md" />
 {book_jsonld(book, av, base)}
 <style>
@@ -261,6 +278,7 @@ def books_index_html(rows: list[dict], page: int, pages: int, base: str = BASE) 
 <meta name="description" content="서가록에 색인된 책 목록. 밀리·리디셀렉트·교보 sam·윌라 구독 가용성과 종료 예정일을 확인하세요." />
 <link rel="canonical" href="{esc(base)}/books?page={page}" />
 <link rel="stylesheet" href="/styles.css" />
+{_ads_head()}
 <style>
 .books-page{{max-width:1080px;margin:0 auto;padding:30px 20px 64px}}
 .books-page h1{{font-size:26px;font-weight:800;letter-spacing:-.03em;margin:6px 0}}

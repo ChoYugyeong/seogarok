@@ -19,6 +19,7 @@ on:
       - "index.html"
       - "styles.css"
       - "app.js"
+      - "ads.js"
       - "data.js"
       - "legal.html"
       - "about.html"

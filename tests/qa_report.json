@@ -3,182 +3,182 @@
     {
       "path": "/livez",
       "status": 200,
-      "ms_p50": 266.5,
+      "ms_p50": 257.6,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/readyz",
       "status": 200,
-      "ms_p50": 265.4,
+      "ms_p50": 277.7,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/health",
       "status": 200,
-      "ms_p50": 260.0,
+      "ms_p50": 266.7,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/metrics",
       "status": 200,
-      "ms_p50": 271.8,
+      "ms_p50": 345.5,
       "ok": true,
       "ctype": "text/plain; version=0.0.4; charset=utf-8"
     },
     {
       "path": "/api/search?q=%ED%95%9C%EA%B0%95&mode=hybrid&limit=5",
       "status": 200,
-      "ms_p50": 262.5,
+      "ms_p50": 277.8,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/search?q=%E3%85%8E%E3%84%B1&mode=hybrid&limit=5",
       "status": 200,
-      "ms_p50": 294.6,
+      "ms_p50": 327.3,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/suggest?q=%EA%B9%80%EC%B4%88",
       "status": 200,
-      "ms_p50": 255.2,
+      "ms_p50": 257.4,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/overview",
       "status": 200,
-      "ms_p50": 338.9,
+      "ms_p50": 403.4,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/pick",
       "status": 200,
-      "ms_p50": 285.9,
+      "ms_p50": 293.9,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/stats",
       "status": 200,
-      "ms_p50": 253.8,
+      "ms_p50": 349.5,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/notices?limit=5",
       "status": 200,
-      "ms_p50": 249.0,
+      "ms_p50": 256.8,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/collections",
       "status": 200,
-      "ms_p50": 256.8,
+      "ms_p50": 266.4,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/collection?slug=snu-100&limit=5",
       "status": 200,
-      "ms_p50": 303.7,
+      "ms_p50": 336.6,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/rank?cat=%EC%A2%85%ED%95%A9&kind=best&limit=10",
       "status": 200,
-      "ms_p50": 259.7,
+      "ms_p50": 280.2,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/rank?cat=%EC%86%8C%EC%84%A4&kind=steady&limit=10",
       "status": 200,
-      "ms_p50": 280.8,
+      "ms_p50": 257.4,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/book?id=yes24%3A197068949",
       "status": 200,
-      "ms_p50": 536.3,
+      "ms_p50": 286.9,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/book?id=yes24%3A199519618",
       "status": 200,
-      "ms_p50": 273.9,
+      "ms_p50": 302.4,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/book/yes24%3A197068949",
       "status": 200,
-      "ms_p50": 304.9,
+      "ms_p50": 298.7,
       "ok": true,
       "ctype": "text/html; charset=utf-8"
     },
     {
       "path": "/book/yes24%3A197068949.md",
       "status": 200,
-      "ms_p50": 261.6,
+      "ms_p50": 270.8,
       "ok": true,
       "ctype": "text/markdown; charset=utf-8"
     },
     {
       "path": "/sitemap-books.xml",
       "status": 200,
-      "ms_p50": 553.0,
+      "ms_p50": 816.2,
       "ok": true,
       "ctype": "application/xml; charset=utf-8"
     },
     {
       "path": "/sitemap-index.xml",
       "status": 200,
-      "ms_p50": 253.6,
+      "ms_p50": 249.4,
       "ok": true,
       "ctype": "application/xml; charset=utf-8"
     },
     {
       "path": "/llms.txt",
       "status": 200,
-      "ms_p50": 247.3,
+      "ms_p50": 264.1,
       "ok": true,
       "ctype": "text/markdown; charset=utf-8"
     },
     {
       "path": "/llms-full.txt",
       "status": 200,
-      "ms_p50": 264.0,
+      "ms_p50": 259.1,
       "ok": true,
       "ctype": "text/markdown; charset=utf-8"
     },
     {
       "path": "/index.md",
       "status": 200,
-      "ms_p50": 254.2,
+      "ms_p50": 267.2,
       "ok": true,
       "ctype": "text/markdown; charset=utf-8"
     },
     {
       "path": "/api/push/key",
       "status": 200,
-      "ms_p50": 538.6,
+      "ms_p50": 578.6,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     },
     {
       "path": "/api/nope",
       "status": 404,
-      "ms_p50": 251.4,
+      "ms_p50": 267.5,
       "ok": true,
       "ctype": "application/json; charset=utf-8"
     }
@@ -203,7 +203,7 @@
     "jsonld": true,
     "og_site": true,
     "h1_count": 1,
-    "html_bytes": 11980
+    "html_bytes": 11808
   },
   "robots": {
     "status": 200,
@@ -214,21 +214,21 @@
   },
   "sitemap": {
     "status": 200,
-    "urls": 17,
+    "urls": 20,
     "valid_xml": true,
-    "book_urls": 5000
+    "book_urls": 16483
   },
   "assets": [
     {
       "path": "/styles.css",
       "status": 200,
-      "bytes": 61043,
+      "bytes": 62684,
       "ctype": "text/css; charset=utf-8"
     },
     {
       "path": "/app.js",
       "status": 200,
-      "bytes": 107208,
+      "bytes": 113628,
       "ctype": "text/javascript; charset=utf-8"
     },
     {
@@ -252,13 +252,13 @@
     {
       "path": "/icons/icon-192.png",
       "status": 200,
-      "bytes": 1089,
+      "bytes": 2038,
       "ctype": "image/png"
     },
     {
       "path": "/icons/icon-512.png",
       "status": 200,
-      "bytes": 3344,
+      "bytes": 4361,
       "ctype": "image/png"
     },
     {
@@ -270,13 +270,13 @@
     {
       "path": "/about.html",
       "status": 200,
-      "bytes": 5689,
+      "bytes": 5797,
       "ctype": "text/html; charset=utf-8"
     },
     {
       "path": "/legal.html",
       "status": 200,
-      "bytes": 6470,
+      "bytes": 7412,
       "ctype": "text/html; charset=utf-8"
     }
   ],
@@ -297,11 +297,11 @@
   "load": {
     "requests": 48,
     "workers": 12,
-    "seconds": 2.16,
-    "rps": 22.3,
-    "p50_ms": 451.0,
-    "p95_ms": 712.8,
-    "max_ms": 750.0,
+    "seconds": 2.53,
+    "rps": 18.9,
+    "p50_ms": 560.2,
+    "p95_ms": 875.2,
+    "max_ms": 919.3,
     "errors": 0
   },
   "fails": [],
