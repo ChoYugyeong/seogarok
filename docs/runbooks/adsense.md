@@ -46,3 +46,12 @@
 - AdSense 심사 중에는 결제/광고 코드를 넣지 않아도 됨(사이트 확인용 meta만).
 - 승인 전에는 동의 배너가 뜨지 않는다(클라이언트 ID가 비어 있으므로).
 - 광고 수익화와 별개로 기존 익명 통계는 쿠키를 쓰지 않는다.
+
+## 활성화 기록 (2026-10-30)
+
+- 게시자 ID: `ca-pub-5571356208554399`
+- Cloud Run env `ADSENSE_CLIENT=ca-pub-5571356208554399` 설정 완료
+- `https://seogarok.com/ads.txt` → `google.com, pub-5571356208554399, DIRECT, f08c47fec0942fa0`
+- `index.html`: `seogarok-adsense-client` · `google-adsense-account` meta 반영
+- 라이브: 동의 배너 → "광고 허용" 시 AdSense 스크립트 로드, "필수만" 시 미로드
+- 광고 게재는 AdSense 사이트 심사/승인 후 시작됨 (승인 전에는 스크립트만 로드)
