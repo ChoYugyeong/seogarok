@@ -28,6 +28,9 @@ AUTH = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN = "https://oauth2.googleapis.com/token"
 USERINFO = "https://openidconnect.googleapis.com/v1/userinfo"
 SCOPE = "openid email profile"
+GSC_SCOPE = "https://www.googleapis.com/auth/webmasters.readonly"
+GSC_SETUP_PATH = "auth/gsc_setup.json"
+GSC_TOKEN_PATH = "auth/gsc_token.json"
 SESSION_COOKIE = "__Host-seogarok_session"
 STATE_COOKIE = "__Host-seogarok_oauth_state"
 SESSION_TTL = 30 * 86400
@@ -295,6 +298,32 @@ def handle_auth(handler, method: str, parsed, qs: dict):
     if method in ("POST", "PUT", "DELETE") and not _origin_ok(handler):
         return _json_headers(handler, {"error": "cross_origin_blocked"}, 403)
 
+    if path == "/api/auth/gsc/start":
+        if method != "GET" or not cfg:
+            return _json_headers(handler, {"error": "auth_unavailable"}, 503)
+        import hashlib
+
+        token = (qs.get("t") or [""])[0].strip()
+        setup = store.read_json(GSC_SETUP_PATH) or {}
+        exp = int(setup.get("exp") or 0)
+        if not token or int(time.time()) > exp or hashlib.sha256(token.encode()).hexdigest() != setup.get("token_hash"):
+            return _redirect(handler, "/?gsc=invalid")
+        state = make_state()
+        params = {
+            "client_id": cfg["client_id"],
+            "redirect_uri": cfg["redirect_uri"],
+            "response_type": "code",
+            "scope": GSC_SCOPE,
+            "state": state,
+            "access_type": "offline",
+            "prompt": "consent",
+        }
+        return _redirect(
+            handler,
+            AUTH + "?" + urllib.parse.urlencode(params),
+            cookies=[_cookie(STATE_COOKIE, state, STATE_TTL)],
+        )
+
     if path == "/api/auth/google/start":
         if method != "GET" or not cfg:
             return _json_headers(handler, {"error": "auth_unavailable"}, 503)
@@ -331,6 +360,27 @@ def handle_auth(handler, method: str, parsed, qs: dict):
                 "grant_type": "authorization_code",
             }
         ).encode()
+        if state.startswith("gsc."):
+            try:
+                req = urllib.request.Request(
+                    TOKEN, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}
+                )
+                with urllib.request.urlopen(req, timeout=15) as r:
+                    tok = json.loads(r.read().decode())
+                refresh = tok.get("refresh_token")
+                if refresh:
+                    store.write_json(
+                        GSC_TOKEN_PATH,
+                        {
+                            "refresh_token": refresh,
+                            "scope": tok.get("scope") or GSC_SCOPE,
+                            "created_at": int(time.time()),
+                        },
+                    )
+                    return _redirect(handler, "/?gsc=ok", cookies=[_cookie(STATE_COOKIE, "", 0)])
+            except Exception:
+                pass
+            return _redirect(handler, "/?gsc=error", cookies=[_cookie(STATE_COOKIE, "", 0)])
         try:
             req = urllib.request.Request(
                 TOKEN, data=data, headers={"Content-Type": "application/x-www-form-urlencoded"}

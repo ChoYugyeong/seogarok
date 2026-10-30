@@ -104,20 +104,21 @@ python scripts/submit_indexnow.py --limit 200
 - `site:seogarok.com` (구글/네이버)
 - `python scripts/gsc_index_status.py --limit 20` (로컬은 OAuth webmasters 스코프 필요, CI는 자동)
 
-### 4) GSC 색인 모니터링 자동화 (OAuth refresh token, 1회 설정)
+### 4) GSC 색인 모니터링 자동화 (사이트 콜백 방식, 1회)
 
-1. GCP Console → API 및 서비스 → 사용자 인증 정보 → **OAuth 클라이언트 ID 만들기**
-   - 애플리케이션 유형: **데스크톱 앱**
-   - 생성 후 Client ID / Client Secret 복사
-2. `scripts/gsc_oauth_setup.py` 실행 (값은 로컬 .env에 저장)
+콘솔에서 리디렉션 URI를 추가할 필요 없이 **사이트 콜백**으로 연결한다.
+
+1. 연결 링크 생성 (로컬):
    ```powershell
-   $env:GSC_CLIENT_ID="..."
-   $env:GSC_CLIENT_SECRET="..."
-   python scripts/gsc_oauth_setup.py
+   python scripts/gsc_connect_link.py
    ```
-3. GitHub Secret 등록
+2. 출력된 `https://seogarok.com/api/auth/gsc/start?t=...` 링크를 브라우저에서 열고
+   구글 계정으로 **GSC 속성 접근 권한이 있는 계정**으로 승인 (30분 내 1회)
+3. 토큰 회수 + GitHub Secret 등록:
    ```powershell
+   python scripts/gsc_fetch_token.py
    pwsh -NoProfile -File scripts/set_gsc_secrets.ps1
    ```
-4. 테스트: `gh workflow run seo-index.yml` → Actions Summary에서 색인 verdict 확인
+4. 테스트: `gh workflow run seo-index.yml` → Actions Summary/artifact에서 색인 verdict 확인
 - 매주 월요일 09:10 KST 자동 실행
+- 토큰은 GCS `auth/gsc_token.json`(비공개)에 저장되며, 콜백은 로그인 세션을 만들지 않는다.

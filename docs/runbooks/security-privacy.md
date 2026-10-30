@@ -90,3 +90,27 @@
 - 개인정보처리방침: [`privacy.html`](../../privacy.html) · 이용약관: [`terms.html`](../../terms.html) · 데이터 출처: [`legal.html`](../../legal.html)
 - 인증 코드: [`server/auth.py`](../../server/auth.py) · 저장소: [`server/store.py`](../../server/store.py)
 - 검색 색인 런북: [`search-indexing.md`](search-indexing.md)
+
+## 9. 개인정보 문의 이메일 별칭 (권장)
+
+현재 1차 창구: `https://seogarok.com/privacy-contact.html` (폼) + GitHub 이슈.
+
+도메인은 **Cloudflare DNS**이므로 무료 **Email Routing**으로 별칭을 만들 수 있다.
+
+1. Cloudflare → 해당 도메인 → **Email → Email Routing** → Enable
+2. Destination address(예: 개인 Gmail) 인증
+3. Custom address: `privacy@seogarok.com` → Destination으로 라우팅
+4. MX 레코드 자동 추가 확인:
+   ```powershell
+   Resolve-DnsName seogarok.com -Type MX
+   ```
+5. 동작 확인 후 `privacy.html` 문의 섹션과 `privacy-contact.html`에 이메일 추가
+6. 답변 발신은 개인 메일에서 하되, 가능하면 도메인 메일(SMTP/Workspace)로 `privacy@` 발신 설정
+
+## 10. 계정/푸시 연결 상태 점검
+
+```powershell
+python scripts/check_accounts_health.py
+```
+- 로그인 사용자 수 / 동기화 서재 수 / 세션 객체 수
+- 푸시 구독 수(계정 연결됨 수) — 개인정보는 출력하지 않음
