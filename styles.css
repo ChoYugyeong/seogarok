@@ -100,7 +100,7 @@ ul, ol { list-style: none; padding: 0; }
   padding: 12px var(--margin);
 }
 .brand { display: inline-flex; align-items: center; gap: 8px; }
-.brand-logo { height: 25px; width: auto; display: block; }
+.brand-logo { height: 24px; width: auto; display: block; }
 .brand-mark-img { width: 28px; height: 28px; display: block; }
 .brand-mark { display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; }
 .brand-mark i { display: block; width: 3.5px; border-radius: 1px; background: var(--ink); }
@@ -817,7 +817,7 @@ ul, ol { list-style: none; padding: 0; }
   .tabs { display: none; }
   .nav-right .search-mini { display: none; }
   .brand-text { font-size: 17px; }
-  .brand-logo { height: 22px; }
+  .brand-logo { height: 21px; }
 
   .hero { grid-template-columns: 1fr; gap: 18px; padding: 20px var(--margin) 4px; }
   .hero h1 { font-size: 26px; }
@@ -1446,9 +1446,10 @@ html, body { overscroll-behavior-y: none; }
 .doc h1,
 .taste-result-head h2 {
   font-family: var(--display);
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
+.sec-title, .result-head h1, .result-head h2, .page-head h2, .cur-head h2 { font-weight: 600; }
 .hero h1 em { font-style: normal; }
 .foot-meta a,
 .prose a,
