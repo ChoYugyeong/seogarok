@@ -21,6 +21,9 @@ def check(name, cond, detail=""):
         fails.append(name)
 
 
+st = auth.make_state()
+check("state validation", auth.check_state(st, st) and not auth.check_state(st, st + "x") and not auth.check_state("a.b", "a.b"))
+
 info = {"sub": "test-sub-123", "email": "test@example.com", "name": "테스터", "email_verified": True, "picture": "https://x/y.png"}
 user = auth.upsert_user(info)
 check("upsert user", user["sub"] == "test-sub-123" and user["email"] == "test@example.com")

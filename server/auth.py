@@ -133,13 +133,20 @@ def make_state() -> str:
 
 
 def check_state(cookie_value: str | None, state: str | None) -> bool:
+    """state 쿼리와 서명 쿠키가 동일한지 검증.
+
+    make_state()는 `랜덤.서명` 전체를 만들고 쿠키에도 전체를 저장하므로
+    쿼리 state와 쿠키 값 전체를 비교한 뒤 서명을 검증한다.
+    """
     if not cookie_value or not state:
         return False
+    if not hmac.compare_digest(cookie_value, state):
+        return False
     try:
-        raw, sig = cookie_value.rsplit(".", 1)
+        raw, sig = state.rsplit(".", 1)
     except ValueError:
         return False
-    return hmac.compare_digest(raw, state or "") and hmac.compare_digest(sig, _sign(raw))
+    return hmac.compare_digest(sig, _sign(raw))
 
 
 def _cookie(name: str, value: str, max_age: int, secure: bool = True) -> str:
@@ -391,7 +398,13 @@ def handle_auth(handler, method: str, parsed, qs: dict):
             req2 = urllib.request.Request(USERINFO, headers={"Authorization": f"Bearer {access}"})
             with urllib.request.urlopen(req2, timeout=15) as r2:
                 info = json.loads(r2.read().decode())
-        except Exception:
+        except Exception as exc:
+            try:
+                from .api import log_event
+
+                log_event(level="warn", msg="oauth_callback_failed", error=str(exc)[:200])
+            except Exception:
+                pass
             return _redirect(handler, "/?login=error", cookies=[_cookie(STATE_COOKIE, "", 0)])
         if info.get("email_verified") is False:
             return _redirect(handler, "/?login=error", cookies=[_cookie(STATE_COOKIE, "", 0)])
