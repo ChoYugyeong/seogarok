@@ -38,3 +38,6 @@ terraform/backend.tf.bak
 
 # API 원본 응답 캐시 (로컬 아카이브, 커밋 금지)
 data/enrich_cache/
+
+# 수집/HTML 캐시 (로컬 전용)
+.cache/

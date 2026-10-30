@@ -116,3 +116,14 @@ python scripts/enrich_cache_sync.py push
 - 배포 `build` 잡이 시작할 때 GCS 캐시를 풀고, 끝나면 갱신본을 업로드한다.
 - 주간 배치(`scripts/enrich_weekly.ps1`)도 시작 시 pull, 종료 시 push를 자동 수행.
 - 원본 응답 캐시는 git에 커밋하지 않는다(`data/enrich_cache/`).
+
+## 주간 자동 배치 (Windows 작업 스케줄러)
+
+- 작업 이름: `seogarok-enrich-weekly`
+- 일정: 매주 일요일 04:30
+- 명령: `powershell -NoProfile -ExecutionPolicy Bypass -File C:\Dev\seoga\scripts\enrich_weekly.ps1 -GoogleLimit 800 -Commit`
+- 결과: fallback 자동 커밋/푸시 → 배포 → `/api/stats.description_count` 반영
+- PC 로그온 상태에서만 실행(기본). PC가 꺼져 있으면 다음 주기에 실행되지 않음.
+- 트러블슈팅: PowerShell 5.1은 UTF-8 BOM이 없으면 한글 스크립트를 오파싱한다 → 스크립트는 BOM 유지.
+  - 즉시 실행: `schtasks /Run /TN "seogarok-enrich-weekly"`
+  - 결과 확인: `schtasks /Query /TN "seogarok-enrich-weekly" /V /FO LIST`
