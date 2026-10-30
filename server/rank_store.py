@@ -162,3 +162,41 @@ def attach_deltas(items: list[dict], kind: str, cat: str) -> list[dict]:
             it.setdefault("delta", None)
             it.setdefault("is_new", False)
     return items
+
+
+
+def load_latest(kind: str, cat: str) -> list[dict]:
+    """가장 최근(오늘 포함) 스냅샷 items. 없으면 빈 리스트.
+
+    YES24 API가 429/장애일 때 홈 랭킹을 스냅샷으로 계속 보여주기 위한 폴백.
+    """
+    dates = [time.strftime("%Y-%m-%d", time.gmtime())]
+    dates += list(_prev_days())
+    for date in dates:
+        raw = None
+        try:
+            bucket = _gcs_bucket()
+            raw = bucket.blob(_object_path(date, kind, cat)).download_as_bytes(timeout=10)
+        except Exception:
+            pass
+        if raw is None:
+            for path in (
+                os.path.join(_local_dir(), f"{date}__{kind}__{cat}.json"),
+                f"/tmp/seogarok-rank-{date}-{kind}-{cat}.json",
+            ):
+                try:
+                    with open(path, "rb") as f:
+                        raw = f.read()
+                    break
+                except Exception:
+                    continue
+        if not raw:
+            continue
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except Exception:
+            continue
+        items = data.get("items") or []
+        if items:
+            return items
+    return []

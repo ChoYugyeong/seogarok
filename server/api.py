@@ -1266,43 +1266,74 @@ class Handler(BaseHTTPRequestHandler):
                     if attempt == 0:
                         time.sleep(0.35)
             if data is None:
-                exc = last_exc
-                return self._json({
-                    "error": "rank_unavailable",
-                    "message": str(exc)[:160],
-                    "category": cat,
-                    "kind": kind,
-                }, 503)
-            items = []
-            for it in (data.get("items") or []):
-                goods = str(it.get("itemId") or "").strip()
-                title = str(it.get("title") or "").strip()
-                if not goods or not title:
-                    continue
+                # YES24 429/장애 → 최근 일별 스냅샷으로 폴백 (홈 랭킹 유지)
+                try:
+                    from .rank_store import load_latest
 
-                def _num(v):
-                    try:
-                        return int(float(v))
-                    except (TypeError, ValueError):
-                        return None
+                    snap = load_latest(kind, cat)
+                except Exception:
+                    snap = []
+                if not snap:
+                    exc = last_exc
+                    return self._json({
+                        "error": "rank_unavailable",
+                        "message": str(exc)[:160],
+                        "category": cat,
+                        "kind": kind,
+                    }, 503)
+                conn, _ = app.ctx()
+                ids = [str(x.get("id")) for x in snap if x.get("id")]
+                by_id = {r["id"]: r for r in fetch_books(conn, ids)}
+                items = []
+                for x in snap:
+                    r = by_id.get(str(x.get("id")))
+                    if not r:
+                        continue
+                    items.append({
+                        "rank": len(items) + 1,
+                        "id": r["id"],
+                        "title": r["title"],
+                        "author": r["author"] or "저자 미상",
+                        "cover_url": r["cover_url"],
+                        "price": r["price"],
+                        "star": None,
+                        "sale_point": None,
+                        "category": "",
+                        "isbn13": r["isbn13"],
+                    })
+                degraded = True
+            else:
+                items = []
+                for it in (data.get("items") or []):
+                    goods = str(it.get("itemId") or "").strip()
+                    title = str(it.get("title") or "").strip()
+                    if not goods or not title:
+                        continue
 
-                items.append({
-                    "rank": len(items) + 1,
-                    "id": f"yes24:{goods}",
-                    "title": title,
-                    "author": (it.get("author") or "").strip() or "저자 미상",
-                    "cover_url": it.get("cover") or f"https://image.yes24.com/goods/{goods}/L",
-                    "price": _num(it.get("salePrice")),
-                    "star": float(it["starScore"]) if it.get("starScore") is not None else None,
-                    "sale_point": _num(it.get("salePoint")),
-                    "category": it.get("goodsSortNm") or "",
-                    "isbn13": (it.get("isbn13") or "").strip() or None,
-                })
+                    def _num(v):
+                        try:
+                            return int(float(v))
+                        except (TypeError, ValueError):
+                            return None
+
+                    items.append({
+                        "rank": len(items) + 1,
+                        "id": f"yes24:{goods}",
+                        "title": title,
+                        "author": (it.get("author") or "").strip() or "저자 미상",
+                        "cover_url": it.get("cover") or f"https://image.yes24.com/goods/{goods}/L",
+                        "price": _num(it.get("salePrice")),
+                        "star": float(it["starScore"]) if it.get("starScore") is not None else None,
+                        "sale_point": _num(it.get("salePoint")),
+                        "category": it.get("goodsSortNm") or "",
+                        "isbn13": (it.get("isbn13") or "").strip() or None,
+                    })
+                degraded = False
 
             day_key = time.strftime("%Y-%m-%d", time.gmtime())
             saved_key = f"{day_key}:{kind}:{cat}"
             snapshot_path = ""
-            if saved_key not in _rank_saved:
+            if not degraded and saved_key not in _rank_saved:
                 try:
                     from .rank_store import save_snapshot
 
@@ -1365,7 +1396,8 @@ class Handler(BaseHTTPRequestHandler):
                 "category_id": RANK_CATS[cat],
                 "kind": kind,
                 "kind_label": label,
-                "source": f"예스24 {label}",
+                "source": (f"예스24 {label} (스냅샷)" if degraded else f"예스24 {label}"),
+                "degraded": degraded,
                 "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                 "items": items,
             }
