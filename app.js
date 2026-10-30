@@ -1437,6 +1437,8 @@ function renderExploreApi() {
     <div class="collections">${collections}</div>
   </section>
 
+  <div class="ad-slot" data-ad-slot="home"></div>
+
   <section class="cta-band">
     <div>
       <h3>뭘 읽을지 모르겠다면</h3>
@@ -1525,6 +1527,8 @@ function renderExplore() {
   </section>
 
   ${state.collection ? collectionGrid(state.collection) : ''}
+
+  <div class="ad-slot" data-ad-slot="home"></div>
 
   <section class="cta-band">
     <div>

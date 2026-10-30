@@ -332,7 +332,12 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/report":
             return self.handle_report(method, parsed)
         if parsed.path == "/api/ads/config":
-            return self._json({"client": (os.getenv("ADSENSE_CLIENT") or "").strip()})
+            slots = {}
+            for key in ("home", "book"):
+                val = (os.getenv(f"ADSENSE_SLOT_{key.upper()}") or "").strip()
+                if val:
+                    slots[key] = val
+            return self._json({"client": (os.getenv("ADSENSE_CLIENT") or "").strip(), "slots": slots})
         if parsed.path == "/ads.txt":
             client = (os.getenv("ADSENSE_CLIENT") or "").strip()
             if not client:

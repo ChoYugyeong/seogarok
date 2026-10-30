@@ -1496,3 +1496,10 @@ html, body { overscroll-behavior-y: none; }
   .ad-consent { flex-direction: column; align-items: stretch; gap: 10px; padding: 14px; bottom: 76px; }
   .ad-consent-actions { justify-content: flex-end; }
 }
+
+/* ===== 고정 광고 슬롯 ===== */
+.ad-slot { margin: 26px auto 8px; max-width: 970px; }
+.ad-slot:empty { display: none; }
+.ad-slot .ad-label { font-size: 11px; letter-spacing: .04em; color: var(--text-3); margin: 0 0 5px 2px; }
+.ad-slot ins { display: block; min-height: 100px; }
+.book-page .ad-slot { margin: 24px 0 8px; max-width: none; }

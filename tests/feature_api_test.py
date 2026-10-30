@@ -73,7 +73,7 @@ else:
     check("ads.txt configured", r["status"] == 200 and _ads_body.startswith("google.com, pub-") and "DIRECT" in _ads_body, _ads_body[:80])
 r = call("/api/ads/config")
 d = j(r) or {}
-check("ads config endpoint", r["status"] == 200 and "client" in d, f"client={d.get('client')}")
+check("ads config endpoint", r["status"] == 200 and "client" in d and "slots" in d, f"client={d.get('client')}")
 
 # ---------- 1) search ----------
 r = call("/api/search?q=" + urllib.parse.quote("한강") + "&mode=hybrid&limit=10")

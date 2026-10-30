@@ -123,6 +123,17 @@ def _ads_head() -> str:
     )
 
 
+
+
+
+def _ad_slot_html(key: str) -> str:
+    """고정 광고 슬롯: 슬롯 env가 있을 때만 컨테이너를 넣는다."""
+    slot = (os.getenv(f"ADSENSE_SLOT_{key.upper()}") or "").strip()
+    if not slot:
+        return ""
+    return f'<div class="ad-slot" data-ad-slot="{esc(key)}"></div>'
+
+
 def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict] | None = None, base: str = BASE) -> str:
     bid = str(book["id"])
     canon = f"{base}/book/{quote(bid, safe='')}"
@@ -239,6 +250,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
   <h2 style="margin:28px 0 4px;font-size:18px;font-weight:800">어디서 읽을 수 있나요</h2>
   <ul class="av-list">{av_rows(av)}</ul>
   {related_html}
+  {_ad_slot_html("book")}
   <p class="book-foot">
     서가록은 밀리·리디셀렉트·교보 sam·윌라의 제공 여부와 종료 예정 공지를 매일 확인합니다.
     확인되지 않은 정보는 “미확인”으로 표시하며, 제보를 통해 보강합니다.

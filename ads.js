@@ -1,21 +1,28 @@
-/* 서가록 — AdSense 동의 게이트.
-   게시자 ID: meta[name=seogarok-adsense-client] 우선, 없으면 /api/ads/config.
-   동의 전에는 스크립트/쿠키를 로드하지 않는다. */
+/* 서가록 — AdSense 동의 게이트 + 고정 슬롯(홈/책 상세).
+   게시자 ID·슬롯 ID: /api/ads/config (Cloud Run env), 실패 시 meta fallback.
+   동의 전에는 스크립트/광고/쿠키를 로드하지 않는다. */
 (function () {
   var KEY = 'seogarok.ads.consent';
+  var config = { client: '', slots: {} };
 
-  function getClient() {
-    var meta = document.querySelector('meta[name="seogarok-adsense-client"]');
-    var fromMeta = meta && meta.content ? meta.content.trim() : '';
-    if (fromMeta.indexOf('ca-pub-') === 0) return Promise.resolve(fromMeta);
+  function fetchConfig() {
     return fetch('/api/ads/config', { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : {}; })
-      .then(function (d) { return d && d.client && d.client.indexOf('ca-pub-') === 0 ? d.client : ''; })
-      .catch(function () { return ''; });
+      .catch(function () { return {}; })
+      .then(function (d) {
+        var meta = document.querySelector('meta[name="seogarok-adsense-client"]');
+        var fromMeta = meta && meta.content ? meta.content.trim() : '';
+        var client = (d && d.client) || fromMeta || '';
+        return {
+          client: client.indexOf('ca-pub-') === 0 ? client : '',
+          slots: (d && d.slots) || {},
+        };
+      });
   }
 
-  function init(client) {
-    if (!client) return;
+  function init(cfg) {
+    config = cfg;
+    if (!config.client) return;
 
     function loadScript() {
       if (document.getElementById('adsbygoogle-js')) return;
@@ -23,23 +30,58 @@
       s.id = 'adsbygoogle-js';
       s.async = true;
       s.crossOrigin = 'anonymous';
-      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(client);
+      s.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + encodeURIComponent(config.client);
       document.head.appendChild(s);
+    }
+
+    function mountSlots() {
+      var slots = config.slots || {};
+      document.querySelectorAll('[data-ad-slot]').forEach(function (el) {
+        var key = el.getAttribute('data-ad-slot');
+        var slot = slots[key];
+        if (!slot) { el.hidden = true; return; }
+        if (el.getAttribute('data-ad-mounted') === '1') return;
+        el.hidden = false;
+        var label = document.createElement('div');
+        label.className = 'ad-label';
+        label.textContent = '광고';
+        var ins = document.createElement('ins');
+        ins.className = 'adsbygoogle';
+        ins.style.display = 'block';
+        ins.setAttribute('data-ad-client', config.client);
+        ins.setAttribute('data-ad-slot', slot);
+        ins.setAttribute('data-ad-format', 'auto');
+        ins.setAttribute('data-full-width-responsive', 'true');
+        el.appendChild(label);
+        el.appendChild(ins);
+        el.setAttribute('data-ad-mounted', '1');
+        try { (window.adsbygoogle = window.adsbygoogle || []).push({}); } catch (e) {}
+      });
+    }
+
+    function observe() {
+      if (!window.MutationObserver) return;
+      var root = document.getElementById('view') || document.body;
+      var timer = null;
+      new MutationObserver(function () {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(mountSlots, 150);
+      }).observe(root, { childList: true, subtree: true });
     }
 
     function decide(value) {
       try { localStorage.setItem(KEY, value); } catch (e) {}
       var b = document.getElementById('adsConsent');
       if (b) b.remove();
-      if (value === 'yes') loadScript();
+      if (value === 'yes') { loadScript(); mountSlots(); }
     }
 
-    window.SEOG_ADS = { client: client, decide: decide, reload: loadScript };
+    window.SEOG_ADS = { client: config.client, slots: config.slots, decide: decide, mount: mountSlots };
 
     var choice = null;
     try { choice = localStorage.getItem(KEY); } catch (e) {}
-    if (choice === 'yes') { loadScript(); return; }
-    if (choice === 'no') return;
+    if (choice === 'yes') { loadScript(); mountSlots(); observe(); return; }
+    if (choice === 'no') { observe(); return; }
 
     function showBanner() {
       if (document.getElementById('adsConsent')) return;
@@ -67,7 +109,8 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', showBanner);
     else showBanner();
+    observe();
   }
 
-  getClient().then(init);
+  fetchConfig().then(init);
 })();

@@ -55,3 +55,23 @@
 - `index.html`: `seogarok-adsense-client` · `google-adsense-account` meta 반영
 - 라이브: 동의 배너 → "광고 허용" 시 AdSense 스크립트 로드, "필수만" 시 미로드
 - 광고 게재는 AdSense 사이트 심사/승인 후 시작됨 (승인 전에는 스크립트만 로드)
+
+## 고정 광고 슬롯 (홈/책 상세)
+
+승인 후 광고 단위를 만들고 슬롯 ID를 env로 넣으면 **재배포 없이** 활성화된다.
+
+1. AdSense → 광고 → 광고 단위 → **디스플레이 광고** 2개 생성
+   - 이름 예: `seogarok-home-feed`, `seogarok-book-detail`
+   - 반응형 선택
+2. 각 단위의 **data-ad-slot 숫자**(10자리) 확인
+3. Cloud Run env 설정:
+   ```bash
+   gcloud run services update seogarok-api --region asia-northeast1 \
+     --update-env-vars ADSENSE_SLOT_HOME=1234567890,ADSENSE_SLOT_BOOK=0987654321
+   ```
+4. 확인
+   - `https://seogarok.com/api/ads/config` → `{"client":"...","slots":{"home":"...","book":"..."}}`
+   - 홈 하단·책 상세 하단에 "광고" 라벨 + 반응형 슬롯 표시 (동의 후)
+5. 슬롯을 끄려면 env를 빈 값으로 업데이트하거나 제거.
+
+**정책**: 고정 슬롯은 홈(콘텐츠 하단)과 책 상세(관련 책 아래)에만 배치. 로그인·개인정보·약관·문의 페이지에는 넣지 않는다.
