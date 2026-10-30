@@ -17,21 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: google-github-actions/auth@v2
-        id: auth
-        with:
-          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
-          service_account: ${{ vars.GCP_DEPLOY_SA }}
-          token_format: access_token
-          access_token_scopes: "https://www.googleapis.com/auth/webmasters,https://www.googleapis.com/auth/cloud-platform"
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
       - name: GSC URL Inspection
         env:
-          GSC_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+          GSC_CLIENT_ID: ${{ secrets.GSC_CLIENT_ID }}
+          GSC_CLIENT_SECRET: ${{ secrets.GSC_CLIENT_SECRET }}
+          GSC_REFRESH_TOKEN: ${{ secrets.GSC_REFRESH_TOKEN }}
         run: |
           python scripts/gsc_index_status.py --limit 30
 

@@ -103,3 +103,21 @@ python scripts/submit_indexnow.py --limit 200
 - GSC → 색인 → 페이지: 색인됨/발견됨-현재 색인 안 됨 추이
 - `site:seogarok.com` (구글/네이버)
 - `python scripts/gsc_index_status.py --limit 20` (로컬은 OAuth webmasters 스코프 필요, CI는 자동)
+
+### 4) GSC 색인 모니터링 자동화 (OAuth refresh token, 1회 설정)
+
+1. GCP Console → API 및 서비스 → 사용자 인증 정보 → **OAuth 클라이언트 ID 만들기**
+   - 애플리케이션 유형: **데스크톱 앱**
+   - 생성 후 Client ID / Client Secret 복사
+2. `scripts/gsc_oauth_setup.py` 실행 (값은 로컬 .env에 저장)
+   ```powershell
+   $env:GSC_CLIENT_ID="..."
+   $env:GSC_CLIENT_SECRET="..."
+   python scripts/gsc_oauth_setup.py
+   ```
+3. GitHub Secret 등록
+   ```powershell
+   pwsh -NoProfile -File scripts/set_gsc_secrets.ps1
+   ```
+4. 테스트: `gh workflow run seo-index.yml` → Actions Summary에서 색인 verdict 확인
+- 매주 월요일 09:10 KST 자동 실행

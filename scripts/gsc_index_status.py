@@ -25,6 +25,35 @@ API = "https://searchconsole.googleapis.com/v1/urlInspection/index:inspect"
 
 
 def token() -> str:
+    """우선순위: refresh token 교환 → GSC_ACCESS_TOKEN → gcloud."""
+    refresh = (os.getenv("GSC_REFRESH_TOKEN") or "").strip()
+    cid = (os.getenv("GSC_CLIENT_ID") or "").strip()
+    csec = (os.getenv("GSC_CLIENT_SECRET") or "").strip()
+    if refresh and cid and csec:
+        data = urllib.parse.urlencode(
+            {
+                "client_id": cid,
+                "client_secret": csec,
+                "refresh_token": refresh,
+                "grant_type": "refresh_token",
+            }
+        ).encode()
+        req = urllib.request.Request(
+            "https://oauth2.googleapis.com/token",
+            data=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return json.loads(r.read().decode()).get("access_token", "")
+        except Exception as exc:
+            print(f"[gsc] refresh token 교환 실패: {str(exc)[:120]}", file=sys.stderr)
+            return ""
+
+    env_tok = (os.getenv("GSC_ACCESS_TOKEN") or "").strip()
+    if env_tok:
+        return env_tok
+
     import shutil
 
     exe = None
