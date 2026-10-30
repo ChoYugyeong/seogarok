@@ -1,0 +1,70 @@
+{
+ "units": "wordmark: cap height 100, cap top y=0, baseline y=100, x from the pen origin; index = data-glyph",
+ "text": "서가록",
+ "glyphs": [
+  {
+   "index": 1,
+   "char": "서",
+   "x0": 6.45,
+   "x1": 111.96,
+   "pen_x": 0.0,
+   "advance": 125.0,
+   "cap_top": 0,
+   "baseline": 100,
+   "stems": [
+    [
+     16.81,
+     31.56
+    ],
+    [
+     60.06,
+     75.11
+    ],
+    [
+     95.43,
+     109.14
+    ]
+   ]
+  },
+  {
+   "index": 2,
+   "char": "가",
+   "x0": 133.66,
+   "x1": 248.02,
+   "pen_x": 125.0,
+   "advance": 125.0,
+   "cap_top": 0,
+   "baseline": 100,
+   "stems": [
+    [
+     152.04,
+     169.74
+    ],
+    [
+     212.23,
+     225.94
+    ]
+   ]
+  },
+  {
+   "index": 3,
+   "char": "록",
+   "x0": 253.49,
+   "x1": 371.67,
+   "pen_x": 250.0,
+   "advance": 125.0,
+   "cap_top": 0,
+   "baseline": 100,
+   "stems": [
+    [
+     256.55,
+     274.93
+    ],
+    [
+     357.64,
+     370.83
+    ]
+   ]
+  }
+ ]
+}

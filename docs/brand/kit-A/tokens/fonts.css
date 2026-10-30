@@ -1,0 +1,8 @@
+:root {
+  --font-display: "Hahmlet", Hahmlet, Noto Serif KR, serif;
+  --font-display-weight: 500;
+  --font-display-tracking: 0.000em;
+  --font-text: "IBM Plex Sans KR", IBM Plex Sans KR, system-ui, sans-serif;
+  --font-text-weight: 400;
+  --font-text-tracking: 0.000em;
+}
