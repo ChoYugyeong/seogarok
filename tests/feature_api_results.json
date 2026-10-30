@@ -214,7 +214,7 @@
     {
       "name": "/sitemap.xml 200",
       "pass": true,
-      "detail": "bytes=2159"
+      "detail": "bytes=2383"
     },
     {
       "name": "/llms.txt 200",
@@ -300,6 +300,21 @@
       "name": "auth callback without state redirects error",
       "pass": true,
       "detail": "/?login=error"
+    },
+    {
+      "name": "cross origin blocked",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "name": "payload too large 413",
+      "pass": true,
+      "detail": "status=413"
+    },
+    {
+      "name": "cookie hardened",
+      "pass": true,
+      "detail": "__Host-seogarok_oauth_state=rmJkVGKZRK_usPNWn856kTSIwOOshdll.85d96994a7c30a4a4f0"
     },
     {
       "name": "report invalid 400",

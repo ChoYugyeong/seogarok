@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>서가록 — 개인정보처리방침</title>
+<meta name="description" content="서가록 개인정보처리방침 — 구글 로그인, 내 서재 동기화, 익명 통계, 보관 기간, 정보주체 권리 안내" />
+<meta name="robots" content="index,follow" />
+<link rel="canonical" href="https://seogarok.com/privacy.html" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23f7f2e8'/><rect x='24' y='24' width='10' height='52' rx='2' fill='%2317120e'/><rect x='40' y='32' width='10' height='44' rx='2' fill='%23b8371f'/></svg>" />
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .doc { max-width: 820px; margin: 0 auto; padding: 110px 22px 90px; }
+  .doc h1 { font-size: clamp(26px, 3.4vw, 38px); margin-bottom: 8px; letter-spacing: -.02em; }
+  .doc .meta { color: var(--muted); font-size: 13px; margin-bottom: 34px; }
+  .doc h2 { font-size: 19px; margin: 34px 0 10px; letter-spacing: -.01em; }
+  .doc p, .doc li { font-size: 15px; line-height: 1.75; color: var(--ink); }
+  .doc ol, .doc ul { padding-left: 22px; }
+  .doc table { width: 100%; border-collapse: collapse; margin: 12px 0 18px; font-size: 14px; }
+  .doc th, .doc td { border: 1px solid var(--line); padding: 9px 11px; text-align: left; vertical-align: top; line-height: 1.6; }
+  .doc th { background: rgba(0,0,0,.03); white-space: nowrap; }
+  .doc .note { border-left: 3px solid var(--vermilion, #b8371f); padding: 10px 14px; background: rgba(0,0,0,.02); font-size: 14px; }
+  .doc a { color: var(--vermilion, #b8371f); }
+  .doc .back { display: inline-block; margin-top: 40px; font-size: 14px; }
+</style>
+</head>
+<body>
+<main class="doc">
+  <h1>개인정보처리방침</h1>
+  <p class="meta">시행일: 2026-10-30 · 버전 1.0 · 서가록(SEOGAROK, https://seogarok.com)</p>
+
+  <p>서가록은 이용자의 개인정보를 최소한으로 수집하며, <b>로그인 없이도 모든 기능(검색·가용성 확인·내 서재·알림)을 사용</b>할 수 있습니다. 구글 로그인은 <b>선택</b>이며, 기기 간 서재 동기화를 원할 때만 사용됩니다. 본 방침은 「개인정보 보호법」 등 관련 법령을 준수합니다.</p>
+
+  <h2>1. 처리 목적</h2>
+  <table>
+    <tr><th>목적</th><th>내용</th></tr>
+    <tr><td>서비스 제공</td><td>도서 검색, 구독 가용성·종료 예정 정보 제공, 내 서재(관심/읽는 중/완독), 종료 알림</td></tr>
+    <tr><td>기기 간 동기화(선택)</td><td>구글 로그인 이용자가 여러 기기에서 같은 서재를 사용할 수 있도록 저장</td></tr>
+    <tr><td>서비스 개선</td><td>개인을 식별하지 않는 익명 통계(검색 성공률, 클릭 흐름 등)</td></tr>
+    <tr><td>장애 대응</td><td>서버 접속 로그(IP 미기록) — 오류 분석 목적</td></tr>
+  </table>
+
+  <h2>2. 처리하는 개인정보 항목</h2>
+  <table>
+    <tr><th>구분</th><th>항목</th><th>수집 시점</th></tr>
+    <tr><td>구글 로그인(선택)</td><td>구글 계정 식별자(sub), 이메일, 이름, 프로필 사진 URL, 이메일 인증 여부</td><td>로그인 시</td></tr>
+    <tr><td>내 서재 동기화(로그인 시)</td><td>관심/읽는 중/완독 책 ID 목록</td><td>서재 변경 시</td></tr>
+    <tr><td>알림 구독(선택)</td><td>웹 푸시 구독 정보(브라우저 endpoint), 알림 대상 책 ID·구독 서비스 설정</td><td>알림 켜기</td></tr>
+    <tr><td>익명 통계</td><td>세션 랜덤 ID, 이벤트명, 검색어(최대 60자), 페이지 경로, 화면 크기, 비식별 IP 해시</td><td>이용 중</td></tr>
+    <tr><td>접속 로그</td><td>요청 시각·경로·응답코드·처리시간·사용자 에이전트 (IP 원본 미기록)</td><td>요청 시</td></tr>
+  </table>
+  <p class="note">주민등록번호, 비밀번호, 결제정보, 위치정보, 연락처는 수집하지 않습니다. 광고·추적 쿠키를 사용하지 않습니다.</p>
+
+  <h2>3. 보관 기간 및 파기</h2>
+  <table>
+    <tr><th>데이터</th><th>보관 기간</th><th>파기 방법</th></tr>
+    <tr><td>구글 로그인 계정 정보</td><td>회원 탈퇴 시까지</td><td>탈퇴 즉시 GCS 객체 삭제</td></tr>
+    <tr><td>동기화된 내 서재</td><td>회원 탈퇴 시까지</td><td>탈퇴 즉시 삭제</td></tr>
+    <tr><td>세션 쿠키</td><td>최대 30일</td><td>로그아웃·만료 시 삭제</td></tr>
+    <tr><td>알림 구독</td><td>구독 해지 시까지</td><td>해지 즉시 삭제</td></tr>
+    <tr><td>익명 통계</td><td>최대 90일</td><td>자동 파기</td></tr>
+    <tr><td>접속 로그</td><td>최대 30일</td><td>클라우드 로그 정책에 따라 자동 파기</td></tr>
+  </table>
+  <p>이용자는 로그인 후 <b>내 서재 → 계정 삭제</b>로 언제든 계정과 동기화 데이터를 즉시 삭제할 수 있습니다. 로그아웃만 해도 서버 동기화는 중지되며, 브라우저의 서재 데이터는 이용자 기기에 남습니다.</p>
+
+  <h2>4. 제3자 제공 · 처리위탁</h2>
+  <table>
+    <tr><th>수탁/제3자</th><th>목적</th><th>항목</th></tr>
+    <tr><td>Google LLC (OAuth 로그인)</td><td>구글 계정 인증</td><td>로그인 시 인증 정보(이메일 등)</td></tr>
+    <tr><td>Google Cloud (Cloud Run·Cloud Storage)</td><td>서비스 호스팅·데이터 저장(서울 리전 ASIA-NORTHEAST3)</td><td>서비스 데이터</td></tr>
+  </table>
+  <p>법령에 따른 요청이 있는 경우를 제외하고 개인정보를 제3자에게 판매·제공하지 않습니다.</p>
+
+  <h2>5. 국외 이전</h2>
+  <p>구글 로그인을 사용하는 경우 인증 처리를 위해 <b>Google LLC(미국)</b>로 인증 정보가 이전될 수 있습니다(목적: OAuth 인증, 보유: Google 정책에 따름). 서비스 데이터(서재 등)는 <b>대한민국 서울 리전</b> Google Cloud Storage에 저장됩니다.</p>
+
+  <h2>6. 정보주체의 권리</h2>
+  <ul>
+    <li>개인정보 <b>열람·정정·삭제·처리정지</b>를 언제든 요청할 수 있습니다.</li>
+    <li>로그인 후 <b>계정 삭제</b> 버튼으로 즉시 삭제할 수 있습니다.</li>
+    <li>브라우저 저장소(localStorage·쿠키)는 브라우저 설정에서 직접 삭제할 수 있습니다.</li>
+    <li>문의: 아래 <b>10. 문의</b> 참고.</li>
+  </ul>
+
+  <h2>7. 쿠키 및 세션</h2>
+  <p>로그인 시 <b>필수 세션 쿠키</b>(<code>__Host-seogarok_session</code>, HttpOnly·Secure·SameSite=Lax, 최대 30일)만 사용합니다. 광고·분석·추적 쿠키는 사용하지 않습니다. 로그인하지 않으면 쿠키를 설정하지 않습니다.</p>
+
+  <h2>8. 익명 통계</h2>
+  <p>서비스 개선을 위해 개인을 식별하지 않는 통계(이벤트명, 검색어, 페이지 경로 등)를 수집합니다. 세션 ID는 랜덤 값이며 IP는 비식별 해시로만 처리합니다. 브라우저의 <b>DNT(Do Not Track)</b> 설정 시 수집하지 않으며, 최대 90일 후 파기합니다.</p>
+
+  <h2>9. 안전성 확보 조치</h2>
+  <ul>
+    <li><b>전송 구간 암호화</b>: HTTPS(HSTS) 적용, HTTP → HTTPS 리다이렉트</li>
+    <li><b>세션 보호</b>: 세션 토큰은 서버에 해시로만 저장, 쿠키는 HttpOnly·Secure·SameSite=Lax</li>
+    <li><b>접근 통제</b>: 개인정보 저장소(GCS)는 비공개, 최소 권한 서비스계정만 접근</li>
+    <li><b>CSRF·남용 방지</b>: 상태 변경 요청 출처 검증, 로그인 요청 rate limit, 요청 본문 크기 제한</li>
+    <li><b>OAuth 보안</b>: state 값 서명·검증, 인증 코드 서버 측 교환, 제공자 토큰 미저장</li>
+    <li><b>최소 수집</b>: 로그인은 선택, 비밀번호·결제정보 미수집</li>
+  </ul>
+
+  <h2>10. 문의</h2>
+  <p>개인정보 관련 문의·열람·삭제 요청은 <a href="https://github.com/ChoYugyeong/seogarok/issues" rel="noopener">서가록 GitHub 이슈</a>로 접수해 주세요. 처리 책임자: 서가록 운영자. 접수 후 7일 이내 처리합니다.</p>
+
+  <h2>11. 방침 변경</h2>
+  <p>본 방침이 변경되는 경우 시행 <b>7일 전</b> 서비스 내 공지합니다. 중대한 변경은 30일 전 공지합니다.</p>
+
+  <h2>12. 데이터 출처</h2>
+  <p>도서 정보는 예스24 Open API 등 공개 데이터에서 수집하며, 구독 가용성은 각 서비스의 공개 정보를 바탕으로 일부만 확인됩니다. 자세한 내용은 <a href="legal.html#sources">데이터 출처</a>를 참고하세요.</p>
+
+  <a class="back" href="/">← 서가록으로</a>
+</main>
+</body>
+</html>

@@ -268,6 +268,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle(self, method: str):
         self.req_id = uuid.uuid4().hex[:12]
+        try:
+            _clen = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            _clen = 0
+        if _clen > 1_000_000:
+            return self._json({"error": "payload_too_large"}, 413)
         parsed = urlparse(self.path)
         route = route_of(parsed.path)
         t0 = time.perf_counter()

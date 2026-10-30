@@ -1845,7 +1845,7 @@ function renderShelf() {
 
   const authBanner = state.user
     ? `<div class="sync-banner is-on"><span>✓ 기기 간 동기화 켜짐 · ${esc(state.user.email || '')}</span><span><button class="link" data-act="logout">로그아웃</button> · <button class="link" data-act="delete-account">계정 삭제</button></span></div>`
-    : `<div class="sync-banner"><span>다른 기기에서도 같은 서재를 쓰려면 로그인하세요.</span><button class="link" data-act="login">구글 로그인</button></div>`;
+    : `<div class="sync-banner"><span>다른 기기에서도 같은 서재를 쓰려면 로그인하세요. 로그인하면 <a href="/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a>에 동의하는 것으로 봅니다.</span><button class="link" data-act="login">구글 로그인</button></div>`;
 
   return `
   <div class="page-head">

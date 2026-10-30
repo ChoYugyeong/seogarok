@@ -28,8 +28,8 @@ AUTH = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN = "https://oauth2.googleapis.com/token"
 USERINFO = "https://openidconnect.googleapis.com/v1/userinfo"
 SCOPE = "openid email profile"
-SESSION_COOKIE = "seogarok_session"
-STATE_COOKIE = "seogarok_oauth_state"
+SESSION_COOKIE = "__Host-seogarok_session"
+STATE_COOKIE = "__Host-seogarok_oauth_state"
 SESSION_TTL = 30 * 86400
 STATE_TTL = 600
 SHELF_MAX = 500
@@ -70,6 +70,45 @@ def config() -> dict | None:
 
 
 # ---------------- cookies / state ----------------
+_RATE: dict = {}
+_RATE_WINDOW = 60
+_RATE_MAX = 30
+
+
+def _client_ip(handler) -> str:
+    ip = (handler.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    if not ip:
+        ip = (handler.client_address[0] if getattr(handler, "client_address", None) else "") or "unknown"
+    return ip
+
+
+def _rate_ok(handler) -> bool:
+    ip = _client_ip(handler)
+    now = time.time()
+    arr = [t for t in (_RATE.get(ip) or []) if now - t < _RATE_WINDOW]
+    if len(arr) >= _RATE_MAX:
+        _RATE[ip] = arr
+        return False
+    arr.append(now)
+    _RATE[ip] = arr[-60:]
+    return True
+
+
+def _origin_ok(handler) -> bool:
+    """상태 변경 요청의 출처 검증(CSRF 방어)."""
+    origin = (handler.headers.get("Origin") or "").strip()
+    if not origin:
+        # Origin 없는 요청(서버 간/테스트)은 SameSite=Lax 쿠키로 보호되므로 허용
+        return handler.headers.get("Sec-Fetch-Site") != "cross-site"
+    allowed = {"https://seogarok.com", "http://127.0.0.1:8104", "http://localhost:8104"}
+    if origin in allowed:
+        return True
+    # 로컬 개발 포트 변형 허용
+    if origin.startswith("http://127.0.0.1:") or origin.startswith("http://localhost:"):
+        return True
+    return False
+
+
 def parse_cookies(header: str | None) -> dict:
     out: dict[str, str] = {}
     for part in (header or "").split(";"):
@@ -125,6 +164,7 @@ def upsert_user(info: dict) -> dict:
         "email": (info.get("email") or "").strip(),
         "name": (info.get("name") or "").strip(),
         "picture": (info.get("picture") or "").strip(),
+        "email_verified": bool(info.get("email_verified")),
         "created_at": prev.get("created_at") or now,
         "last_login": now,
         "sessions": prev.get("sessions") or [],
@@ -232,6 +272,11 @@ def handle_auth(handler, method: str, parsed, qs: dict):
     path = parsed.path
     cfg = config()
 
+    if not _rate_ok(handler):
+        return _json_headers(handler, {"error": "rate_limited"}, 429)
+    if method in ("POST", "PUT", "DELETE") and not _origin_ok(handler):
+        return _json_headers(handler, {"error": "cross_origin_blocked"}, 403)
+
     if path == "/api/auth/google/start":
         if method != "GET" or not cfg:
             return _json_headers(handler, {"error": "auth_unavailable"}, 503)
@@ -279,6 +324,8 @@ def handle_auth(handler, method: str, parsed, qs: dict):
             with urllib.request.urlopen(req2, timeout=15) as r2:
                 info = json.loads(r2.read().decode())
         except Exception:
+            return _redirect(handler, "/?login=error", cookies=[_cookie(STATE_COOKIE, "", 0)])
+        if info.get("email_verified") is False:
             return _redirect(handler, "/?login=error", cookies=[_cookie(STATE_COOKIE, "", 0)])
         user = upsert_user(info)
         sid = new_session(user)

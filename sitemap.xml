@@ -3,6 +3,8 @@
   <url><loc>https://seogarok.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
   <url><loc>https://seogarok.com/about.html</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
   <url><loc>https://seogarok.com/legal.html</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://seogarok.com/privacy.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://seogarok.com/terms.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://seogarok.com/?col=snu-100</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://seogarok.com/?col=harvard-classics</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://seogarok.com/?col=sejong-2025-culture</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>

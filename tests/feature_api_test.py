@@ -230,6 +230,36 @@ r = call_noredirect("/api/auth/google/callback")
 loc2 = (r["headers"].get("Location") or r["headers"].get("location") or "")
 check("auth callback without state redirects error", r["status"] == 302 and "login=error" in loc2, loc2[:80])
 
+# 보안: 교차 출처 POST 차단
+op = urllib.request.build_opener(_NoRedirect)
+req = urllib.request.Request(
+    BASE + "/api/auth/logout", data=b"{}", method="POST",
+    headers={"Origin": "https://evil.example", "Content-Type": "application/json"},
+)
+try:
+    with op.open(req, timeout=20) as rr:
+        st = rr.status
+except urllib.error.HTTPError as e:
+    st = e.code
+check("cross origin blocked", st == 403, f"status={st}")
+
+# 보안: 과대 본문 413
+req = urllib.request.Request(
+    BASE + "/api/event", data=b"x" * 1_200_000, method="POST",
+    headers={"Content-Type": "application/json"},
+)
+try:
+    with op.open(req, timeout=20) as rr:
+        st = rr.status
+except urllib.error.HTTPError as e:
+    st = e.code
+check("payload too large 413", st == 413, f"status={st}")
+
+# 보안: 세션 쿠키 속성
+r = call_noredirect("/api/auth/google/start")
+cookie = (r["headers"].get("Set-Cookie") or r["headers"].get("set-cookie") or "")
+check("cookie hardened", "__Host-" in cookie and "HttpOnly" in cookie and "Secure" in cookie and "SameSite=Lax" in cookie, cookie[:80])
+
 # ---------- 11) report validation ----------
 r = call("/api/report", "POST", {"book_id": "", "platform": "x"})
 check("report invalid 400", r["status"] == 400)
