@@ -365,6 +365,14 @@ async function loadPersonalBooks() {
       const r = await API.book(id);
       const b = mapApiBook(r);
       state.cache[id] = b;
+      // 최근 본 책 저장 데이터에도 실제 커버/메타 반영 (다음 렌더부터 사용)
+      const recent = state.recentBooks || [];
+      const idx = recent.findIndex((x) => (typeof x === 'string' ? x : x && x.id) === id);
+      if (idx >= 0) {
+        const prev = typeof recent[idx] === 'string' ? { id } : recent[idx];
+        recent[idx] = { ...prev, id, title: b.title || prev.title, author: b.author || prev.author, cover_url: b.cover_url || prev.cover_url };
+        try { localStorage.setItem('seogarok.recentBooks', JSON.stringify(recent)); } catch (e) { /* ignore */ }
+      }
     } catch (e) { /* skip */ }
   }));
   if (seq !== personalLoadSeq) return;
@@ -1197,10 +1205,11 @@ function renderOverview() {
 function renderRecentRail() {
   const list = (state.recentBooks || []).filter((x) => x.id);
   if (!list.length) return '';
-  const books = list.map((x) => ({
-    ...mapApiBook({ id: x.id, title: x.title, author: x.author || '', cover_url: x.cover_url, av: {}, av_origin: {}, notices: [] }),
-  }));
-  cacheBooks(books);
+  const books = list.map((x) => {
+    const cached = state.cache[x.id];
+    if (cached) return { ...cached, cover_url: cached.cover_url || x.cover_url || null };
+    return mapApiBook({ id: x.id, title: x.title, author: x.author || '', cover_url: x.cover_url, av: {}, av_origin: {}, notices: [] });
+  });
   return `<section class="section">
     <div class="sec-head">
       <div><h2 class="sec-title">최근 본 책</h2><p class="sec-desc">이 기기에만 저장돼요.</p></div>
