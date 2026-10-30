@@ -310,16 +310,26 @@ def send_push(sub: dict, payload: dict) -> bool:
     if not keys:
         return False
     try:
+        # pywebpush는 PEM 문자열을 DER로 해석하므로 Vapid 객체로 변환해 전달
+        from py_vapid import Vapid
+
+        vapid_obj = Vapid.from_pem(keys["private_pem"].encode("utf-8"))
         webpush(
             subscription_info=sub["subscription"],
             data=json.dumps(payload, ensure_ascii=False),
-            vapid_private_key=keys["private_pem"],
-            vapid_claims={"sub": "mailto:hello@seogarok.com"},
+            vapid_private_key=vapid_obj,
+            vapid_claims={"sub": "mailto:privacy@seogarok.com"},
             ttl=86400,
             timeout=10,
         )
         return True
-    except Exception:
+    except Exception as exc:
+        try:
+            from .api import log_event
+
+            log_event(level="warn", msg="push_send_failed", error=str(exc)[:200])
+        except Exception:
+            pass
         return False
 
 
