@@ -315,7 +315,7 @@ def handle_auth(handler, method: str, parsed, qs: dict):
         exp = int(setup.get("exp") or 0)
         if not token or int(time.time()) > exp or hashlib.sha256(token.encode()).hexdigest() != setup.get("token_hash"):
             return _redirect(handler, "/?gsc=invalid")
-        state = make_state()
+        state = "gsc." + make_state()
         params = {
             "client_id": cfg["client_id"],
             "redirect_uri": cfg["redirect_uri"],
