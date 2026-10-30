@@ -10,12 +10,12 @@
   --card: #fcfaf5;
   --paper: #f7f2e8;
   --paper-2: #efe8da;
-  --line: #e5dccb;
+  --line: #d8d1c2; /* brand A border */
   --line-2: #d8ccb8;
 
-  --ink: #17120e;
+  --ink: #231911; /* brand A text */
   --ink-2: #2a241e;
-  --text-2: #4a423a;
+  --text-2: #5e534a; /* brand A textMuted */
   --text-3: #63584b;
   --muted: #63584b;
 
@@ -29,10 +29,11 @@
   --gold: #6b4f13;
   --gold-soft: #f4ecd8;
 
-  --sans: "Pretendard Variable", Pretendard, "Noto Sans KR", system-ui, -apple-system,
+  --sans: "IBM Plex Sans KR", Pretendard, "Noto Sans KR", system-ui, -apple-system,
     "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --serif: var(--sans);
-  --mono: var(--sans);
+  --display: "Hahmlet", "Noto Serif KR", serif;
+  --serif: var(--display);
+  --mono: "IBM Plex Sans KR", ui-monospace, monospace;
 
   --r: 14px;
   --r-sm: 10px;
@@ -54,6 +55,7 @@ body {
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum" 1;
   text-rendering: optimizeLegibility;
   overflow-x: hidden;
 }
@@ -98,6 +100,8 @@ ul, ol { list-style: none; padding: 0; }
   padding: 12px var(--margin);
 }
 .brand { display: inline-flex; align-items: center; gap: 8px; }
+.brand-logo { height: 25px; width: auto; display: block; }
+.brand-mark-img { width: 28px; height: 28px; display: block; }
 .brand-mark { display: inline-flex; align-items: flex-end; gap: 2px; height: 18px; }
 .brand-mark i { display: block; width: 3.5px; border-radius: 1px; background: var(--ink); }
 .brand-mark i:nth-child(1) { height: 18px; }
@@ -813,6 +817,7 @@ ul, ol { list-style: none; padding: 0; }
   .tabs { display: none; }
   .nav-right .search-mini { display: none; }
   .brand-text { font-size: 17px; }
+  .brand-logo { height: 22px; }
 
   .hero { grid-template-columns: 1fr; gap: 18px; padding: 20px var(--margin) 4px; }
   .hero h1 { font-size: 26px; }
@@ -1425,3 +1430,30 @@ html, body { overscroll-behavior-y: none; }
 }
 .sync-banner.is-on { border-style: solid; }
 .sync-banner .link { font-size: 13px; }
+
+/* ===== brand A — 책등의 결 (2026-10-30) ===== */
+.hero h1,
+.result-head h1,
+.result-head h2,
+.sec-title,
+.pick-title,
+.dw-meta h2,
+.book-hero h1,
+.page-head h2,
+.cur-head h2,
+.q-title,
+.legal h1,
+.doc h1,
+.taste-result-head h2 {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.hero h1 em { font-style: normal; }
+.foot-meta a,
+.prose a,
+.doc a,
+.legal a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

@@ -41,3 +41,6 @@ data/enrich_cache/
 
 # 수집/HTML 캐시 (로컬 전용)
 .cache/
+
+# 로컬 분석 이벤트 캐시
+.analytics-cache/
