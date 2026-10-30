@@ -333,6 +333,17 @@ def send_push(sub: dict, payload: dict) -> bool:
         return False
 
 
+def send_test(sub: dict) -> bool:
+    """로그인 사용자에게 즉시 테스트 알림 발송."""
+    payload = {
+        "title": "서가록 알림 테스트",
+        "body": "알림이 정상적으로 도착합니다.",
+        "url": "/",
+        "tag": "seogarok-test",
+    }
+    return send_push(sub, payload)
+
+
 # ---------------- 통계 ----------------
 def _today() -> str:
     return time.strftime("%Y-%m-%d", time.gmtime())

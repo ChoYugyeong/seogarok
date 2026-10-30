@@ -2510,6 +2510,18 @@ document.addEventListener('click', (e) => {
   }
   if (a === 'push-enable') { subscribePush(); return; }
   if (a === 'push-refresh') { subscribePush({ silent: true }); toast('알림 대상을 새로고침했어요'); return; }
+  if (a === 'push-test') {
+    if (!state.user) { toast('로그인 후 테스트할 수 있어요'); return; }
+    (async () => {
+      try {
+        const r = await fetch('/api/push/test', { method: 'POST', credentials: 'same-origin' });
+        const d = await r.json();
+        if (d.ok) toast('테스트 알림을 보냈어요 — 잠시 후 확인해 보세요');
+        else toast(d.message || '알림 구독을 먼저 켜 주세요');
+      } catch (e) { toast('테스트 알림 전송에 실패했어요'); }
+    })();
+    return;
+  }
   if (a === 'share-book') {
     const b = lookupBook(state.openId);
     if (!b) return;

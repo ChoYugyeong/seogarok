@@ -635,6 +635,28 @@ class Handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
             return self._json({"ok": ok, "watches": len(watches), "platforms": platforms, "user": bool(record.get("user_sub"))}, 200 if ok else 500)
+        if path == "/api/push/test":
+            if method != "POST":
+                return self._json({"error": "method_not_allowed"}, 405)
+            try:
+                from .auth import current_user
+
+                user = current_user(self.headers.get("Cookie"))
+            except Exception:
+                user = None
+            if not user:
+                return self._json({"error": "unauthorized"}, 401)
+            subs = pushlib.list_user_subscriptions(user["sub"])
+            if not subs:
+                return self._json({"ok": False, "sent": 0, "message": "이 기기의 알림을 먼저 켜 주세요."}, 400)
+            sent = 0
+            failed = 0
+            for sub in subs:
+                if pushlib.send_test(sub):
+                    sent += 1
+                else:
+                    failed += 1
+            return self._json({"ok": sent > 0, "sent": sent, "failed": failed})
         if path == "/api/push/unsubscribe":
             if method != "POST":
                 return self._json({"error": "method_not_allowed"}, 405)
