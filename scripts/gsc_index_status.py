@@ -47,8 +47,11 @@ def token() -> str:
             with urllib.request.urlopen(req, timeout=30) as r:
                 return json.loads(r.read().decode()).get("access_token", "")
         except Exception as exc:
-            print(f"[gsc] refresh token 교환 실패: {str(exc)[:120]}", file=sys.stderr)
-            return ""
+            print(
+                f"[gsc] refresh token 교환 실패: {str(exc)[:120]} — 재승인 필요(GSC 연결 링크 재발급)",
+                file=sys.stderr,
+            )
+            sys.exit(2)
 
     env_tok = (os.getenv("GSC_ACCESS_TOKEN") or "").strip()
     if env_tok:
