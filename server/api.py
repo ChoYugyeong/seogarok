@@ -138,6 +138,18 @@ def get_app() -> AppState:
     return APP
 
 
+SEARCH_MODES = ("hybrid", "keyword", "vector")
+
+
+def _int_param(qs: dict, name: str, default: int, lo: int, hi: int) -> int:
+    """쿼리 정수 파라미터 — 숫자가 아니면 기본값, 범위 밖이면 클램프 (500 방지)."""
+    try:
+        v = int((qs.get(name) or [str(default)])[0])
+    except (TypeError, ValueError):
+        v = default
+    return max(lo, min(v, hi))
+
+
 def _lex_tokens(q: str) -> list[str]:
     """질의 토큰(2자 이상) — 공백/기호 제거 후 비교용."""
     raw = re.split(r"[\s,·/|]+", (q or "").strip())
@@ -202,6 +214,7 @@ class Handler(BaseHTTPRequestHandler):
     server_version = "seogarok/0.4"
     protocol_version = "HTTP/1.1"
     _status = 200
+    _head_only = False
 
     # ---------------- utils ----------------
     _COMPRESSIBLE = ("application/json", "text/", "application/manifest+json", "image/svg")
@@ -248,7 +261,8 @@ class Handler(BaseHTTPRequestHandler):
         if getattr(self, "req_id", None):
             self.send_header("X-Request-Id", self.req_id)
         self.end_headers()
-        self.wfile.write(body)
+        if not self._head_only:
+            self.wfile.write(body)
 
     def _json(self, obj, code: int = 200):
         self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"))
@@ -259,6 +273,10 @@ class Handler(BaseHTTPRequestHandler):
     # ---------------- routing ----------------
     def do_GET(self):
         self._handle("GET")
+
+    def do_HEAD(self):
+        # GET과 같은 헤더(Content-Length 포함), 본문만 생략 — 업타임 모니터·링크 체커용
+        self._handle("HEAD")
 
     def do_POST(self):
         self._handle("POST")
@@ -271,6 +289,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle(self, method: str):
         self.req_id = uuid.uuid4().hex[:12]
+        self._head_only = method == "HEAD"  # keep-alive 연결에서 핸들러가 재사용되므로 매 요청 초기화
         try:
             _clen = int(self.headers.get("Content-Length") or 0)
         except ValueError:
@@ -293,7 +312,7 @@ class Handler(BaseHTTPRequestHandler):
         t0 = time.perf_counter()
         METRICS.inc_in_flight()
         try:
-            self._dispatch(method, parsed)
+            self._dispatch("GET" if method == "HEAD" else method, parsed)
         except BrokenPipeError:
             self._status = 499
         except _ChaosInjected:
@@ -1037,8 +1056,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/search":
             q = (qs.get("q") or [""])[0]
             mode = (qs.get("mode") or ["hybrid"])[0]
-            limit = int((qs.get("limit") or ["24"])[0])
-            limit = max(1, min(limit, 60))
+            if mode not in SEARCH_MODES:
+                mode = "hybrid"  # 임의 문자열이 메트릭 라벨로 들어가지 않게
+            limit = _int_param(qs, "limit", 24, 1, 60)
             debug = (qs.get("debug") or ["0"])[0] == "1"
             conn, store = app.ctx()
             ids, dbg = search(conn, store, app.embedder, q, mode=mode, limit=limit)
@@ -1212,7 +1232,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(payload)
 
         if path == "/api/notices":
-            limit = int((qs.get("limit") or ["50"])[0])
+            limit = _int_param(qs, "limit", 50, 1, 1000)
             conn, _ = app.ctx()
             rows = conn.execute(
                 "SELECT * FROM notices ORDER BY ends_at IS NULL, ends_at LIMIT ?", (limit,)
@@ -1243,8 +1263,7 @@ class Handler(BaseHTTPRequestHandler):
             kind = (qs.get("kind") or ["best"])[0].strip() or "best"
             if kind not in RANK_KINDS:
                 kind = "best"
-            limit = int((qs.get("limit") or ["10"])[0])
-            limit = max(3, min(limit, 20))
+            limit = _int_param(qs, "limit", 10, 3, 20)
             key = f"{cat}:{kind}"
             now = time.time()
             hit = _rank_cache.get(key)
