@@ -160,6 +160,7 @@ const state = {
   rank: { cat: '종합', kind: 'best', items: null, loading: false, error: null, source: '', fetchedAt: '' },
   cache: {}, // id -> api book (검색 결과/상세 캐시)
   notices: [], // 수집된 종료 예정 공지 (실데이터 + fixture)
+  user: null, // 구글 로그인 사용자(기기 간 서재 동기화)
 };
 
 /* =========================================================
@@ -465,6 +466,11 @@ const ANALYTICS = (() => {
 
 /* ---------------- persistence ---------------- */
 function save() {
+  saveLocalOnly();
+  scheduleServerShelfSync();
+}
+
+function saveLocalOnly() {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify({ subs: state.subs, shelf: state.shelf, alerts: state.alerts, pushOn: state.pushOn, pushLeads: state.pushLeads }));
   } catch (e) { /* ignore */ }
@@ -485,6 +491,130 @@ function load() {
     if (typeof d.pushOn === 'boolean') state.pushOn = d.pushOn;
     if (Array.isArray(d.pushLeads)) state.pushLeads = d.pushLeads.filter((n) => typeof n === 'number').slice(0, 6);
   } catch (e) { /* ignore */ }
+}
+
+/* ---------------- auth / 기기 간 서재 동기화 ---------------- */
+let shelfSyncTimer = null;
+let authReady = false;
+
+function setAuthUI() {
+  const b = $('#authBtn');
+  if (!b) return;
+  if (state.user) {
+    b.textContent = '로그아웃';
+    b.title = state.user.email || '로그아웃';
+    b.classList.add('is-on');
+  } else {
+    b.textContent = '로그인';
+    b.title = '구글 로그인 (기기 간 서재 동기화)';
+    b.classList.remove('is-on');
+  }
+}
+
+async function authFetch(path, opts = {}) {
+  return fetch(path, {
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    ...opts,
+  });
+}
+
+async function loadAuth() {
+  if (!state.api.on) { setAuthUI(); return; }
+  try {
+    const r = await authFetch('/api/auth/me');
+    if (!r.ok) return;
+    const d = await r.json();
+    state.user = (d && d.user) || null;
+    setAuthUI();
+    if (state.user) await loadServerShelf();
+  } catch (e) { /* ignore */ }
+}
+
+async function loadServerShelf() {
+  try {
+    const r = await authFetch('/api/shelf');
+    if (!r.ok) return;
+    const d = await r.json();
+    const s = (d && d.shelf) || {};
+    const ids = [...(s.want || []), ...(s.reading || []), ...(s.done || [])];
+    if (ids.length) {
+      state.shelf = { want: s.want || [], reading: s.reading || [], done: s.done || [] };
+      saveLocalOnly();
+      render();
+    } else if (shelfCount() > 0) {
+      await pushShelfUp();
+    }
+  } catch (e) { /* ignore */ }
+}
+
+function scheduleServerShelfSync() {
+  if (!state.user) return;
+  clearTimeout(shelfSyncTimer);
+  shelfSyncTimer = setTimeout(pushShelfUp, 900);
+}
+
+async function pushShelfUp() {
+  if (!state.user) return;
+  try {
+    await authFetch('/api/shelf', {
+      method: 'PUT',
+      body: JSON.stringify({ want: state.shelf.want, reading: state.shelf.reading, done: state.shelf.done }),
+    });
+  } catch (e) { /* ignore */ }
+}
+
+async function mergeLocalShelfOnLogin() {
+  if (!state.user) return;
+  try {
+    const r = await authFetch('/api/auth/merge', {
+      method: 'POST',
+      body: JSON.stringify({ want: state.shelf.want, reading: state.shelf.reading, done: state.shelf.done }),
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    const s = (d && d.shelf) || {};
+    state.shelf = { want: s.want || [], reading: s.reading || [], done: s.done || [] };
+    saveLocalOnly();
+    render();
+  } catch (e) { /* ignore */ }
+}
+
+async function deleteAccount() {
+  if (!state.user) return;
+  if (!window.confirm('계정과 동기화된 서재를 삭제할까요? 되돌릴 수 없어요.')) return;
+  try { await authFetch('/api/auth/account', { method: 'DELETE' }); } catch (e) { /* ignore */ }
+  state.user = null;
+  setAuthUI();
+  render();
+  toast('계정과 동기화 데이터를 삭제했어요');
+}
+
+async function doLogout() {
+  try { await authFetch('/api/auth/logout', { method: 'POST' }); } catch (e) { /* ignore */ }
+  state.user = null;
+  setAuthUI();
+  render();
+  toast('로그아웃했어요. 서재는 이 기기에만 저장돼요');
+}
+
+async function handleAuthRedirect() {
+  const params = new URLSearchParams(location.search);
+  if (params.get('login') === '1') {
+    await loadAuth();
+    if (state.user) {
+      await mergeLocalShelfOnLogin();
+      toast('로그인됐어요 — 서재가 기기 간 동기화됩니다');
+    }
+    params.delete('login');
+    const qs = params.toString();
+    history.replaceState({}, '', location.pathname + (qs ? '?' + qs : ''));
+  } else if (params.get('login') === 'error') {
+    toast('로그인에 실패했어요. 다시 시도해 주세요');
+    params.delete('login');
+    const qs = params.toString();
+    history.replaceState({}, '', location.pathname + (qs ? '?' + qs : ''));
+  }
 }
 
 /* ---------------- helpers ---------------- */
@@ -1713,11 +1843,16 @@ function renderShelf() {
         <button class="link" data-tab="explore">책 둘러보기 →</button>
       </div>`;
 
+  const authBanner = state.user
+    ? `<div class="sync-banner is-on"><span>✓ 기기 간 동기화 켜짐 · ${esc(state.user.email || '')}</span><span><button class="link" data-act="logout">로그아웃</button> · <button class="link" data-act="delete-account">계정 삭제</button></span></div>`
+    : `<div class="sync-banner"><span>다른 기기에서도 같은 서재를 쓰려면 로그인하세요.</span><button class="link" data-act="login">구글 로그인</button></div>`;
+
   return `
   <div class="page-head">
     <h2>내 서재</h2>
     <p>담아둔 책의 <b>가용성이 바뀌는 순간</b>을 추적해요. 구독에서 내려가기 전에 알려드려요.</p>
   </div>
+  ${authBanner}
 
   ${mineEnd.length ? `<section class="section" style="margin-top:34px">
     <div class="sec-head">
@@ -2232,6 +2367,7 @@ function render() {
     scb.hidden = count === 0;
   }
   $('#subsCount').textContent = String(subsOn().length);
+  setAuthUI();
   renderSubsOptions();
 
   const navInput = $('#searchInput');
@@ -2302,6 +2438,13 @@ function setQuery(q, opts = {}) {
 document.addEventListener('click', (e) => {
   const t = e.target;
 
+  const authBtnEl = t.closest('#authBtn');
+  if (authBtnEl) {
+    if (state.user) doLogout();
+    else location.href = '/api/auth/google/start';
+    return;
+  }
+
   try {
     const outLink = t.closest('a[href^="http"]');
     if (outLink) {
@@ -2339,6 +2482,9 @@ document.addEventListener('click', (e) => {
     if (a === 'reset-filters') { state.searchFilter = 'all'; state.priceRange = 'all'; state.searchSort = 'relevance'; render(); return; }
     if (a === 'clear-collection') { state.collection = null; render(); return; }
     if (a === 'close-drawer') { closeDrawer(); return; }
+    if (a === 'login') { location.href = '/api/auth/google/start'; return; }
+    if (a === 'logout') { doLogout(); return; }
+    if (a === 'delete-account') { deleteAccount(); return; }
   const leadBtn = t.closest('[data-push-lead]');
   if (leadBtn) {
     const n = Number(leadBtn.dataset.pushLead);
@@ -2637,6 +2783,8 @@ async function initApi() {
         state.noticeReal = (n && n.real) || 0;
       } catch (e) { state.notices = []; }
       render();
+      await loadAuth();
+      await handleAuthRedirect();
       loadDiscover();
       loadCollections();
       loadOverview();

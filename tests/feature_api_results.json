@@ -34,7 +34,7 @@
     {
       "name": "search result fields",
       "pass": true,
-      "detail": "{\"id\": \"yes24:176969335\", \"title\": \"소년이 온다\", \"av\": {\"yes24\": {\"buy\": 12000}}}"
+      "detail": "{\"id\": \"yes24:176969335\", \"title\": \"소년이 온다\", \"av\": {\"aladin\": {\"buy\": 12000}}}"
     },
     {
       "name": "search relevance (title/author match)",
@@ -132,9 +132,9 @@
       "detail": "n=10 source=예스24 스테디셀러 status=200"
     },
     {
-      "name": "rank daily upstream",
+      "name": "rank daily 10 items",
       "pass": true,
-      "detail": "upstream 503 graceful"
+      "detail": "n=10 source=예스24 일간 베스트 status=200"
     },
     {
       "name": "rank monthly 10 items",
@@ -164,7 +164,7 @@
     {
       "name": "/api/stats 200",
       "pass": true,
-      "detail": "keys=['books', 'notices', 'meta', 'vector_count', 'db', 'db_bytes']"
+      "detail": "keys=['books', 'description_count', 'notices', 'meta', 'vector_count', 'db']"
     },
     {
       "name": "overview genres/platforms",
@@ -209,7 +209,7 @@
     {
       "name": "/sitemap-books.xml 200",
       "pass": true,
-      "detail": "bytes=604731"
+      "detail": "bytes=1940581"
     },
     {
       "name": "/sitemap.xml 200",
@@ -280,6 +280,26 @@
       "name": "event invalid json 400",
       "pass": true,
       "detail": ""
+    },
+    {
+      "name": "auth me 200",
+      "pass": true,
+      "detail": "user=None"
+    },
+    {
+      "name": "shelf unauth 401",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "auth google start 302",
+      "pass": true,
+      "detail": "https://accounts.google.com/o/oauth2/v2/auth?client_id=660128179060-opllfvfe616imcus60li0g4uokfs81o1.apps.googleusercont"
+    },
+    {
+      "name": "auth callback without state redirects error",
+      "pass": true,
+      "detail": "/?login=error"
     },
     {
       "name": "report invalid 400",

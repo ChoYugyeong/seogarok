@@ -213,7 +213,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Frame-Options", "SAMEORIGIN")
         self.send_header("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 
-    def _send(self, code: int, body: bytes, ctype: str = "application/json; charset=utf-8", cache: str = "no-store"):
+    def _send(self, code: int, body: bytes, ctype: str = "application/json; charset=utf-8", cache: str = "no-store", extra_headers: list | None = None):
         self._status = code
         # gzip (JSON/텍스트가 512B 이상일 때) — 공지 126KB → ~15KB
         accept = (self.headers.get("Accept-Encoding") or "")
@@ -243,6 +243,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", cache)
         self.send_header("Access-Control-Allow-Origin", "*")
+        for k, v in extra_headers or []:
+            self.send_header(k, v)
         if getattr(self, "req_id", None):
             self.send_header("X-Request-Id", self.req_id)
         self.end_headers()
@@ -260,6 +262,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         self._handle("POST")
+
+    def do_DELETE(self):
+        self._handle("DELETE")
 
     def _handle(self, method: str):
         self.req_id = uuid.uuid4().hex[:12]
@@ -306,6 +311,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.handle_chaos(method, parsed)
         if parsed.path == "/api/report":
             return self.handle_report(method, parsed)
+        if parsed.path.startswith("/api/auth") or parsed.path == "/api/shelf":
+            from .auth import handle_auth
+
+            return handle_auth(self, method, parsed, parse_qs(parsed.query))
         if parsed.path == f"/{INDEXNOW_KEY}.txt":
             return self._send(200, INDEXNOW_KEY.encode("utf-8"), "text/plain; charset=utf-8", "public, max-age=86400")
         if parsed.path in ("/llms.txt", "/llms-full.txt", "/index.md", "/sitemap-index.xml"):

@@ -201,7 +201,36 @@ check("kpi 403", r["status"] == 403)
 r = call("/api/event", "POST", None)
 check("event invalid json 400", r["status"] in (400, 422))
 
-# ---------- 10) report validation ----------
+# ---------- 10) auth / shelf ----------
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a, **k):
+        return None
+
+
+def call_noredirect(path, method="GET"):
+    op = urllib.request.build_opener(_NoRedirect)
+    req = urllib.request.Request(BASE + path, method=method, headers={"User-Agent": "seogarok-feature-test/1.0"})
+    try:
+        with op.open(req, timeout=30) as r:
+            return {"status": r.status, "headers": dict(r.headers), "body": r.read()}
+    except urllib.error.HTTPError as e:
+        return {"status": e.code, "headers": dict(e.headers), "body": e.read()}
+
+
+r = call("/api/auth/me")
+d = j(r) or {}
+check("auth me 200", r["status"] == 200 and "user" in d, f"user={d.get('user')}")
+r = call("/api/shelf")
+check("shelf unauth 401", r["status"] == 401)
+r = call_noredirect("/api/auth/google/start")
+loc = (r["headers"].get("Location") or r["headers"].get("location") or "")
+cookie = (r["headers"].get("Set-Cookie") or r["headers"].get("set-cookie") or "")
+check("auth google start 302", r["status"] == 302 and "accounts.google.com" in loc and "seogarok_oauth_state=" in cookie, loc[:120])
+r = call_noredirect("/api/auth/google/callback")
+loc2 = (r["headers"].get("Location") or r["headers"].get("location") or "")
+check("auth callback without state redirects error", r["status"] == 302 and "login=error" in loc2, loc2[:80])
+
+# ---------- 11) report validation ----------
 r = call("/api/report", "POST", {"book_id": "", "platform": "x"})
 check("report invalid 400", r["status"] == 400)
 
