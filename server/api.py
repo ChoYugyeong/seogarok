@@ -390,7 +390,7 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path.startswith("/api/push"):
             return self.handle_push(method, parsed, parse_qs(parsed.query))
         if parsed.path.startswith("/api/"):
-            return self.route_api(parsed.path, parse_qs(parsed.query))
+            return self.route_api(parsed.path, parse_qs(parsed.query), method)
         if parsed.path in ("/healthz", "/livez", "/readyz", "/metrics"):
             return self.route_ops(parsed.path)
         return self.serve_static(parsed.path)
@@ -886,7 +886,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def route_api(self, path: str, qs: dict):
+    def route_api(self, path: str, qs: dict, method: str = "GET"):
         app = get_app()
         t0 = time.perf_counter()
 
