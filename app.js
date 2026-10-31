@@ -655,8 +655,8 @@ const isOn = (v) => v && v.s === 'on';
 function coverStyle(book) {
   let h = 0;
   for (let i = 0; i < book.title.length; i++) h = (h * 31 + book.title.charCodeAt(i)) % 360;
-  const h2 = (h + 46) % 360;
-  return `--cg: linear-gradient(152deg, hsl(${h} 44% 27%), hsl(${h2} 50% 12%) 74%)`;
+  // 실제 표지가 없을 때도 색 그라디언트 대신 종이 재질의 저채도 톤만 쓴다
+  return `--cg: hsl(${h} 14% 91%)`;
 }
 
 function coverHTML(book, extraClass = '') {
@@ -2237,7 +2237,7 @@ let lastFocused = null;
 async function sendReport(bookId, platform) {
   try {
     const r = await API.report(bookId, platform);
-    toast(r.duplicate ? '이미 접수된 제보예요. 감사합니다!' : `${PLATFORMS[platform].short} 제보 접수! 확인 후 반영할게요`);
+    toast(r.duplicate ? '이미 접수된 제보예요' : `${PLATFORMS[platform].short} 제보를 접수했어요. 확인 후 반영할게요`);
     try {
       const fresh = mapApiBook(await API.book(bookId));
       cacheBooks([fresh]);

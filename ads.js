@@ -93,7 +93,7 @@
       el.innerHTML =
         '<div class="ad-consent-body">' +
         '<b>광고·쿠키 설정</b>' +
-        '<p>서가록은 무료로 운영됩니다. 동의하면 Google AdSense 광고(맞춤형)가 표시되며, Google이 광고 쿠키를 사용할 수 있습니다. 거부해도 모든 기능을 그대로 쓸 수 있어요.</p>' +
+        '<p>동의하면 Google AdSense 광고·쿠키가 사용됩니다. 거부해도 모든 기능을 그대로 쓸 수 있어요.</p>' +
         '<p class="ad-consent-links"><a href="/privacy.html" target="_blank" rel="noopener">개인정보처리방침</a> · <a href="https://adssettings.google.com" target="_blank" rel="noopener">Google 광고 설정</a></p>' +
         '</div>' +
         '<div class="ad-consent-actions">' +
