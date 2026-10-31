@@ -122,3 +122,32 @@ python scripts/submit_indexnow.py --limit 200
 4. 테스트: `gh workflow run seo-index.yml` → Actions Summary/artifact에서 색인 verdict 확인
 - 매주 월요일 09:10 KST 자동 실행
 - 토큰은 GCS `auth/gsc_token.json`(비공개)에 저장되며, 콜백은 로그인 세션을 만들지 않는다.
+
+## 2026-11-01 진단 (GSC 실데이터)
+
+| 항목 | 결과 |
+| --- | --- |
+| GSC 속성 | `sc-domain:seogarok.com` 정상, 홈 **PASS · Submitted and indexed** (last crawl 2026-10-28) |
+| 책 URL 표본 | 4/6 PASS(2026-10-30 크롤), 1 Discovered, 2 URL unknown |
+| Googlebot 크롤 | 최근 7일 **1,491개 책 URL** 크롤 (표본 3,000건 기준) |
+| Search Analytics | 2026-10-27~29 **impressions 6, clicks 0** (김초엽 3, 정대건 2회 등) |
+| 사이트맵 | `sitemap-index.xml` 제출·다운로드 2026-10-29, contents 5,017·indexed 0 (자식 `/sitemap-books.xml` 미처리) |
+| 자체 이벤트 | 오늘 3 sessions/12 views — 외부 유입이 아니라 QA/검증 트래픽으로 추정 |
+
+### 결론
+검색에서 **완전히 안 뜨는 건 아니다.** 홈은 색인됐고 책 페이지 일부도 색인됐다.
+다만 신규 도메인 + 자식 사이트맵 미처리 + 콘텐츠 평가 단계로 **외부 검색 유입은 아직 0에 가깝다.**
+
+### 사용자가 직접 해야 하는 것 (GSC UI)
+1. Search Console → Sitemaps → `https://seogarok.com/sitemap-books.xml` **직접 제출**
+2. URL 검사 → 홈 + 대표 책 10개 → **색인 요청**
+3. 네이버 서치어드바이저 → 사이트맵 제출 + 웹페이지 수집
+4. 외부 링크 1~2개 (GitHub README, 블로그/커뮤니티 소개)
+
+> GSC OAuth 토큰이 `webmasters.readonly` 계열이라 API로 사이트맵 제출은 403이 난다.
+> 자동 제출까지 원하면 GSC 재연결(쓰기 scope) 후 `scripts/gsc_submit_sitemaps.py`를 쓰면 된다.
+
+### 자동화 (이번에 추가)
+- `ai-crawl.yml` — 매일 04:10 KST: IndexNow(Bing/ChatGPT 검색 인덱스) + robots/llms/sitemap 검증
+- `status-watch.yml` — 매일 04:20 KST: 감시 책 절판/품절 상태 변화 푸시
+- 기존 `deploy.yml` — 매일 04:00 KST: YES24 카탈로그·공지·설명 갱신
