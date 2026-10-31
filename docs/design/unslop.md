@@ -42,3 +42,19 @@
 - 이전/이후: [before.png](unslop/before.png) · [after-live.png](unslop/after-live.png) · [after-full-live.png](unslop/after-full-live.png)
 - 모바일: [after-mobile.png](unslop/after-mobile.png) · [after-mobile-live.png](unslop/after-mobile-live.png)
 - 변경: `styles.css` (unslop 레이어), `app.js` (표지 폴백·카피), `index.html` (히어로 카드·placeholder), `ads.js` (동의 배너 카피)
+
+## Story video
+
+- [unslop-story.mp4](unslop/unslop-story.mp4) — 10초 · 1080×1080 · 30fps · H.264
+- 구성: redline이 표시된 before(2.4s) → morph/crossfade(1s) → after + caption 4단계(5s) → 브랜드 엔드카드(1.6s)
+- 크레딧: 영상 전체에 unslop by @heydamir · CC BY 4.0
+- 포스터: [unslop/story-poster.png](unslop/story-poster.png)
+
+## 검색 결과·책 상세 패스
+
+- 검색: 결과 제목 26px/500, 결과 수 muted, 필터/정렬 여백 4px 리듬
+- 책 상세: Hahmlet 34px/500 제목, 가격 muted 500, CTA 8px/500
+- 한 줄 요약: accent-soft 박스 → hairline rule + muted caption
+- 섹션 제목 20px/500, 관련 책 제목 500, 가용성 행 radius 8, keep-all
+- 라이브: [검색 결과](unslop/search-after.png) · [책 상세](unslop/book-after.png)
+
