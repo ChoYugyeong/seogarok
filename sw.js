@@ -4,7 +4,7 @@
  * (cache-first 로 두면 배포 후에도 옛 app.js 가 계속 서빙됨)
  * 오프라인일 때만 캐시로 폴백한다.
  */
-const CACHE = 'seogarok-v3';
+const CACHE = 'seogarok-v4';
 const SHELL = [
   '/', '/styles.css', '/app.js', '/data.js', '/legal.html',
   '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png',
@@ -31,7 +31,7 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/api/') || url.pathname === '/metrics' ||
       url.pathname === '/livez' || url.pathname === '/readyz') return;
 
-  const isAppShell = url.pathname === '/' || url.pathname === '/manifest.webmanifest' ||
+  const isAppShell = req.mode === 'navigate' || url.pathname === '/' || url.pathname === '/manifest.webmanifest' ||
     /\.(js|css|html)$/.test(url.pathname);
 
   e.respondWith((async () => {
