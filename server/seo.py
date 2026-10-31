@@ -229,7 +229,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
 .answer{{font-size:13.5px;line-height:1.65;background:transparent;padding:2px 0 2px 12px;border-left:2px solid var(--line-2);border-radius:0;margin:14px 0 0;color:var(--text-2)}} .answer b{{color:var(--text-3);font-weight:500}}
 .book-section-title{{font-family:var(--display);font-size:20px;font-weight:500;letter-spacing:-.01em;margin:32px 0 10px}}
 .book-foot{{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-3);line-height:1.7}}
-@media (max-width:640px){{.book-hero{{grid-template-columns:120px minmax(0,1fr);gap:16px}}.book-hero h1{{font-size:24px}}}}
+@media (max-width:640px){{.book-hero{{grid-template-columns:1fr;gap:16px}}.book-hero h1{{font-size:24px}}.book-hero img{{width:150px}}}}
 </style>
 </head>
 <body>
