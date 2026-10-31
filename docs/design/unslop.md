@@ -58,3 +58,18 @@
 - 섹션 제목 20px/500, 관련 책 제목 500, 가용성 행 radius 8, keep-all
 - 라이브: [검색 결과](unslop/search-after.png) · [책 상세](unslop/book-after.png)
 
+## Morph story video (실제 값 보간)
+
+- [unslop-story-morph.mp4](unslop/unslop-story-morph.mp4) — 10초 · 1080×1080 · 30fps
+- before 2.0s(redline) → **실제 CSS 값 보간 morph 2.0s** → after 4.4s(caption) → 엔드카드 1.6s
+- ego로 before/after computed style을 측정하고 13단계로 spacing·radius·color·type·font-weight 값을 직접 보간해 캡처 (crossfade 아님)
+- 포스터: [morph-poster.png](unslop/morph-poster.png)
+- 이전 crossfade 버전: [unslop-story.mp4](unslop/unslop-story.mp4)
+
+## 모바일 검증
+
+- 검색: [search-mobile-after.png](unslop/search-mobile-after.png) — 26px 결과 제목, 2열 표지, overflow 없음, 하단 내비 정상
+- 책 상세: [book-mobile-after.png](unslop/book-mobile-after.png) — **1열 stack**, 커버 150px, 본문 350px, h1 24px/500, overflow 없음
+- 발견/수정: service worker가 /book/... 문서를 cache-first로 굳혀 모바일에서 옛 레이아웃이 보이던 문제 → sw.js v4, 
+eq.mode === 'navigate' network-first
+
