@@ -730,6 +730,19 @@ class Handler(BaseHTTPRequestHandler):
             except (TypeError, ValueError):
                 days = 7
             return self._json(pushlib.stats_summary(days))
+        if path == "/api/push/status-cron":
+            expected = (os.getenv("PUSH_CRON_KEY") or os.getenv("YES24_API_KEY") or "").strip()
+            provided = (self.headers.get("X-Cron-Secret") or (qs.get("key") or [""])[0] or "").strip()
+            if not expected or not provided or not hmac.compare_digest(expected, provided):
+                return self._json({"error": "forbidden"}, 403)
+            dry = (qs.get("dry") or [""])[0] == "1"
+            try:
+                limit = int((qs.get("limit") or ["120"])[0])
+            except (TypeError, ValueError):
+                limit = 120
+            from . import status_watch
+
+            return self._json(status_watch.run(dry=dry, limit=limit))
         if path == "/api/push/cron":
             expected = (os.getenv("PUSH_CRON_KEY") or os.getenv("YES24_API_KEY") or "").strip()
             provided = (self.headers.get("X-Cron-Secret") or (qs.get("key") or [""])[0] or "").strip()

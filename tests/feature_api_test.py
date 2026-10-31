@@ -197,6 +197,8 @@ r = call("/api/push/subscribe", "POST", {"subscription": {}})
 check("push subscribe invalid 400", r["status"] == 400)
 r = call("/api/push/stats")
 check("push stats 403", r["status"] == 403)
+r = call("/api/push/status-cron", "POST")
+check("status cron requires secret", r["status"] == 403)
 r = call("/api/push/cron?dry=1")
 check("push cron 403", r["status"] == 403)
 

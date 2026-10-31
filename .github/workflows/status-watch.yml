@@ -1,0 +1,43 @@
+name: status-watch
+
+# 매일 04:20 KST: 감시 중인 책의 YES24 itemStatus를 확인하고
+# 판매중 → 품절/절판/판매중지/예약판매로 바뀐 책을 푸시로 알린다.
+# ("곧 절판"은 외부 사전 공지가 없어 예측하지 않는다. 상태 변경만 알린다.)
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry:
+        description: "dry-run (알림 발송 없이 대상만 확인)"
+        required: false
+        default: "0"
+  schedule:
+    - cron: "20 19 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Call status watch cron
+        env:
+          CRON_SECRET: ${{ secrets.YES24_API_KEY }}
+          DRY: ${{ github.event.inputs.dry || '0' }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::YES24_API_KEY 시크릿이 없습니다."
+            exit 1
+          fi
+          URL="https://seogarok.com/api/push/status-cron?dry=${DRY}&limit=120"
+          echo "POST $URL (dry=${DRY})"
+          code=$(curl -sS -o /tmp/status.json -w "%{http_code}" -X POST "$URL" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" -H "Content-Type: application/json" --max-time 240)
+          cat /tmp/status.json; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::status watch failed (HTTP $code)"
+            exit 1
+          fi
