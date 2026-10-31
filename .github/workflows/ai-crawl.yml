@@ -1,8 +1,9 @@
 name: ai-crawl
 
-# 매일 04:10 KST: AI/검색 크롤러가 읽는 표면을 고신선도로 유지한다.
-# - IndexNow(Bing·Yandex 등) 표본 제출 — Bing은 ChatGPT 검색의 인덱스 기반
-# - robots.txt·Content-Signal·sitemap·llms.txt·llms-full.txt 응답 검증
+# 매일 04:10 KST: AI/검색 크롤러 표면을 갱신하고 데일리 이슈 리포트를 남긴다.
+# - IndexNow(Bing·Yandex) 표본 제출 — Bing은 ChatGPT 검색 인덱스 기반
+# - robots/Content-Signal/sitemap/llms/llms-full 검증
+# - GSC 사이트맵 자동 제출 + 색인/검색 성과 (재연결 시)
 
 on:
   workflow_dispatch:
@@ -11,11 +12,12 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   crawl-ready:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,13 +27,13 @@ jobs:
       - name: Submit IndexNow sample
         run: |
           set -euo pipefail
-          python scripts/submit_indexnow.py --limit 200
+          python scripts/submit_indexnow.py --limit 200 | tee /tmp/indexnow.txt
 
       - name: Verify AI/search surfaces
         run: |
           set -euo pipefail
           python - <<'PY'
-          import urllib.request
+          import json, urllib.request
           checks = {
             "robots": "https://seogarok.com/robots.txt",
             "llms": "https://seogarok.com/llms.txt",
@@ -39,16 +41,66 @@ jobs:
             "sitemap_index": "https://seogarok.com/sitemap-index.xml",
             "sitemap_books": "https://seogarok.com/sitemap-books.xml",
           }
+          out = {}
           bodies = {}
           for name, url in checks.items():
             req = urllib.request.Request(url, headers={"User-Agent": "seogarok-ai-crawl/1"})
             with urllib.request.urlopen(req, timeout=40) as r:
               assert r.status == 200, (name, r.status)
               bodies[name] = r.read().decode("utf-8", "ignore")
+              out[name] = len(bodies[name])
           assert "Content-Signal" in bodies["robots"], "robots Content-Signal missing"
           assert "Sitemap:" in bodies["robots"], "robots Sitemap missing"
           assert "서가록" in bodies["llms"], "llms.txt missing brand"
           assert "<sitemapindex" in bodies["sitemap_index"], "sitemap index malformed"
           assert bodies["sitemap_books"].count("<loc>") > 10000, "books sitemap too small"
-          print("AI surfaces OK", {k: len(v) for k, v in bodies.items()})
+          json.dump(out, open("/tmp/surfaces.json", "w", encoding="utf-8"))
+          print("AI surfaces OK", out)
           PY
+
+      - name: GSC sitemap submit + index report
+        env:
+          CRON_SECRET: ${{ secrets.YES24_API_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo '{"error":"missing_secret"}' > /tmp/gsc.json
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/gsc.json -w "%{http_code}" -X POST "https://seogarok.com/api/gsc/cron?days=7" \
+            -H "X-Cron-Secret: ${CRON_SECRET}" -H "Content-Type: application/json" --max-time 120)
+          echo "GSC HTTP $code"
+          cat /tmp/gsc.json; echo
+          if [ "$code" != "200" ]; then
+            python - <<'PY'
+          import json
+          try:
+              d = json.load(open('/tmp/gsc.json', encoding='utf-8'))
+          except Exception:
+              d = {}
+          if 'error' not in d:
+              d = {'error': 'gsc_cron_failed'}
+          json.dump(d, open('/tmp/gsc.json', 'w', encoding='utf-8'), ensure_ascii=False)
+          PY
+          fi
+
+      - name: Build daily report
+        run: |
+          set -euo pipefail
+          python scripts/ai_crawl_report.py --surfaces /tmp/surfaces.json --gsc /tmp/gsc.json --indexnow /tmp/indexnow.txt --out /tmp/ai-report.md
+          cat /tmp/ai-report.md
+
+      - name: Publish daily issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          DATE=$(date -u +%F)
+          TITLE="AI crawl daily · ${DATE}"
+          BODY=$(cat /tmp/ai-report.md)
+          NUM=$(gh issue list --state open --search "${TITLE} in:title" --json number -q '.[0].number // empty')
+          if [ -n "${NUM}" ]; then
+            gh issue comment "${NUM}" --body "${BODY}"
+          else
+            gh issue create --title "${TITLE}" --body "${BODY}"
+          fi

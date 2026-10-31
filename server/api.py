@@ -1026,6 +1026,27 @@ class Handler(BaseHTTPRequestHandler):
                 payload["similar"] = []
             return self._json({"date": day.isoformat(), "book": payload})
 
+        if path == "/api/gsc/cron":
+            if method != "POST":
+                return self._json({"error": "method_not_allowed"}, 405)
+            expected = (os.getenv("PUSH_CRON_KEY") or os.getenv("YES24_API_KEY") or "").strip()
+            provided = (self.headers.get("X-Cron-Secret") or (qs.get("key") or [""])[0] or "").strip()
+            if not expected or not provided or not hmac.compare_digest(expected, provided):
+                return self._json({"error": "forbidden"}, 403)
+            try:
+                days = int((qs.get("days") or ["7"])[0])
+            except (TypeError, ValueError):
+                days = 7
+            from . import gsc
+
+            try:
+                return self._json(gsc.run(days=days))
+            except gsc.GscAuthError as exc:
+                return self._json({
+                    "error": "gsc_reauth",
+                    "message": str(exc),
+                    "next": "https://seogarok.com/api/auth/gsc/start (재연결 필요)",
+                }, 409)
         if path == "/api/kpi":
             import hmac as _hmac
             import os as _os
