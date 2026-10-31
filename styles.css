@@ -1801,3 +1801,18 @@ body { word-break: keep-all; overflow-wrap: break-word; }
   .ad-consent { bottom: calc(76px + env(safe-area-inset-bottom)); padding: 12px 14px; gap: 10px; }
   .ad-consent-actions { justify-content: flex-end; }
 }
+
+/* ---- unslop: 검색 결과·책 상세 ---- */
+.result-head { margin: 24px 0 16px; gap: 12px; }
+.result-head h1, .result-head h2 { font-size: 26px; font-weight: 500; letter-spacing: -0.01em; }
+.result-head span { font-size: 13px; font-weight: 400; color: var(--text-3); }
+.result-head span small { font-size: 12px; }
+.filter-bar { margin: 20px 0 18px; }
+.sort-select { border-radius: 8px; font-weight: 400; }
+.search-note { font-size: 13px; color: var(--text-3); }
+.dw-meta h2 { font-weight: 500; letter-spacing: -0.01em; }
+.dw-price { font-weight: 500; }
+.dw-fact { color: var(--text-3); }
+.av-row .state { background: transparent; border: 1px solid var(--line); border-radius: 6px; font-weight: 500; color: var(--text-3); }
+.book-page .summary { word-break: keep-all; }
+.book-page .av-list li { word-break: keep-all; }

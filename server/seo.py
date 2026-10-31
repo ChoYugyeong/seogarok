@@ -203,32 +203,33 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
 .book-page .back{{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-3);margin-bottom:20px}}
 .book-hero{{display:grid;grid-template-columns:200px minmax(0,1fr);gap:28px;align-items:start}}
 .book-hero img{{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--surface)}}
-.book-hero h1{{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1.28;margin-bottom:8px}}
+.book-hero h1{{font-family:var(--display);font-size:34px;font-weight:500;letter-spacing:-.015em;line-height:1.25;margin-bottom:8px}}
 .book-hero .author{{font-size:15px;color:var(--text-2);margin-bottom:6px}}
-.book-hero .facts{{font-size:12.5px;color:var(--text-3);margin-bottom:16px}}
-.book-hero .price{{font-size:18px;font-weight:800;color:var(--accent);margin-bottom:16px}}
-.book-hero .summary{{font-size:15px;line-height:1.7;color:var(--text-2)}}
+.book-hero .facts{{font-size:12.5px;color:var(--text-3);margin-bottom:16px;line-height:1.6}}
+.book-hero .price{{font-size:17px;font-weight:500;color:var(--text-2);margin-bottom:16px}}
+.book-hero .summary{{font-size:15.5px;line-height:1.7;color:var(--text-2);max-width:62ch}}
 .av-list{{list-style:none;padding:0;margin:24px 0;display:grid;gap:8px}}
-.av-list li{{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface);border-radius:10px;font-size:14px}}
+.av-list li{{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface);border-radius:8px;font-size:14px}}
 .av-list li b{{font-weight:700}}
 .av-list li span{{color:var(--text-2)}}
 .av-list li.end{{background:var(--danger-soft)}}
 .av-list li.end b,.av-list li.end span{{color:var(--danger)}}
 .av-list li.muted b,.av-list li.muted span{{color:var(--text-3)}}
 .notice{{font-size:13px;color:var(--danger);margin:8px 0 0}}
-.cta{{display:inline-flex;align-items:center;gap:8px;margin-top:22px;padding:13px 22px;border-radius:12px;background:var(--accent);color:#fff;font-weight:800;font-size:15px}}
+.cta{{display:inline-flex;align-items:center;gap:8px;margin-top:24px;padding:12px 18px;border-radius:8px;background:var(--accent);color:#fff;font-weight:500;font-size:14.5px}}
 .cta:hover{{background:#a02f19}}
 .related{{margin-top:32px}}
-.related h2{{font-size:19px;font-weight:800;letter-spacing:-.02em;margin:0 0 12px}}
+.related h2{{font-family:var(--display);font-size:20px;font-weight:500;letter-spacing:-.01em;margin:0 0 12px}}
 .rel-grid{{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}}
 .rel-card{{display:flex;flex-direction:column;gap:5px;color:inherit}}
 .rel-card img{{width:100%;aspect-ratio:3/4.3;object-fit:cover;border-radius:8px;border:1px solid var(--line);background:var(--surface)}}
-.rel-card b{{font-size:12.5px;font-weight:700;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
+.rel-card b{{font-size:12.5px;font-weight:500;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
 .rel-card span{{font-size:11.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
 @media (max-width:640px){{.rel-grid{{grid-template-columns:repeat(3,minmax(0,1fr))}}}}
-.answer{{font-size:13.5px;line-height:1.6;background:var(--accent-soft);padding:10px 12px;border-radius:8px;margin:12px 0 0}} .answer b{{color:var(--accent)}}
+.answer{{font-size:13.5px;line-height:1.65;background:transparent;padding:2px 0 2px 12px;border-left:2px solid var(--line-2);border-radius:0;margin:14px 0 0;color:var(--text-2)}} .answer b{{color:var(--text-3);font-weight:500}}
+.book-section-title{{font-family:var(--display);font-size:20px;font-weight:500;letter-spacing:-.01em;margin:32px 0 10px}}
 .book-foot{{margin-top:36px;padding-top:18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--text-3);line-height:1.7}}
-@media (max-width:640px){{.book-hero{{grid-template-columns:120px minmax(0,1fr);gap:16px}}.book-hero h1{{font-size:22px}}}}
+@media (max-width:640px){{.book-hero{{grid-template-columns:120px minmax(0,1fr);gap:16px}}.book-hero h1{{font-size:24px}}}}
 </style>
 </head>
 <body>
@@ -247,7 +248,7 @@ def book_page_html(book: dict, av: dict, notices: list[dict], related: list[dict
       <a class="cta" href="{esc(app_url)}">서가록에서 가용성 보기 →</a>
     </div>
   </div>
-  <h2 style="margin:28px 0 4px;font-size:18px;font-weight:800">어디서 읽을 수 있나요</h2>
+  <h2 class="book-section-title">어디서 읽을 수 있나요</h2>
   <ul class="av-list">{av_rows(av)}</ul>
   {related_html}
   {_ad_slot_html("book")}
