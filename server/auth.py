@@ -381,18 +381,35 @@ def handle_auth(handler, method: str, parsed, qs: dict):
                 with urllib.request.urlopen(req, timeout=15) as r:
                     tok = json.loads(r.read().decode())
                 refresh = tok.get("refresh_token")
-                if refresh:
-                    store.write_json(
-                        GSC_TOKEN_PATH,
-                        {
-                            "refresh_token": refresh,
-                            "scope": tok.get("scope") or GSC_SCOPE,
-                            "created_at": int(time.time()),
-                        },
-                    )
-                    return _redirect(handler, "/?gsc=ok", cookies=[_cookie(STATE_COOKIE, "", 0)])
-            except Exception:
-                pass
+                if not refresh:
+                    print("[gsc] callback: no refresh_token in response", flush=True)
+                    return _redirect(handler, "/?gsc=no_refresh", cookies=[_cookie(STATE_COOKIE, "", 0)])
+                record = {
+                    "refresh_token": refresh,
+                    "scope": tok.get("scope") or GSC_SCOPE,
+                    "created_at": int(time.time()),
+                }
+                ok = False
+                for attempt in range(2):
+                    try:
+                        ok = store.write_json(GSC_TOKEN_PATH, record)
+                    except Exception as exc:  # noqa: BLE001
+                        print(f"[gsc] token write exception ({attempt}): {str(exc)[:160]}", flush=True)
+                        ok = False
+                    if ok:
+                        break
+                    time.sleep(0.4)
+                saved = store.read_json(GSC_TOKEN_PATH) or {}
+                verified = bool(ok and saved.get("refresh_token") == refresh)
+                print(
+                    f"[gsc] token save ok={ok} verified={verified} scope={record['scope']}",
+                    flush=True,
+                )
+                if not verified:
+                    return _redirect(handler, "/?gsc=write_failed", cookies=[_cookie(STATE_COOKIE, "", 0)])
+                return _redirect(handler, "/?gsc=ok", cookies=[_cookie(STATE_COOKIE, "", 0)])
+            except Exception as exc:  # noqa: BLE001
+                print(f"[gsc] callback error: {str(exc)[:160]}", flush=True)
             return _redirect(handler, "/?gsc=error", cookies=[_cookie(STATE_COOKIE, "", 0)])
         try:
             req = urllib.request.Request(
