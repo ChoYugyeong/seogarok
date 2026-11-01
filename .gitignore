@@ -44,3 +44,6 @@ data/enrich_cache/
 
 # 로컬 분석 이벤트 캐시
 .analytics-cache/
+
+# 로컬 랭킹 스냅샷(런타임 캐시)
+.rank-cache/
