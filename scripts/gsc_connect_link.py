@@ -33,7 +33,7 @@ def main() -> int:
     token = secrets.token_urlsafe(32)
     payload = {
         "token_hash": hashlib.sha256(token.encode()).hexdigest(),
-        "exp": int(time.time()) + 1800,
+        "exp": int(time.time()) + 86400,
         "created_at": int(time.time()),
     }
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as fh:
