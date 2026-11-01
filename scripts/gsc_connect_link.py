@@ -46,7 +46,7 @@ def main() -> int:
             return 1
     finally:
         Path(tmp).unlink(missing_ok=True)
-    print("연결 링크 (30분 내 1회):")
+    print("연결 링크 (24시간 내 1회):")
     print(f"https://seogarok.com/api/auth/gsc/start?t={token}")
     return 0
 
