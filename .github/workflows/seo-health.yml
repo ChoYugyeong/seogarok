@@ -38,8 +38,10 @@ jobs:
           cat > /tmp/last.html <<'EOF'
           EOF
           curl -sS --max-time 30 "$BASE/book/yes24%3A197068949" -o /tmp/last.html
-          rel=$(grep -c 'class="rel-card"' /tmp/last.html || true)
-          jsonld=$(grep -c 'application/ld+json' /tmp/last.html || true)
+          # HTML can contain many links/blocks on one line; count matches, not lines.
+          # No matches still produce 0 without aborting under pipefail.
+          rel=$(grep -oF 'class="rel-card"' /tmp/last.html | wc -l || true)
+          jsonld=$(grep -oF 'application/ld+json' /tmp/last.html | wc -l || true)
           echo "related-links: $rel / jsonld-blocks: $jsonld"
           [ "$rel" -ge 3 ] || fail=1
           [ "$jsonld" -ge 2 ] || fail=1
@@ -52,7 +54,7 @@ jobs:
           [ "$ai" -ge 1 ] || fail=1
 
           curl -sS --max-time 30 "$BASE/books?page=1" -o /tmp/books.html
-          links=$(grep -c 'href="/book/' /tmp/books.html || true)
+          links=$(grep -oF 'href="/book/' /tmp/books.html | wc -l || true)
           echo "books-index-links: $links"
           [ "$links" -ge 30 ] || fail=1
 
