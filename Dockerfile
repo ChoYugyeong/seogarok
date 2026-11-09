@@ -38,7 +38,7 @@ ENV PYTHONUNBUFFERED=1 \
     SEOG_DB=/tmp/data/seoga.db \
     SEOG_CHAOS=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends tini \
+RUN apt-get update && apt-get install -y --no-install-recommends tini zlib1g \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 app
 
